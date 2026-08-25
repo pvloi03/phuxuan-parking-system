@@ -7,7 +7,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace PhuXuanParkingSystem
+namespace PhuXuanParkingSystem.Forms
 {
     public partial class FrmMain
     {

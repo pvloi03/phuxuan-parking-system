@@ -1,4 +1,4 @@
-﻿namespace PhuXuanParkingSystem
+namespace PhuXuanParkingSystem.Forms
 {
     partial class FrmMain
     {

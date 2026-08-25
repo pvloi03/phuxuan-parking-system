@@ -9,7 +9,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 
-namespace PhuXuanParkingSystem
+namespace PhuXuanParkingSystem.Forms
 {
     public enum DeviceConnectionState
     {
