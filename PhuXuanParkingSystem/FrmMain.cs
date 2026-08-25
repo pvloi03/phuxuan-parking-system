@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Services.Logging;
+﻿using PhuXuanParkingSystem.Services.ANPR;
+using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
 using PhuXuanParkingSystem.Services.Camera;
 using PhuXuanParkingSystem.Services.Controller;
@@ -377,7 +378,8 @@ namespace PhuXuanParkingSystem
 
                 if (tPlate.Result && tOverview.Result)
                 {
-                    AppNotificationService.NotifySuccess(NotificationCategory.LaneIn, "Chụp ảnh Làn Vào", $"Đã chụp và lưu ảnh xe vào thành công ({Path.GetFileName(filePlate)}, {Path.GetFileName(fileOverview)}).", triggerSource);
+                    AppNotificationService.NotifySuccess(
+                        NotificationCategory.LaneIn, "Chụp ảnh Làn Vào", $"Đã chụp và lưu ảnh xe vào thành công ({Path.GetFileName(filePlate)}, {Path.GetFileName(fileOverview)}).", triggerSource);
                 }
                 else
                 {
@@ -549,7 +551,10 @@ namespace PhuXuanParkingSystem
                 _outPlateCam.Dispose();
                 _outOverviewCam.Dispose();
 
-                // 2. Dừng và giải phóng Controller C3-200
+                                // 2. Dừng và giải phóng ANPR Engine
+                AnprLaneCoordinator.Instance.Dispose();
+
+                // 3. Dừng và giải phóng Controller C3-200
                 _controller.Dispose();
 
                 // 3. Dọn dẹp SDK tĩnh
