@@ -42,33 +42,7 @@ namespace PhuXuanParkingSystem.Forms
         {
             try
             {
-                // 1. Cấu hình LÀN VÀO (IN-LANE)
-                _inPlateCam.Config.Ip = ConfigurationManager.AppSettings["In_PlateCam_Ip"] ?? "192.168.1.200";
-                _inPlateCam.Config.Port = ushort.TryParse(ConfigurationManager.AppSettings["In_PlateCam_Port"], out ushort inPltPort) ? inPltPort : (ushort)3000;
-                _inPlateCam.Config.UserName = ConfigurationManager.AppSettings["In_PlateCam_User"] ?? "admin";
-                _inPlateCam.Config.Password = ConfigurationManager.AppSettings["In_PlateCam_Password"] ?? "admin";
-
-                _inOverviewCam.Config.Ip = ConfigurationManager.AppSettings["In_OverviewCam_Ip"] ?? "192.168.1.61";
-                _inOverviewCam.Config.Port = ushort.TryParse(ConfigurationManager.AppSettings["In_OverviewCam_Port"], out ushort inOvwPort) ? inOvwPort : (ushort)8000;
-                _inOverviewCam.Config.UserName = ConfigurationManager.AppSettings["In_OverviewCam_User"] ?? "admin";
-                _inOverviewCam.Config.Password = ConfigurationManager.AppSettings["In_OverviewCam_Password"] ?? "Hoangphat130225";
-
-                // 2. Cấu hình LÀN RA (OUT-LANE)
-                _outPlateCam.Config.Ip = ConfigurationManager.AppSettings["Out_PlateCam_Ip"] ?? "192.168.1.203";
-                _outPlateCam.Config.Port = ushort.TryParse(ConfigurationManager.AppSettings["Out_PlateCam_Port"], out ushort outPltPort) ? outPltPort : (ushort)3000;
-                _outPlateCam.Config.UserName = ConfigurationManager.AppSettings["Out_PlateCam_User"] ?? "admin";
-                _outPlateCam.Config.Password = ConfigurationManager.AppSettings["Out_PlateCam_Password"] ?? "admin";
-
-                _outOverviewCam.Config.Ip = ConfigurationManager.AppSettings["Out_OverviewCam_Ip"] ?? "192.168.1.62";
-                _outOverviewCam.Config.Port = ushort.TryParse(ConfigurationManager.AppSettings["Out_OverviewCam_Port"], out ushort outOvwPort) ? outOvwPort : (ushort)8000;
-                _outOverviewCam.Config.UserName = ConfigurationManager.AppSettings["Out_OverviewCam_User"] ?? "admin";
-                _outOverviewCam.Config.Password = ConfigurationManager.AppSettings["Out_OverviewCam_Password"] ?? "Hoangphat130225";
-
-                // 3. Cấu hình Controller ZKTeco C3-200
-                _controllerIp = ConfigurationManager.AppSettings["Controller_Ip"] ?? "192.168.1.202";
-                _controllerPort = int.TryParse(ConfigurationManager.AppSettings["Controller_Port"], out int ctrlPort) ? ctrlPort : 4370;
-
-                // Thư mục lưu ảnh chụp
+                // Thư mục lưu trữ ảnh chụp biển số & toàn cảnh
                 string relativePath = ConfigurationManager.AppSettings["CaptureSavePath"] ?? "Captures";
                 _captureDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativePath);
                 if (!Directory.Exists(_captureDir))
@@ -76,11 +50,11 @@ namespace PhuXuanParkingSystem.Forms
                     Directory.CreateDirectory(_captureDir);
                 }
 
-                SetFooterStatus("Đã tải cấu hình hệ thống. Đang tự động kết nối...");
+                SetFooterStatus("Khởi tạo hệ thống thành công. Đang tải cấu hình thiết bị từ CSDL MongoDB...");
             }
             catch (Exception ex)
             {
-                SetFooterStatus($"Lỗi tải cấu hình: {ex.Message}");
+                SetFooterStatus($"Lỗi khởi tạo thư mục lưu ảnh: {ex.Message}");
             }
         }
 
