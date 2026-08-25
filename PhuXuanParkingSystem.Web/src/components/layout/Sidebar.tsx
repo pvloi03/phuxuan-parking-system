@@ -48,7 +48,7 @@ const menuConfig: MenuItem[] = [
   {
     type: 'single',
     item: {
-      title: 'Dashboard Thống Kê',
+      title: 'Dashboard',
       href: '/',
       icon: LayoutDashboard,
     },
@@ -68,73 +68,32 @@ const menuConfig: MenuItem[] = [
       icon: Building2,
       roles: ['Admin', 'Manager', '1', '2'],
       children: [
-        {
-          title: 'Công Ty & Doanh Nghiệp',
-          href: '/companies',
-          icon: Building,
-        },
-        {
-          title: 'Phòng Ban Trực Thuộc',
-          href: '/departments',
-          icon: Building2,
-        },
-        {
-          title: 'Đối Tác & Nhà Thầu',
-          href: '/partners',
-          icon: Handshake,
-        },
-        {
-          title: 'Danh Sách Nhân Sự',
-          href: '/people',
-          icon: Users,
-        },
+        { title: 'Công Ty & Doanh Nghiệp', href: '/companies', icon: Building },
+        { title: 'Phòng Ban', href: '/departments', icon: Building2 },
+        { title: 'Đối Tác & Nhà Thầu', href: '/partners', icon: Handshake },
+        { title: 'Danh Sách Nhân Sự', href: '/people', icon: Users },
       ],
     },
   },
   {
     type: 'single',
-    item: {
-      title: 'Quản Lý Phương Tiện',
-      href: '/vehicles',
-      icon: Car,
-      roles: ['Admin', 'Manager', '1', '2'],
-    },
+    item: { title: 'Quản Lý Phương Tiện', href: '/vehicles', icon: Car, roles: ['Admin', 'Manager', '1', '2'] },
   },
   {
     type: 'single',
-    item: {
-      title: 'Làn Kiểm Soát',
-      href: '/lanes',
-      icon: Route,
-      roles: ['Admin', 'Manager', '1', '2'],
-    },
+    item: { title: 'Làn Kiểm Soát', href: '/lanes', icon: Route, roles: ['Admin', 'Manager', '1', '2'] },
   },
   {
     type: 'single',
-    item: {
-      title: 'Thiết Bị Phần Cứng',
-      href: '/devices',
-      icon: Cpu,
-      roles: ['Admin', 'Manager', '1', '2'],
-    },
+    item: { title: 'Thiết Bị Phần Cứng', href: '/devices', icon: Cpu, roles: ['Admin', 'Manager', '1', '2'] },
   },
   {
     type: 'single',
-    item: {
-      title: 'Quản Lý Tài Khoản',
-      href: '/users',
-      icon: Users,
-      roles: ['Admin', 'Manager', '1', '2'],
-    },
+    item: { title: 'Quản Lý Tài Khoản', href: '/users', icon: Users, roles: ['Admin', '1'] },
   },
   {
     type: 'single',
-    item: {
-      title: 'Thùng Rác Hệ Thống',
-      href: '/recycle-bin',
-      icon: Trash2,
-      roles: ['Admin', '1'],
-    },
+    item: { title: 'Thùng Rác', href: '/recycle-bin', icon: Trash2, roles: ['Admin', '1'] },
   },
 ]
 
@@ -147,16 +106,15 @@ export function Sidebar() {
   const { data: trashCounts } = useQuery({
     queryKey: ['recycle-bin-counts'],
     queryFn: () => recycleBinService.getCounts(),
-    refetchInterval: 30000, // Tự động làm mới mỗi 30s
+    refetchInterval: 30000,
   })
 
-  const getRoleDisplayName = (role: any) => {
-    if (role === 'Admin' || role === 1 || role === '1' || role === 'SuperAdmin') return 'Quản Trị Viên'
-    if (role === 'Manager' || role === 2 || role === '2') return 'Quản Lý'
-    if (role === 'Operator' || role === 3 || role === '3') return 'Nhân Viên Vận Hành'
-    if (role === 'Security' || role === 4 || role === '4') return 'Bảo Vệ'
-    if (role === 'Viewer' || role === 5 || role === '5') return 'Người Xem'
-    return 'Quản Trị Viên'
+  const getRoleLabel = (role: any) => {
+    if (role === 'Admin' || role === 1 || role === '1') return 'Admin'
+    if (role === 'Manager' || role === 2 || role === '2') return 'Manager'
+    if (role === 'Operator' || role === 3 || role === '3') return 'Operator'
+    if (role === 'Security' || role === 4 || role === '4') return 'Security'
+    return 'Viewer'
   }
 
   const isRoleAllowed = (roles?: string[]) => {
@@ -173,234 +131,235 @@ export function Sidebar() {
     }
   }
 
-  const displayName = user?.fullName || user?.username || 'Admin'
-  const displayAvatarLetter = displayName.charAt(0).toUpperCase()
+  const displayName = user?.username || user?.fullName || 'admin'
+  const avatarLetter = displayName.charAt(0).toUpperCase()
 
   return (
     <aside
       className={cn(
-        'border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col h-screen sticky top-0 backdrop-blur-md transition-all duration-300 ease-in-out z-30',
-        isCollapsed ? 'w-[72px]' : 'w-64'
+        'flex flex-col h-screen sticky top-0 z-30 transition-all duration-300 ease-in-out',
+        'bg-white dark:bg-[#0c1220]',
+        'border-r border-slate-200 dark:border-[#1e2d3d]',
+        isCollapsed ? 'w-[68px]' : 'w-60'
       )}
     >
-      {/* Brand Header */}
+      {/* ── Brand ─────────────────────────────────────── */}
       <div
         className={cn(
-          'border-b border-slate-200 dark:border-slate-800 flex items-center transition-all duration-300',
-          isCollapsed ? 'p-3 flex-col justify-center gap-2' : 'p-4 justify-between gap-3'
+          'flex items-center border-b border-slate-100 dark:border-[#1e2d3d] shrink-0 h-14',
+          isCollapsed ? 'justify-center px-3' : 'px-4 justify-between'
         )}
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20 shrink-0">
-            <ShieldCheck className="h-6 w-6" />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-sm shrink-0">
+            <ShieldCheck className="h-4.5 w-4.5 text-white" />
           </div>
           {!isCollapsed && (
-            <div className="min-w-0 animate-in fade-in duration-200">
-              <h1 className="font-black text-base text-slate-900 dark:text-slate-50 tracking-tight flex items-center gap-1">
-                <span>HP</span>
-                <span className="text-blue-600 dark:text-blue-400">PARKING</span>
-              </h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">
-                Smart Admin Portal
+            <div className="min-w-0 animate-fade-in">
+              <p className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">
+                HP<span className="text-blue-600 dark:text-blue-400">PARKING</span>
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
+                Admin Portal
               </p>
             </div>
           )}
         </div>
 
-        {/* Toggle Collapse Button */}
-        <button
-          type="button"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
-          className={cn(
-            'p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer shrink-0',
-            isCollapsed && 'mt-1'
-          )}
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </button>
+        {!isCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(true)}
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1e2d3d] transition-colors cursor-pointer shrink-0"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        {isCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(false)}
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1e2d3d] transition-colors cursor-pointer"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 p-2.5 space-y-1.5 overflow-y-auto">
-        {menuConfig.map((menu, index) => {
-          if (menu.type === 'single') {
-            const { item } = menu
-            if (!isRoleAllowed(item.roles)) return null
+      {/* ── Navigation ────────────────────────────────── */}
+      <nav className={cn('flex-1 overflow-y-auto py-3', isCollapsed ? 'px-2' : 'px-3')}>
+        <div className="space-y-0.5">
+          {menuConfig.map((menu, index) => {
+            if (menu.type === 'single') {
+              const { item } = menu
+              if (!isRoleAllowed(item.roles)) return null
+              const isActive =
+                item.href === '/'
+                  ? location.pathname === '/'
+                  : location.pathname.startsWith(item.href)
+              const Icon = item.icon
+              const trashCount = item.href === '/recycle-bin' ? (trashCounts?.totalCount || 0) : 0
 
-            const isActive =
-              item.href === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.href)
-            const Icon = item.icon
-
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                title={isCollapsed ? item.title : undefined}
-                className={cn(
-                  'flex items-center rounded-xl text-sm font-medium transition-all duration-150 group relative',
-                  isCollapsed ? 'justify-center p-2.5' : 'gap-3 px-3 py-2.5',
-                  isActive
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-600/15 dark:text-blue-400 shadow-xs font-semibold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60'
-                )}
-              >
-                <Icon
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  title={isCollapsed ? item.title : undefined}
                   className={cn(
-                    'h-4.5 w-4.5 shrink-0 transition-transform group-hover:scale-105',
+                    'flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 group relative',
+                    isCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-2',
                     isActive
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-[#1a2845]'
                   )}
-                />
-                {!isCollapsed && (
-                  <span className="truncate animate-in fade-in duration-150 flex-1">
-                    {item.title}
-                  </span>
-                )}
-                {!isCollapsed && item.href === '/recycle-bin' && (trashCounts?.totalCount || 0) > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                    {trashCounts?.totalCount}
-                  </span>
-                )}
-              </Link>
-            )
-          }
-
-          // GROUP ACCORDION SUBMENU
-          const { group } = menu
-          if (!isRoleAllowed(group.roles)) return null
-
-          const isGroupActive = group.children.some((c) =>
-            location.pathname.startsWith(c.href)
-          )
-          const isOpen = openGroup === group.title || isGroupActive
-          const GroupIcon = group.icon
-
-          return (
-            <div key={`group-${index}`} className="space-y-1">
-              {/* Group Header Button */}
-              <button
-                type="button"
-                onClick={() => toggleGroup(group.title)}
-                title={isCollapsed ? group.title : undefined}
-                className={cn(
-                  'w-full flex items-center rounded-xl text-sm font-medium transition-all duration-150 group cursor-pointer',
-                  isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2.5',
-                  isGroupActive
-                    ? 'text-blue-700 dark:text-blue-400 font-semibold bg-blue-50/60 dark:bg-blue-950/30'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60'
-                )}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <GroupIcon
+                >
+                  <Icon
                     className={cn(
-                      'h-4.5 w-4.5 shrink-0',
-                      isGroupActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
+                      'h-4 w-4 shrink-0',
+                      isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
                     )}
                   />
                   {!isCollapsed && (
-                    <span className="truncate">{group.title}</span>
+                    <>
+                      <span className="truncate flex-1">{item.title}</span>
+                      {trashCount > 0 && (
+                        <span className={cn(
+                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none',
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
+                        )}>
+                          {trashCount}
+                        </span>
+                      )}
+                    </>
                   )}
-                </div>
+                </Link>
+              )
+            }
 
-                {!isCollapsed && (
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 text-slate-400 transition-transform duration-200',
-                      isOpen && 'rotate-180 text-blue-600 dark:text-blue-400'
-                    )}
-                  />
-                )}
-              </button>
+            // GROUP
+            const { group } = menu
+            if (!isRoleAllowed(group.roles)) return null
+            const isGroupActive = group.children.some((c) => location.pathname.startsWith(c.href))
+            const isOpen = openGroup === group.title || isGroupActive
+            const GroupIcon = group.icon
 
-              {/* Children Submenu List (Tinh chỉnh thụt lề nhẹ nhàng) */}
-              {(!isCollapsed && isOpen) && (
-                <div className="pl-2.5 pr-1 space-y-1 animate-in slide-in-from-top-2 fade-in duration-200 border-l-2 border-slate-200 dark:border-slate-800 ml-3.5 my-1">
-                  {group.children.map((child) => {
-                    const isChildActive = location.pathname.startsWith(child.href)
-                    const ChildIcon = child.icon
+            return (
+              <div key={`group-${index}`}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.title)}
+                  title={isCollapsed ? group.title : undefined}
+                  className={cn(
+                    'w-full flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 group cursor-pointer',
+                    isCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-2 justify-between',
+                    isGroupActive
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-[#1a2845]'
+                  )}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <GroupIcon
+                      className={cn(
+                        'h-4 w-4 shrink-0',
+                        isGroupActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
+                      )}
+                    />
+                    {!isCollapsed && <span className="truncate">{group.title}</span>}
+                  </div>
+                  {!isCollapsed && (
+                    <ChevronDown
+                      className={cn(
+                        'h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0',
+                        isOpen && 'rotate-180 text-blue-500'
+                      )}
+                    />
+                  )}
+                </button>
 
-                    return (
-                      <Link
-                        key={child.href}
-                        to={child.href}
-                        className={cn(
-                          'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors',
-                          isChildActive
-                            ? 'bg-blue-600 text-white shadow-xs font-semibold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-100 dark:hover:bg-slate-800/70'
-                        )}
-                      >
-                        <ChildIcon
+                {/* Submenu */}
+                {!isCollapsed && isOpen && (
+                  <div className="mt-0.5 mb-1 ml-3.5 pl-2.5 border-l border-slate-200 dark:border-[#1e2d3d] space-y-0.5 animate-fade-in">
+                    {group.children.map((child) => {
+                      const isChildActive = location.pathname.startsWith(child.href)
+                      const ChildIcon = child.icon
+                      return (
+                        <Link
+                          key={child.href}
+                          to={child.href}
                           className={cn(
-                            'h-3.5 w-3.5 shrink-0',
-                            isChildActive ? 'text-white' : 'text-slate-400'
+                            'flex items-center gap-2 px-2 py-1.5 rounded-md text-[12.5px] font-medium transition-colors',
+                            isChildActive
+                              ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 font-semibold'
+                              : 'text-slate-500 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#1a2845]'
                           )}
-                        />
-                        <span className="truncate">{child.title}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
+                        >
+                          <ChildIcon
+                            className={cn(
+                              'h-3.5 w-3.5 shrink-0',
+                              isChildActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
+                            )}
+                          />
+                          <span className="truncate">{child.title}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </nav>
 
-      {/* User Profile & Logout Section */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40">
+      {/* ── User Section ──────────────────────────────── */}
+      <div
+        className={cn(
+          'border-t border-slate-100 dark:border-[#1e2d3d] shrink-0',
+          isCollapsed ? 'p-2' : 'p-3'
+        )}
+      >
         {isCollapsed ? (
           <div className="flex flex-col items-center gap-2">
             <div
-              className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-bold flex items-center justify-center text-xs shadow-xs"
-              title={`${displayName} (${getRoleDisplayName(user?.role)})`}
+              title={`${displayName} · ${getRoleLabel(user?.role)}`}
+              className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-xs font-bold flex items-center justify-center"
             >
-              {displayAvatarLetter}
+              {avatarLetter}
             </div>
             <button
               type="button"
               onClick={logout}
               title="Đăng xuất"
-              className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+              className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0">
-                {displayAvatarLetter}
+              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                {avatarLetter}
               </div>
-              <div className="min-w-0 space-y-0.5">
-                <p
-                  className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate"
-                  title={displayName}
-                >
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">
                   {displayName}
                 </p>
-                <div className="flex items-center">
-                  <span className="inline-flex items-center text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-1.5 py-0.2 rounded border border-blue-200/60 dark:border-blue-800/60">
-                    {getRoleDisplayName(user?.role)}
-                  </span>
-                </div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-tight">
+                  {getRoleLabel(user?.role)}
+                </p>
               </div>
             </div>
             <button
               type="button"
               onClick={logout}
               title="Đăng xuất"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer shrink-0"
+              className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
