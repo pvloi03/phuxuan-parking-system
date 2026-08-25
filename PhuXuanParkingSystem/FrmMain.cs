@@ -46,6 +46,7 @@ namespace PhuXuanParkingSystem
         private readonly IRepository<ParkingSession> _sessionRepo;
         private readonly IRepository<Vehicle> _vehicleRepo;
         private readonly IRepository<Person> _personRepo;
+        private readonly IRepository<Department> _departmentRepo;
 
         // ── Bộ nhớ Cache GDI+ (Tránh cấp phát lại liên tục trong sự kiện Paint) ──
         private readonly Font _fontBoldStatus = new("Segoe UI", 10.5F, FontStyle.Bold);
@@ -73,6 +74,7 @@ namespace PhuXuanParkingSystem
                 _sessionRepo = Program.ServiceProvider.GetService<IRepository<ParkingSession>>() ?? new MongoRepository<ParkingSession>();
                 _vehicleRepo = Program.ServiceProvider.GetService<IRepository<Vehicle>>() ?? new MongoRepository<Vehicle>();
                 _personRepo = Program.ServiceProvider.GetService<IRepository<Person>>() ?? new MongoRepository<Person>();
+                _departmentRepo = Program.ServiceProvider.GetService<IRepository<Department>>() ?? new MongoRepository<Department>();
             }
             else
             {
@@ -80,6 +82,7 @@ namespace PhuXuanParkingSystem
                 _sessionRepo = new MongoRepository<ParkingSession>();
                 _vehicleRepo = new MongoRepository<Vehicle>();
                 _personRepo = new MongoRepository<Person>();
+                _departmentRepo = new MongoRepository<Department>();
             }
 
             // Đăng ký sự kiện Controller ZKTeco
@@ -94,7 +97,8 @@ namespace PhuXuanParkingSystem
             IPlateRecognitionService anprService,
             IRepository<ParkingSession> sessionRepo,
             IRepository<Vehicle> vehicleRepo,
-            IRepository<Person> personRepo)
+            IRepository<Person> personRepo,
+            IRepository<Department> departmentRepo)
         {
             InitializeComponent();
 
@@ -102,6 +106,7 @@ namespace PhuXuanParkingSystem
             _sessionRepo = sessionRepo ?? new MongoRepository<ParkingSession>();
             _vehicleRepo = vehicleRepo ?? new MongoRepository<Vehicle>();
             _personRepo = personRepo ?? new MongoRepository<Person>();
+            _departmentRepo = departmentRepo ?? new MongoRepository<Department>();
 
             // Đăng ký sự kiện Controller ZKTeco
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
@@ -459,12 +464,17 @@ namespace PhuXuanParkingSystem
 
                 Vehicle? vehicle = null;
                 Person? person = null;
+                Department? department = null;
                 try
                 {
                     vehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && !v.IsDeleted);
                     if (vehicle != null && !string.IsNullOrEmpty(vehicle.OwnerPersonId))
                     {
                         person = await _personRepo.GetByIdAsync(vehicle.OwnerPersonId!);
+                        if (person != null && !string.IsNullOrEmpty(person.DepartmentId))
+                        {
+                            department = await _departmentRepo.GetByIdAsync(person.DepartmentId!);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -473,7 +483,7 @@ namespace PhuXuanParkingSystem
                 }
 
                 string ownerName = person?.FullName ?? vehicle?.OwnerName ?? "Xe vãng lai";
-                string deptName = person?.DepartmentName ?? "Khách";
+                string deptName = department?.Name ?? "Khách";
                 VehicleType vType = vehicle?.Type ?? VehicleType.Car;
 
                 lblInOwnerVal.Text = ownerName;
