@@ -1,4 +1,4 @@
-# TÀI LIỆU KỸ THUẬT HỆ THỐNG QUẢN LÝ BÃI XE THÁI THỤY
+﻿# TÀI LIỆU KỸ THUẬT HỆ THỐNG QUẢN LÝ BÃI XE THÁI THỤY
 **Hệ thống Kiểm soát Xe Thông minh (1 Làn Vào - 1 Làn Ra - 4 Camera - 1 Controller - MongoDB)**
 
 ---
@@ -16,7 +16,7 @@
 
 ## 1. TỔNG QUAN DỰ ÁN
 
-Hệ thống **HPParkingThaiThuy** là phần mềm quản lý kiểm soát phương tiện ra vào bãi đỗ xe tự động, được xây dựng trên nền tảng **.NET Framework 4.8 / C# WinForms (x86)** kết hợp **MongoDB**.
+Hệ thống **PhuXuanParkingSystem** là phần mềm quản lý kiểm soát phương tiện ra vào bãi đỗ xe tự động, được xây dựng trên nền tảng **.NET Framework 4.8 / C# WinForms (x86)** kết hợp **MongoDB**.
 
 ### Các đặc điểm cốt lõi:
 * **Mô hình 2 làn độc lập**: 1 Làn Vào (In-Lane) và 1 Làn Ra (Out-Lane).
@@ -46,7 +46,7 @@ Hệ thống **HPParkingThaiThuy** là phần mềm quản lý kiểm soát phư
 
 ### 2.1. Camera Nhận Diện Biển Số (NST SDK)
 * **Thư viện Native**: `HISDK.dll`, `HIPlayer.dll`, `NetLib.dll`, `avcodec-54.dll`, `avutil-51.dll` (Build x86).
-* **P/Invoke Wrapper**: `HPParkingThaiThuy.SDK.NST.CHISDK`.
+* **P/Invoke Wrapper**: `PhuXuanParkingSystem.SDK.NST.CHISDK`.
 * **Cổng mặc định**: `3000` hoặc `80` qua TCP.
 * **Cơ chế**:
   * Live Stream: `HI_SDK_RealPlayExt` gán trực tiếp lên Handle của Panel.
@@ -62,7 +62,7 @@ Hệ thống **HPParkingThaiThuy** là phần mềm quản lý kiểm soát phư
 
 ### 2.3. Bộ điều khiển Cảm biến Radar (ZKTeco C3-200 Pull SDK)
 * **Thư viện Native**: `plcommpro.dll`, `plcomms.dll`, `pltcpcomm.dll`, `plcommutils.dll` (Build x86).
-* **P/Invoke Wrapper**: `HPParkingThaiThuy.SDK.ZKTeco.ZKTecoPullSDK`.
+* **P/Invoke Wrapper**: `PhuXuanParkingSystem.SDK.ZKTeco.ZKTecoPullSDK`.
 * **Cổng kết nối**: `4370` TCP.
 * **Cơ chế đọc log thời gian thực**:
   * Vòng lặp ngầm `ListenLoopAsync` đọc hàm `GetRTLog` liên tục.
@@ -77,7 +77,7 @@ Hệ thống **HPParkingThaiThuy** là phần mềm quản lý kiểm soát phư
 ## 3. CẤU TRÚC THƯ MỤC & MÃ NGUỒN
 
 ```
-HPParkingThaiThuy/
+PhuXuanParkingSystem/
 ├── Models/                               # Lớp dữ liệu & Đối tượng quản lý
 │   ├── Common/
 │   │   └── BaseEntity.cs                 # Lớp cơ sở (Id ObjectId, CreatedAt, Soft-Delete)
@@ -116,7 +116,7 @@ HPParkingThaiThuy/
 ├── FrmMain.cs                            # Form giao diện chính & Xử lý nghiệp vụ
 ├── FrmMain.Designer.cs                   # Thiết kế bố cục giao diện WinForms
 ├── App.config                            # File cấu hình tập trung IP, Port, DB
-└── HPParkingThaiThuy.csproj              # File dự án SDK-style (net48, x86, MongoDB.Driver)
+└── PhuXuanParkingSystem.csproj              # File dự án SDK-style (net48, x86, MongoDB.Driver)
 ```
 
 ---
@@ -248,10 +248,10 @@ Toàn bộ thông số thiết bị và cơ sở dữ liệu được quản lý
         <!-- ================= LƯU TRỮ & DATABASE ================= -->
         <add key="CaptureSavePath" value="Captures" />
         <add key="MongoDb_ConnectionString" value="mongodb://localhost:27017" />
-        <add key="MongoDb_DatabaseName" value="HPParkingThaiThuyDb" />
+        <add key="MongoDb_DatabaseName" value="PhuXuanParkingSystemDb" />
     </appSettings>
 </configuration>
 ```
 
 ---
-*Tài liệu được biên soạn và cập nhật tự động cho dự án HPParkingThaiThuy.*
+*Tài liệu được biên soạn và cập nhật tự động cho dự án PhuXuanParkingSystem.*

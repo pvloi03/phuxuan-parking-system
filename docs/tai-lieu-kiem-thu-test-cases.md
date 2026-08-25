@@ -1,5 +1,5 @@
-# TÀI LIỆU ĐẶC TẢ CÁC CA KIỂM THỬ (TEST CASES SPECIFICATION)
-**Dự án: HPParkingThaiThuy - Hệ thống Quản lý Bãi đỗ xe Thái Thụy**
+﻿# TÀI LIỆU ĐẶC TẢ CÁC CA KIỂM THỬ (TEST CASES SPECIFICATION)
+**Dự án: PhuXuanParkingSystem - Hệ thống Quản lý Bãi đỗ xe Thái Thụy**
 
 ---
 
@@ -9,7 +9,7 @@
 - **Thư viện Assertion:** FluentAssertions 6.12.1
 - **Thư viện Giả lập:** Moq 4.20.72
 - **Môi trường thực thi:** .NET Framework 4.8 / x86
-- **Vị trí Project Test:** `tests/HPParkingThaiThuy.Tests/`
+- **Vị trí Project Test:** `tests/PhuXuanParkingSystem.Tests/`
 
 ---
 
@@ -86,5 +86,5 @@
 
 Chạy toàn bộ bộ test bằng lệnh terminal:
 ```powershell
-dotnet test .\tests\HPParkingThaiThuy.Tests\HPParkingThaiThuy.Tests.csproj
+dotnet test .\tests\PhuXuanParkingSystem.Tests\PhuXuanParkingSystem.Tests.csproj
 ```

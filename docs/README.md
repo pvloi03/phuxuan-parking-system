@@ -1,8 +1,8 @@
-# HPParkingThaiThuy - Hệ Thống Quản Lý Bãi Xe Thái Thụy
+﻿# PhuXuanParkingSystem - Hệ Thống Quản Lý Bãi Xe Thái Thụy
 
 Hệ thống kiểm soát phương tiện tự động 2 làn độc lập (**1 Làn Vào, 1 Làn Ra, 4 Camera, 1 Controller ZKTeco C3-200 và Cơ sở dữ liệu MongoDB**).
 
-> 📖 **Xem toàn bộ tài liệu kỹ thuật chi tiết tại:** [DOCS.md](file:///c:/Users/ADMIN/source/repos/HPParkingThaiThuy/DOCS.md)
+> 📖 **Xem toàn bộ tài liệu kỹ thuật chi tiết tại:** [DOCS.md](file:///c:/Users/ADMIN/source/repos/PhuXuanParkingSystem/DOCS.md)
 
 ---
 

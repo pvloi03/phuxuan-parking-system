@@ -1,7 +1,7 @@
-# Task 006: Xây Dựng Hệ Thống Kiểm Thử Tự Động (Unit & Integration Tests)
+﻿# Task 006: Xây Dựng Hệ Thống Kiểm Thử Tự Động (Unit & Integration Tests)
 
 ## 1. Mục Tiêu
-Khởi tạo project kiểm thử tự động `tests/HPParkingThaiThuy.Tests` trên nền tảng **xUnit**, **FluentAssertions**, và **Moq**, bao phủ toàn bộ các tầng logic cốt lõi: Value Objects, Entities, Common BaseEntity, ZKTeco Controller Log Parser, Dependency Injection Container, và MongoRepository Collection Naming.
+Khởi tạo project kiểm thử tự động `tests/PhuXuanParkingSystem.Tests` trên nền tảng **xUnit**, **FluentAssertions**, và **Moq**, bao phủ toàn bộ các tầng logic cốt lõi: Value Objects, Entities, Common BaseEntity, ZKTeco Controller Log Parser, Dependency Injection Container, và MongoRepository Collection Naming.
 
 ## 2. Bối Cảnh & Phạm Vi
 - **Bối cảnh**: Hệ thống bãi đỗ xe vận hành 24/7 đòi hỏi độ tin cậy cao, việc chuẩn hóa biển số xe, tính toán thời gian gửi, phân luồng sự kiện cảm biến và cơ chế Dependency Injection cần được kiểm thử tự động 100% trước khi triển khai thực tế.
@@ -15,8 +15,8 @@ Khởi tạo project kiểm thử tự động `tests/HPParkingThaiThuy.Tests` t
   - `Repositories`: Kiểm thử `MongoRepository<T>` tự động đặt tên Collection theo số nhiều qua thư viện `Humanizer`.
 
 ## 3. Checklist Tiến Độ
-- [x] Khởi tạo project `tests/HPParkingThaiThuy.Tests/HPParkingThaiThuy.Tests.csproj` (.NET 4.8 / x86).
-- [x] Thêm project test vào file Solution `HPParkingThaiThuy.slnx`.
+- [x] Khởi tạo project `tests/PhuXuanParkingSystem.Tests/PhuXuanParkingSystem.Tests.csproj` (.NET 4.8 / x86).
+- [x] Thêm project test vào file Solution `PhuXuanParkingSystem.slnx`.
 - [x] Viết bộ Unit Tests cho `PlateNumberTests.cs`.
 - [x] Viết bộ Unit Tests cho `ParkingSessionTests.cs`.
 - [x] Viết bộ Unit Tests cho `BaseEntityTests.cs`.
