@@ -1,7 +1,6 @@
 ﻿using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.SDK.ZKTeco;
 using System;
-using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;

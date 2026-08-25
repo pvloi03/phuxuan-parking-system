@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Configuration;
 using System.IO;
+using System.Threading;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -18,6 +19,11 @@ namespace PhuXuanParkingSystem.Services.Logging
         public Exception? Exception { get; }
         public string? SourceContext { get; }
 
+        /// <summary>
+        /// Thông báo thân thiện, an toàn dành cho bảo vệ / người vận hành (không lộ stack trace)
+        /// </summary>
+        public string UserFriendlyMessage { get; }
+
         public LogMessageEventArgs(DateTime timestamp, LogEventLevel level, string message, Exception? exception = null, string? sourceContext = null)
         {
             Timestamp = timestamp;
@@ -25,9 +31,36 @@ namespace PhuXuanParkingSystem.Services.Logging
             Message = message;
             Exception = exception;
             SourceContext = sourceContext;
+            UserFriendlyMessage = GenerateUserFriendlyMessage(level, message);
         }
 
-        public string FormattedText => $"[{Timestamp:HH:mm:ss}] [{Level}] {(string.IsNullOrEmpty(SourceContext) ? "" : $"[{SourceContext}] ")}{Message}{(Exception != null ? $"\nException: {Exception.Message}" : "")}";
+        private static string GenerateUserFriendlyMessage(LogEventLevel level, string rawMessage)
+        {
+            switch (level)
+            {
+                case LogEventLevel.Fatal:
+                    return "Hệ thống gặp sự cố nghiêm trọng. Vui lòng liên hệ kỹ thuật viên để kiểm tra.";
+                case LogEventLevel.Error:
+                    return $"Đã xảy ra lỗi trong quá trình xử lý: {rawMessage}";
+                case LogEventLevel.Warning:
+                    return $"Cảnh báo hệ thống: {rawMessage}";
+                default:
+                    return rawMessage;
+            }
+        }
+
+        public string FormattedText => $"[{Timestamp:HH:mm:ss}] [{Level}] {(string.IsNullOrEmpty(SourceContext) ? "" : $"[{SourceContext}] ")}{Message}";
+    }
+
+    /// <summary>
+    /// Custom Enricher bổ sung ThreadId vào mỗi dòng Log mà không cần cài thêm package ngoài
+    /// </summary>
+    public class ThreadIdEnricher : ILogEventEnricher
+    {
+        public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
+        {
+            logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty("ThreadId", Thread.CurrentThread.ManagedThreadId.ToString("D2")));
+        }
     }
 
     /// <summary>
@@ -66,7 +99,11 @@ namespace PhuXuanParkingSystem.Services.Logging
     }
 
     /// <summary>
-    /// Bộ quản lý ghi log trung tâm toàn hệ thống dựa trên Serilog
+    /// Bộ quản lý ghi log trung tâm chuẩn Enterprise cho PhuXuanParkingSystem
+    /// - Ghi file bất đồng bộ (Non-blocking I/O)
+    /// - Mỗi ngày 1 file log riêng biệt trong thư mục Logs/
+    /// - Tự động dọn dẹp các file log quá 30 ngày
+    /// - Thông báo lỗi lên UI thân thiện, bảo mật, không lộ stack trace
     /// </summary>
     public static class AppLogger
     {
@@ -79,15 +116,15 @@ namespace PhuXuanParkingSystem.Services.Logging
         public static event EventHandler<LogMessageEventArgs>? OnLogEmitted;
 
         /// <summary>
-        /// Khởi tạo Logger cấu hình từ App.config
+        /// Khởi tạo hệ thống Logging chuyên nghiệp
         /// </summary>
-        public static void Initialize(string? customLogLevel = null, string? customLogPath = null)
+        public static void Initialize(string? customLogLevel = null, string? customLogFolder = null)
         {
             lock (_initLock)
             {
                 if (_isInitialized) return;
 
-                // 1. Đọc LogLevel từ App.config hoặc tham số truyền vào
+                // 1. Mức độ log từ App.config (mặc định Warning cho Production)
                 string levelStr = customLogLevel 
                     ?? ConfigurationManager.AppSettings["LogLevel"] 
                     ?? "Warning";
@@ -97,24 +134,33 @@ namespace PhuXuanParkingSystem.Services.Logging
                     minimumLevel = LogEventLevel.Warning;
                 }
 
-                // 2. Đọc đường dẫn lưu log
-                string logPath = customLogPath 
-                    ?? ConfigurationManager.AppSettings["Log_Path"] 
-                    ?? "Logs/app-.log";
+                // 2. Thư mục lưu file log (mặc định: Logs/)
+                string logFolder = customLogFolder 
+                    ?? ConfigurationManager.AppSettings["Log_Directory"] 
+                    ?? "Logs";
 
-                // Đảm bảo thư mục Logs tồn tại
-                string? dir = Path.GetDirectoryName(logPath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                string fullLogDirectory = Path.IsPathRooted(logFolder) 
+                    ? logFolder 
+                    : Path.Combine(baseDir, logFolder);
+
+                if (!Directory.Exists(fullLogDirectory))
                 {
-                    Directory.CreateDirectory(dir);
+                    Directory.CreateDirectory(fullLogDirectory);
                 }
 
-                // 3. Đọc số ngày lưu giữ log và kích thước tối đa
+                // 3. Số ngày lưu giữ log (mặc định 30 ngày)
                 int retainedDays = 30;
                 if (int.TryParse(ConfigurationManager.AppSettings["Log_RetainedDays"], out int days) && days > 0)
                 {
                     retainedDays = days;
                 }
+
+                // 4. Chủ động dọn dẹp các file log cũ hơn 30 ngày trong thư mục Logs
+                CleanupOldLogFiles(fullLogDirectory, retainedDays);
+
+                // 5. Cấu trúc tên file log mỗi ngày 1 file: Logs/app-yyyy-MM-dd.log
+                string logFilePathFormat = Path.Combine(fullLogDirectory, "app-.log");
 
                 long fileSizeBytes = 50L * 1024 * 1024; // 50MB
                 if (long.TryParse(ConfigurationManager.AppSettings["Log_FileSizeLimitMB"], out long mb) && mb > 0)
@@ -122,15 +168,16 @@ namespace PhuXuanParkingSystem.Services.Logging
                     fileSizeBytes = mb * 1024 * 1024;
                 }
 
-                const string outputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
+                // Template ghi log chuyên nghiệp chuẩn Enterprise
+                const string outputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] [T:{ThreadId}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
 
-                // 4. Thiết lập Serilog Logger với Async Rolling File Sink và UI Sink
+                // 6. Cấu hình Serilog Logger
                 Log.Logger = new LoggerConfiguration()
                     .MinimumLevel.Is(minimumLevel)
-                    .Enrich.FromLogContext()
+                    .Enrich.With(new ThreadIdEnricher())
                     .WriteTo.Sink(new WinFormsEventSink())
                     .WriteTo.Async(a => a.File(
-                        path: logPath,
+                        path: logFilePathFormat,
                         rollingInterval: RollingInterval.Day,
                         retainedFileCountLimit: retainedDays,
                         fileSizeLimitBytes: fileSizeBytes,
@@ -144,6 +191,44 @@ namespace PhuXuanParkingSystem.Services.Logging
             }
         }
 
+        /// <summary>
+        /// Quét thư mục log và xóa các file log cũ hơn số ngày quy định (mặc định 30 ngày)
+        /// </summary>
+        public static int CleanupOldLogFiles(string logDirectory, int daysToKeep = 30)
+        {
+            int deletedCount = 0;
+            try
+            {
+                if (!Directory.Exists(logDirectory)) return 0;
+
+                DateTime thresholdDate = DateTime.Now.AddDays(-daysToKeep);
+                string[] logFiles = Directory.GetFiles(logDirectory, "*.log");
+
+                foreach (string file in logFiles)
+                {
+                    try
+                    {
+                        var fileInfo = new FileInfo(file);
+                        if (fileInfo.LastWriteTime < thresholdDate)
+                        {
+                            fileInfo.Delete();
+                            deletedCount++;
+                        }
+                    }
+                    catch
+                    {
+                        // File có thể đang bị mở bởi tiến trình khác
+                    }
+                }
+            }
+            catch
+            {
+                // Tránh để lỗi dọn dẹp log làm ảnh hưởng khởi động
+            }
+
+            return deletedCount;
+        }
+
         public static void RaiseLogEmitted(LogMessageEventArgs args)
         {
             try
@@ -152,7 +237,7 @@ namespace PhuXuanParkingSystem.Services.Logging
             }
             catch
             {
-                // Tránh lỗi từ handler UI làm crash logger
+                // Tránh lỗi từ UI subscriber làm crash logger
             }
         }
 
@@ -199,7 +284,7 @@ namespace PhuXuanParkingSystem.Services.Logging
         }
 
         /// <summary>
-        /// Đóng và flush toàn bộ log buffer trước khi tắt app
+        /// Đóng và flush toàn bộ log buffer trước khi tắt ứng dụng
         /// </summary>
         public static void CloseAndFlush()
         {

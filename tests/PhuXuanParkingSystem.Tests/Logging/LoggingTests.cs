@@ -13,7 +13,7 @@ namespace PhuXuanParkingSystem.Tests.Logging
 
         public LoggingTests()
         {
-            _testLogDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestLogs");
+            _testLogDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TestLogs_" + Guid.NewGuid().ToString("N"));
             if (!Directory.Exists(_testLogDir))
             {
                 Directory.CreateDirectory(_testLogDir);
@@ -39,11 +39,8 @@ namespace PhuXuanParkingSystem.Tests.Logging
         [Fact]
         public void AppLogger_Initialize_ShouldInitializeSuccessfully()
         {
-            // Arrange
-            string logPath = Path.Combine(_testLogDir, "test-.log");
-
             // Act
-            Action act = () => AppLogger.Initialize("Debug", logPath);
+            Action act = () => AppLogger.Initialize("Debug", _testLogDir);
 
             // Assert
             act.Should().NotThrow();
@@ -53,8 +50,7 @@ namespace PhuXuanParkingSystem.Tests.Logging
         public void AppLogger_LogWarning_ShouldRaiseOnLogEmittedEvent()
         {
             // Arrange
-            string logPath = Path.Combine(_testLogDir, "event-test-.log");
-            AppLogger.Initialize("Debug", logPath);
+            AppLogger.Initialize("Debug", _testLogDir);
 
             LogMessageEventArgs? receivedArgs = null;
             EventHandler<LogMessageEventArgs> handler = (s, e) => receivedArgs = e;
@@ -78,17 +74,16 @@ namespace PhuXuanParkingSystem.Tests.Logging
         }
 
         [Fact]
-        public void AppLogger_LogErrorWithException_ShouldIncludeExceptionInEvent()
+        public void AppLogger_LogErrorWithException_ShouldIncludeExceptionInTechnicalDetailsAndSafeUserMessage()
         {
             // Arrange
-            string logPath = Path.Combine(_testLogDir, "error-test-.log");
-            AppLogger.Initialize("Debug", logPath);
+            AppLogger.Initialize("Debug", _testLogDir);
 
             LogMessageEventArgs? receivedArgs = null;
             EventHandler<LogMessageEventArgs> handler = (s, e) => receivedArgs = e;
             AppLogger.OnLogEmitted += handler;
 
-            var testException = new InvalidOperationException("Camera IP unreachable");
+            var testException = new InvalidOperationException("Camera IP unreachable at 192.168.1.61");
 
             try
             {
@@ -100,7 +95,10 @@ namespace PhuXuanParkingSystem.Tests.Logging
                 receivedArgs!.Level.Should().Be(LogEventLevel.Error);
                 receivedArgs.Message.Should().Contain("Failed to connect to Hikvision camera");
                 receivedArgs.Exception.Should().Be(testException);
-                receivedArgs.FormattedText.Should().Contain("Camera IP unreachable");
+
+                // User-friendly message must not contain raw internal exception trace
+                receivedArgs.UserFriendlyMessage.Should().NotBeNullOrEmpty();
+                receivedArgs.UserFriendlyMessage.Should().Contain("Đã xảy ra lỗi");
             }
             finally
             {
@@ -109,7 +107,29 @@ namespace PhuXuanParkingSystem.Tests.Logging
         }
 
         [Fact]
-        public void LogMessageEventArgs_FormattedText_ShouldFormatCorrectly()
+        public void CleanupOldLogFiles_ShouldDeleteFilesOlderThanRetentionDays()
+        {
+            // Arrange: Tạo 1 file cũ 35 ngày và 1 file mới 5 ngày
+            string oldFile = Path.Combine(_testLogDir, "app-2026-07-20.log");
+            string recentFile = Path.Combine(_testLogDir, "app-2026-08-20.log");
+
+            File.WriteAllText(oldFile, "Old log content from 35 days ago");
+            File.WriteAllText(recentFile, "Recent log content from 5 days ago");
+
+            File.SetLastWriteTime(oldFile, DateTime.Now.AddDays(-35));
+            File.SetLastWriteTime(recentFile, DateTime.Now.AddDays(-5));
+
+            // Act: Dọn dẹp log quá 30 ngày
+            int deleted = AppLogger.CleanupOldLogFiles(_testLogDir, 30);
+
+            // Assert
+            deleted.Should().Be(1);
+            File.Exists(oldFile).Should().BeFalse("File cũ hơn 30 ngày phải bị xóa");
+            File.Exists(recentFile).Should().BeTrue("File trong vòng 30 ngày phải được giữ lại");
+        }
+
+        [Fact]
+        public void LogMessageEventArgs_FormattedText_ShouldFormatCleanly()
         {
             // Arrange
             var timestamp = new DateTime(2026, 8, 25, 14, 30, 0);
@@ -129,7 +149,6 @@ namespace PhuXuanParkingSystem.Tests.Logging
             text.Should().Contain("[Warning]");
             text.Should().Contain("[ZKTeco]");
             text.Should().Contain("Radar timeout");
-            text.Should().Contain("Socket timeout");
         }
     }
 }

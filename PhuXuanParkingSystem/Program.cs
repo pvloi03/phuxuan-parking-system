@@ -19,15 +19,23 @@ namespace PhuXuanParkingSystem
         [STAThread]
         static void Main()
         {
-            // 1. Khởi tạo hệ thống Logging Serilog
+            // 1. Khởi tạo hệ thống Logging chuyên nghiệp (Mỗi ngày 1 file, tự động dọn log > 30 ngày)
             AppLogger.Initialize();
 
-            // 2. Đăng ký Global Unhandled Exception Handlers
+            // 2. Đăng ký Global Unhandled Exception Handlers (Không lộ chi tiết kỹ thuật lên UI)
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            
             Application.ThreadException += (s, e) =>
             {
+                // Ghi log chi tiết kỹ thuật (Stack trace, inner exception) vào file log
                 AppLogger.Fatal(e.Exception, "Unhandled UI Thread Exception", "WinForms");
-                MessageBox.Show($"Đã xảy ra sự cố giao diện: {e.Exception.Message}\nVui lòng kiểm tra file log.", "Lỗi Hệ Thống", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                // Thông báo thân thiện lên UI cho người vận hành
+                MessageBox.Show(
+                    "Hệ thống đã ghi nhận một sự cố bất thường và lưu lại vào nhật ký lỗi.\nQuá trình vận hành vẫn được bảo vệ an toàn.\nVui lòng liên hệ bộ phận kỹ thuật nếu sự cố tiếp tục xảy ra.",
+                    "Thông Báo Hệ Thống",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
             };
 
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
@@ -50,7 +58,7 @@ namespace PhuXuanParkingSystem
 
             Application.ApplicationExit += (s, e) =>
             {
-                AppLogger.Information("Ứng dụng kết thúc. Flushing logs...", "Application");
+                AppLogger.Information("Ứng dụng kết thúc. Đang lưu toàn bộ nhật ký...", "Application");
                 AppLogger.CloseAndFlush();
             };
 
@@ -75,7 +83,11 @@ namespace PhuXuanParkingSystem
             catch (Exception ex)
             {
                 AppLogger.Fatal(ex, "Lỗi nghiêm trọng khi khởi chạy ứng dụng", "Program");
-                MessageBox.Show($"Không thể khởi động ứng dụng: {ex.Message}", "Lỗi Khởi Động", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    "Không thể khởi động hệ thống bãi xe.\nVui lòng kiểm tra lại kết nối cơ sở dữ liệu và liên hệ bộ phận kỹ thuật.",
+                    "Lỗi Khởi Động",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
