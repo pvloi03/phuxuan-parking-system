@@ -63,6 +63,31 @@ namespace PhuXuanParkingSystem.Services.ANPR
             @"^(?<num1>\d{3})[-. ]?(?<num2>\d{2})$|^(\d{4,5})$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+                /// <summary>
+        /// Phân tích trực tiếp từ chuỗi OCR thô (VD: từ Tesseract hoặc OCR engine)
+        /// </summary>
+        public static ParsedPlateResult ParseFromRawText(string rawOcrText, double confidence = 0.9)
+        {
+            if (string.IsNullOrWhiteSpace(rawOcrText))
+            {
+                return new ParsedPlateResult(string.Empty, 0.0, RectangleF.Empty, false);
+            }
+
+            var lines = rawOcrText.Split(new[] { '\r', '\n', '|' }, StringSplitOptions.RemoveEmptyEntries)
+                                  .Select(l => l.Trim())
+                                  .Where(l => !string.IsNullOrWhiteSpace(l) && l.Length >= 3)
+                                  .ToList();
+
+            var blocks = new List<OcrTextBlock>();
+            float y = 50;
+            foreach (var line in lines)
+            {
+                blocks.Add(new OcrTextBlock(line, (float)confidence, new PointF[0], new RectangleF(50, y, 200, 40)));
+                y += 45;
+            }
+
+            return Parse(blocks);
+        }
         public static ParsedPlateResult Parse(IReadOnlyList<OcrTextBlock> blocks, int imageWidth = 1920, int imageHeight = 1080)
         {
             if (blocks == null || blocks.Count == 0)
