@@ -1,0 +1,30 @@
+[
+  {
+    "_id": { "$oid": "66c8e001a1b2c3d4e5f67801" },
+    "Code": "CTY-PX",
+    "Name": "Công ty Cổ phần Năng lượng Phú Xuân",
+    "TaxCode": "1001234567",
+    "Address": "Khu Kinh tế Thái Bình, Huyện Thái Thụy, Tỉnh Thái Bình",
+    "PhoneNumber": "02273888999",
+    "Email": "contact@phuxuanenergy.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e001a1b2c3d4e5f67802" },
+    "Code": "CTY-TT",
+    "Name": "Công ty TNHH Dịch vụ Vận tải Thái Thụy",
+    "TaxCode": "1009876543",
+    "Address": "Thị trấn Diêm Điền, Huyện Thái Thụy, Tỉnh Thái Bình",
+    "PhoneNumber": "02273666777",
+    "Email": "info@thaithuytrans.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  }
+]

@@ -1,0 +1,28 @@
+[
+  {
+    "_id": { "$oid": "66c8e003a1b2c3d4e5f67801" },
+    "Code": "NT-EPS",
+    "Name": "Công ty Dịch vụ Kỹ thuật Cơ điện EPS",
+    "ContactPerson": "Vũ Đình Trọng",
+    "PhoneNumber": "0912345678",
+    "Email": "service@eps-tech.com.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e003a1b2c3d4e5f67802" },
+    "Code": "NT-TB",
+    "Name": "Công ty Xây dựng Dân dụng & Công nghiệp Thái Bình",
+    "ContactPerson": "Trần Văn Hùng",
+    "PhoneNumber": "0987654321",
+    "Email": "contact@thaibinhbuild.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  }
+]

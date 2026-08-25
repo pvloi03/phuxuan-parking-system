@@ -1,0 +1,67 @@
+[
+  {
+    "_id": { "$oid": "66c8e002a1b2c3d4e5f67801" },
+    "Code": "BGD",
+    "Name": "Ban Giám Đốc",
+    "CompanyId": "66c8e001a1b2c3d4e5f67801",
+    "PhoneNumber": "02273888001",
+    "Email": "bgd@phuxuanenergy.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e002a1b2c3d4e5f67802" },
+    "Code": "PKT",
+    "Name": "Phòng Kỹ Thuật - Vận Hành",
+    "CompanyId": "66c8e001a1b2c3d4e5f67801",
+    "PhoneNumber": "02273888002",
+    "Email": "kythuat@phuxuanenergy.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e002a1b2c3d4e5f67803" },
+    "Code": "PKT-TC",
+    "Name": "Phòng Kế Toán - Tài Chính",
+    "CompanyId": "66c8e001a1b2c3d4e5f67801",
+    "PhoneNumber": "02273888003",
+    "Email": "ketoan@phuxuanenergy.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e002a1b2c3d4e5f67804" },
+    "Code": "DAN",
+    "Name": "Đội An Ninh - Bảo Vệ",
+    "CompanyId": "66c8e001a1b2c3d4e5f67801",
+    "PhoneNumber": "02273888004",
+    "Email": "anninh@phuxuanenergy.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e002a1b2c3d4e5f67805" },
+    "Code": "PHC-NS",
+    "Name": "Phòng Hành Chính - Nhân Sự",
+    "CompanyId": "66c8e001a1b2c3d4e5f67801",
+    "PhoneNumber": "02273888005",
+    "Email": "nhansu@phuxuanenergy.vn",
+    "IsActive": true,
+    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
+  }
+]
