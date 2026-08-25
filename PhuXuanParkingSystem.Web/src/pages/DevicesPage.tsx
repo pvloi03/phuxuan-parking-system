@@ -59,7 +59,7 @@ function getDeviceTypeBadge(type?: DeviceType | string | number) {
     return (
       <Badge
         variant="outline"
-        className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-[11px] px-2.5 py-0.5 font-medium gap-1"
+        className="bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-[11px] px-2.5 py-0.5 font-medium gap-1"
       >
         <Cpu className="h-3 w-3" />
         {label}
@@ -104,7 +104,6 @@ export function DevicesPage() {
   const [formUser, setFormUser] = useState('')
   const [formPass, setFormPass] = useState('')
   const [formLaneId, setFormLaneId] = useState('')
-  const [formLaneName, setFormLaneName] = useState('')
   const [formNote, setFormNote] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
 
@@ -140,7 +139,6 @@ export function DevicesPage() {
         userName: formUser.trim() || undefined,
         password: formPass.trim() || undefined,
         laneId: formLaneId.trim() || undefined,
-        laneName: formLaneName.trim() || undefined,
         note: formNote.trim() || undefined,
         isActive: formIsActive,
       })
@@ -164,7 +162,6 @@ export function DevicesPage() {
         userName: formUser.trim() || undefined,
         password: formPass.trim() || undefined,
         laneId: formLaneId.trim() || undefined,
-        laneName: formLaneName.trim() || undefined,
         note: formNote.trim() || undefined,
         isActive: formIsActive,
       })
@@ -219,7 +216,6 @@ export function DevicesPage() {
     setFormUser('')
     setFormPass('')
     setFormLaneId('')
-    setFormLaneName('')
     setFormNote('')
     setFormIsActive(true)
     setSelectedDevice(null)
@@ -235,7 +231,6 @@ export function DevicesPage() {
     setFormUser(device.userName || '')
     setFormPass(device.password || '')
     setFormLaneId(device.laneId || '')
-    setFormLaneName(device.laneName || '')
     setFormNote(device.note || '')
     setFormIsActive(device.isActive ?? true)
     setIsEditOpen(true)
@@ -272,7 +267,7 @@ export function DevicesPage() {
       'Địa Chỉ IP': d.ipAddress,
       'Port': d.port,
       'Tên Đăng Nhập': d.userName || '',
-      'Làn Kiểm Soát': d.laneName || '',
+      'ID Làn': d.laneId || '',
       'Ghi Chú': d.note || '',
       'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
     }))
@@ -291,7 +286,6 @@ export function DevicesPage() {
         'Tên Đăng Nhập': 'admin',
         'Mật Khẩu': 'Abc@12345',
         'ID Làn': 'LANE-IN-01',
-        'Tên Làn': 'Làn Vào Cổng Chính',
         'Ghi Chú': 'Camera Hikvision DS-2CD2143G2-I',
       },
       {
@@ -303,7 +297,6 @@ export function DevicesPage() {
         'Tên Đăng Nhập': '',
         'Mật Khẩu': '',
         'ID Làn': 'LANE-IN-01',
-        'Tên Làn': 'Làn Vào Cổng Chính',
         'Ghi Chú': 'ZKTeco C3-200 — Nhận tín hiệu radar, điều khiển Barrier',
       },
     ]
@@ -332,7 +325,6 @@ export function DevicesPage() {
           userName: String(row['Tên Đăng Nhập'] || row['userName'] || '').trim() || undefined,
           password: String(row['Mật Khẩu'] || row['password'] || '').trim() || undefined,
           laneId: String(row['ID Làn'] || row['laneId'] || '').trim() || undefined,
-          laneName: String(row['Tên Làn'] || row['laneName'] || '').trim() || undefined,
           note: String(row['Ghi Chú'] || row['note'] || '').trim() || undefined,
           isActive: true,
         }
@@ -415,15 +407,9 @@ export function DevicesPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="font-semibold text-slate-700 dark:text-slate-300">Mã Làn kiểm soát</label>
-          <Input placeholder="VD: LANE-IN-01" value={formLaneId} onChange={(e) => setFormLaneId(e.target.value)} className="text-xs font-mono" />
-        </div>
-        <div className="space-y-1">
-          <label className="font-semibold text-slate-700 dark:text-slate-300">Tên Làn kiểm soát</label>
-          <Input placeholder="VD: Làn Vào Cổng Chính" value={formLaneName} onChange={(e) => setFormLaneName(e.target.value)} className="text-xs" />
-        </div>
+      <div className="space-y-1">
+        <label className="font-semibold text-slate-700 dark:text-slate-300">ID Làn kiểm soát (Lane ID)</label>
+        <Input placeholder="VD: LANE-IN-01" value={formLaneId} onChange={(e) => setFormLaneId(e.target.value)} className="text-xs font-mono" />
       </div>
 
       <div className="space-y-1">
@@ -548,7 +534,7 @@ export function DevicesPage() {
                 <th className="p-3.5">Mã / Loại</th>
                 <th className="p-3.5">Tên Thiết Bị</th>
                 <th className="p-3.5">Địa Chỉ Mạng</th>
-                <th className="p-3.5">Làn Kiểm Soát</th>
+                <th className="p-3.5">ID Làn</th>
                 <th className="p-3.5">Trạng Thái</th>
                 <th className="p-3.5 text-right pr-4">Thao Tác</th>
               </tr>
@@ -574,33 +560,37 @@ export function DevicesPage() {
                           {getDeviceTypeBadge(device.type)}
                         </div>
                       </td>
-                      <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">
-                        {device.name}
+                      <td className="p-3.5">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">
+                          {device.name}
+                        </div>
                         {device.note && (
-                          <div className="font-normal text-[11px] text-slate-400 mt-0.5 truncate max-w-[200px]" title={device.note}>
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 max-w-[240px] truncate" title={device.note}>
                             {device.note}
                           </div>
                         )}
                       </td>
                       <td className="p-3.5 font-mono text-slate-600 dark:text-slate-400">
-                        <div className="flex items-center gap-1">
-                          <Network className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                          <span>{device.ipAddress}:{device.port}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Network className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                          <span className="font-medium">{device.ipAddress}:{device.port}</span>
                         </div>
                         {device.userName && (
-                          <div className="text-[11px] text-slate-400 mt-0.5">
+                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                             👤 {device.userName}
                           </div>
                         )}
                       </td>
-                      <td className="p-3.5 text-slate-600 dark:text-slate-400">
-                        {device.laneName ? (
+                      <td className="p-3.5">
+                        {device.laneId ? (
                           <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                            <span className="font-medium text-slate-700 dark:text-slate-300">{device.laneName}</span>
+                            <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                            <Badge variant="secondary" className="font-mono text-[11px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {device.laneId}
+                            </Badge>
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Chưa gán làn</span>
+                          <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">Chưa gán</span>
                         )}
                       </td>
                       <td className="p-3.5">
@@ -609,7 +599,7 @@ export function DevicesPage() {
                             <Wifi className="h-3 w-3" /> Đang dùng
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-slate-400 font-medium text-[11px]">
+                          <span className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500 font-medium text-[11px]">
                             <WifiOff className="h-3 w-3" /> Tạm dừng
                           </span>
                         )}
@@ -715,7 +705,13 @@ export function DevicesPage() {
                   <div><span className="text-slate-400 block text-[11px]">Địa chỉ IP:</span><span className="font-mono text-slate-800 dark:text-slate-200">{selectedDevice.ipAddress}</span></div>
                   <div><span className="text-slate-400 block text-[11px]">Port kết nối:</span><span className="font-mono text-slate-800 dark:text-slate-200">{selectedDevice.port}</span></div>
                   {selectedDevice.userName && <div><span className="text-slate-400 block text-[11px]">Tên đăng nhập:</span><span className="font-mono text-slate-800 dark:text-slate-200">{selectedDevice.userName}</span></div>}
-                  <div><span className="text-slate-400 block text-[11px]">Làn kiểm soát:</span><span className="font-medium text-slate-800 dark:text-slate-200">{selectedDevice.laneName || 'Chưa gán'}</span></div>
+                  <div><span className="text-slate-400 block text-[11px]">ID Làn kiểm soát:</span>
+                    {selectedDevice.laneId ? (
+                      <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{selectedDevice.laneId}</span>
+                    ) : (
+                      <span className="text-slate-400 italic">Chưa gán</span>
+                    )}
+                  </div>
                   {selectedDevice.note && <div className="col-span-2"><span className="text-slate-400 block text-[11px]">Ghi chú kỹ thuật:</span><span className="italic text-slate-600 dark:text-slate-400">{selectedDevice.note}</span></div>}
                   <div><span className="text-slate-400 block text-[11px]">Trạng thái:</span>
                     {selectedDevice.isActive

@@ -81,12 +81,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(device.IpAddress))
                 return BadRequest(ApiResponse.Fail("Địa chỉ IP không được để trống."));
 
-            device.CreatedAt = DateTime.Now;
-            device.UpdatedAt = DateTime.Now;
-            device.IsDeleted = false;
-            device.Status = DeviceStatus.Disconnected;
-
-            await _deviceRepo.InsertAsync(device);
+            await _deviceRepo.AddAsync(device);
             return Ok(ApiResponse<Device>.Ok(device, "Thêm thiết bị mới thành công."));
         }
 
@@ -106,7 +101,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UserName = updated.UserName;
             existing.Password = updated.Password;
             existing.LaneId = updated.LaneId;
-            existing.LaneName = updated.LaneName;
             existing.Note = updated.Note;
             existing.IsActive = updated.IsActive;
             existing.UpdatedAt = DateTime.Now;
@@ -115,7 +109,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             return Ok(ApiResponse<Device>.Ok(existing, "Cập nhật thiết bị thành công."));
         }
 
-        // DELETE api/devices/{id}  — Xóa mềm
+        // DELETE api/devices/{id}  — Xóa mềm (IRepository.DeleteAsync tự xử lý IsDeleted = true)
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
@@ -123,12 +117,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (device == null || device.IsDeleted)
                 return NotFound(ApiResponse.Fail("Không tìm thấy thiết bị."));
 
-            device.IsDeleted = true;
-            device.DeletedAt = DateTime.Now;
-            device.UpdatedAt = DateTime.Now;
-            await _deviceRepo.UpdateAsync(device);
-
-            return Ok(ApiResponse.Ok("Xóa thiết bị thành công (xóa mềm)."));
+            await _deviceRepo.DeleteAsync(id);
+            return Ok(ApiResponse.Ok("Xóa thiết bị thành công."));
         }
 
         // POST api/devices/delete-batch  — Xóa mềm hàng loạt
@@ -138,21 +128,16 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (ids == null || ids.Count == 0)
                 return BadRequest(ApiResponse.Fail("Danh sách ID không được để trống."));
 
-            int deletedCount = 0;
             foreach (var id in ids)
             {
                 var device = await _deviceRepo.GetByIdAsync(id);
                 if (device != null && !device.IsDeleted)
                 {
-                    device.IsDeleted = true;
-                    device.DeletedAt = DateTime.Now;
-                    device.UpdatedAt = DateTime.Now;
-                    await _deviceRepo.UpdateAsync(device);
-                    deletedCount++;
+                    await _deviceRepo.DeleteAsync(id);
                 }
             }
 
-            return Ok(ApiResponse.Ok($"Đã xóa {deletedCount}/{ids.Count} thiết bị thành công (xóa mềm)."));
+            return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} thiết bị thành công."));
         }
 
         // POST api/devices/batch  — Nhập hàng loạt từ Excel
@@ -166,13 +151,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             foreach (var device in devices)
             {
                 if (string.IsNullOrWhiteSpace(device.Name)) continue;
-
-                device.CreatedAt = DateTime.Now;
-                device.UpdatedAt = DateTime.Now;
-                device.IsDeleted = false;
-                device.Status = DeviceStatus.Disconnected;
-
-                await _deviceRepo.InsertAsync(device);
+                await _deviceRepo.AddAsync(device);
                 createdCount++;
             }
 

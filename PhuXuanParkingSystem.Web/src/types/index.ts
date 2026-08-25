@@ -123,7 +123,6 @@ export interface Device {
   userName?: string
   password?: string
   laneId?: string
-  laneName?: string
   status: DeviceStatus
   lastHeartbeat?: string
   errorMessage?: string
