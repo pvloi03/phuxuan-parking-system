@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Services.Notification;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Notification;
 using PhuXuanParkingSystem.Services.Camera;
 using PhuXuanParkingSystem.Services.Controller;
 using System;
@@ -569,7 +570,7 @@ namespace PhuXuanParkingSystem
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[FormClosing Error] {ex.Message}");
+                AppLogger.Error(ex, $"[FormClosing Error] {ex.Message}", "FrmMain");
             }
         }
     }

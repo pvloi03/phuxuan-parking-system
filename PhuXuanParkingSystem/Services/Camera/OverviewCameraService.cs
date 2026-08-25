@@ -115,9 +115,9 @@ namespace PhuXuanParkingSystem.Services.Camera
         {
             if (value.Length > maxLen - 1)
             {
-                Debug.WriteLine(
-                    $"[Hikvision {Config?.Ip}] {fieldName} vượt quá độ dài cho phép " +
-                    $"({value.Length} > {maxLen - 1} ký tự).");
+                string msg = $"[Hikvision {Config?.Ip}] Tham số '{fieldName}' vượt quá độ dài cho phép ({value.Length} > {maxLen - 1} ký tự).";
+                AppLogger.Error(msg, "Hikvision");
+                AppNotificationService.NotifyError(NotificationCategory.Camera, "Cấu hình Camera Toàn Cảnh", msg, Config?.Ip);
                 return false;
             }
 
