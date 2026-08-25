@@ -1,4 +1,5 @@
-﻿using CHCNetSDK_Library;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using CHCNetSDK_Library;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -68,7 +69,7 @@ namespace PhuXuanParkingSystem.Services.Camera
 
                     if (Config == null || string.IsNullOrEmpty(Config.Ip))
                     {
-                        Debug.WriteLine("[Hikvision] Login thất bại: Config hoặc IP trống.");
+                        AppLogger.Warning("[Hikvision] Login thất bại: Config hoặc IP trống.", "Hikvision");
                         return false;
                     }
 
@@ -103,7 +104,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     }
 
                     uint errCode = CHCNetSDK.NET_DVR_GetLastError();
-                    Debug.WriteLine($"[Hikvision {Config.Ip}] Login thất bại. Error={errCode}");
+                    AppLogger.Error($"[Hikvision {Config.Ip}] Login thất bại. Error={errCode}", "Hikvision");
                     OnStatusChanged?.Invoke(false, $"Kết nối Camera toàn cảnh thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
@@ -148,7 +149,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                 if (!success)
                 {
                     uint errorCode = CHCNetSDK.NET_DVR_GetLastError();
-                    Debug.WriteLine($"[Hikvision {Config?.Ip}] Preview thất bại. Error={errorCode}");
+                    AppLogger.Error($"[Hikvision {Config?.Ip}] Preview thất bại. Error={errorCode}", "Hikvision");
                 }
 
                 return success;
@@ -210,7 +211,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     }
 
                     uint errorCode = CHCNetSDK.NET_DVR_GetLastError();
-                    Debug.WriteLine($"[Hikvision {Config?.Ip}] Capture thất bại. Error={errorCode}");
+                    AppLogger.Error($"[Hikvision {Config?.Ip}] Capture thất bại. Error={errorCode}", "Hikvision");
                     return null;
                 }
             }, cancellationToken);
@@ -239,7 +240,7 @@ namespace PhuXuanParkingSystem.Services.Camera
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[Hikvision CaptureToFileAsync Error] {ex.Message}");
+                AppLogger.Error(ex, $"[Hikvision CaptureToFileAsync Error] {ex.Message}", "Hikvision");
             }
 
             return false;

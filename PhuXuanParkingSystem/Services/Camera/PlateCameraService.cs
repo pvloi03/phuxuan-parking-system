@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.SDK.NST;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.SDK.NST;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -65,7 +66,7 @@ namespace PhuXuanParkingSystem.Services.Camera
 
                     if (Config == null || string.IsNullOrEmpty(Config.Ip))
                     {
-                        Debug.WriteLine("[NST Camera] Login thất bại: Config hoặc IP trống.");
+                        AppLogger.Warning("[NST Camera] Login thất bại: Config hoặc IP trống.", "NSTCamera");
                         return false;
                     }
 
@@ -89,7 +90,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                         return true;
                     }
 
-                    Debug.WriteLine($"[NST Camera {Config.Ip}] Login thất bại. Handle={_handle}, Error={errCode}");
+                    AppLogger.Error($"[NST Camera {Config.Ip}] Login thất bại. Handle={_handle}, Error={errCode}", "NSTCamera");
                     OnStatusChanged?.Invoke(false, $"Kết nối Camera biển số thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
@@ -120,7 +121,7 @@ namespace PhuXuanParkingSystem.Services.Camera
 
                 if (!success)
                 {
-                    Debug.WriteLine($"[NST Camera {Config?.Ip}] Preview thất bại. Mã lỗi: {ret}");
+                    AppLogger.Error($"[NST Camera {Config?.Ip}] Preview thất bại. Mã lỗi: {ret}", "NSTCamera");
                 }
                 else
                 {
@@ -172,7 +173,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                         }
                     }
 
-                    Debug.WriteLine($"[NST Camera {Config?.Ip}] Capture thất bại. Code={ret}");
+                    AppLogger.Error($"[NST Camera {Config?.Ip}] Capture thất bại. Code={ret}", "NSTCamera");
                     return null;
                 }
             }, cancellationToken);
@@ -201,7 +202,7 @@ namespace PhuXuanParkingSystem.Services.Camera
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[NST CaptureToFileAsync Error] {ex.Message}");
+                AppLogger.Error(ex, $"[NST CaptureToFileAsync Error] {ex.Message}", "NSTCamera");
             }
 
             return false;

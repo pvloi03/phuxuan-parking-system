@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.SDK.ZKTeco;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.SDK.ZKTeco;
 using System;
 using System.Diagnostics;
 using System.Text;
@@ -39,7 +40,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                     if (IsConnected) return true;
 
                     string connStr = Config.ToConnectionString();
-                    Debug.WriteLine($"[ZKTeco] Đang kết nối controller với tham số: {connStr}");
+                    AppLogger.Debug($"[ZKTeco] Đang kết nối controller với tham số: {connStr}", "ZKTeco");
 
                     _handle = ZKTecoPullSDK.Connect(connStr);
 
@@ -51,7 +52,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                     }
 
                     int errCode = ZKTecoPullSDK.PullLastError();
-                    Debug.WriteLine($"[ZKTeco] Kết nối thất bại. Mã lỗi: {errCode}");
+                    AppLogger.Error($"[ZKTeco] Kết nối thất bại. Mã lỗi: {errCode}", "ZKTeco");
                     OnStatusChanged?.Invoke(false, $"Kết nối Controller thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
@@ -121,7 +122,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[ZKTeco Polling Error] {ex.Message}");
+                        AppLogger.Error(ex, $"[ZKTeco Polling Error] {ex.Message}", "ZKTeco");
                         await Task.Delay(500, token);
                     }
                 }
