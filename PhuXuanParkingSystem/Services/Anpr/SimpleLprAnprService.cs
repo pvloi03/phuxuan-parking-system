@@ -1,3 +1,4 @@
+using PhuXuanParkingSystem.Models.ValueObjects;
 using PhuXuanParkingSystem.Services.Logging;
 using SimpleLPR3;
 using System;
@@ -7,6 +8,7 @@ using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -146,6 +148,49 @@ namespace PhuXuanParkingSystem.Services.Anpr
             return Recognize(bitmap, sw);
         }
 
+        /// <summary>
+        /// Chấm điểm và lọc nhiễu cho kết quả nhận diện biển số
+        /// Ưu tiên biển số Việt Nam (7-9 ký tự, đúng tiền tố tỉnh thành), loại bỏ rác ngắn như "111", "III"
+        /// </summary>
+        private static float CalculateMatchScore(string? text, float confidence)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return -1f;
+            string clean = PlateNumber.Clean(text);
+
+            // Bỏ qua các chuỗi quá ngắn (< 4 ký tự như "111", "III", "A1") vì là nhiễu từ vân gỗ / khe hẹp
+            if (clean.Length < 4) return -1f;
+
+            float score = confidence;
+
+            // Ưu tiên độ dài chuẩn của biển số xe Việt Nam (7-9 ký tự: ví dụ 35B263371, 29A12345)
+            if (clean.Length >= 7 && clean.Length <= 9)
+            {
+                score += 2.0f; // Điểm cộng quyết định so với các chuỗi ký tự rác
+            }
+            else if (clean.Length >= 5 && clean.Length <= 10)
+            {
+                score += 0.5f;
+            }
+            else
+            {
+                score -= 0.5f;
+            }
+
+            // Bắt đầu bằng 2 số tỉnh thành Việt Nam hợp lệ (11-99) kèm chữ cái
+            if (Regex.IsMatch(clean, @"^[1-9][0-9][A-Z]"))
+            {
+                score += 1.0f;
+            }
+
+            // Khớp chính xác định dạng biển số xe Việt Nam (4 số hoặc 5 số)
+            if (Regex.IsMatch(clean, @"^([0-9]{2}[A-Z]{1,2}[0-9]?)([0-9]{4,5})$"))
+            {
+                score += 1.5f;
+            }
+
+            return score;
+        }
+
         private PlateRecognitionResult Recognize(Bitmap bitmap, Stopwatch sw)
         {
             if (!_isInitialized || _processor == null)
@@ -172,10 +217,10 @@ namespace PhuXuanParkingSystem.Services.Anpr
                         return PlateRecognitionResult.Failed("Không phát hiện được biển số xe.", sw.ElapsedMilliseconds);
                     }
 
-                    // Tìm candidate và match có độ tin cậy cao nhất
+                    // Tìm candidate và match có điểm số đánh giá chuẩn nhất (lọc bỏ nhiễu)
                     Candidate? bestCandidate = null;
                     CountryMatch? bestMatch = null;
-                    float maxConfidence = -1.0f;
+                    float maxScore = 0.0f;
 
                     foreach (var cand in candidates)
                     {
@@ -183,9 +228,10 @@ namespace PhuXuanParkingSystem.Services.Anpr
                         {
                             foreach (var m in cand.matches)
                             {
-                                if (m.confidence > maxConfidence)
+                                float score = CalculateMatchScore(m.text, m.confidence);
+                                if (score > maxScore)
                                 {
-                                    maxConfidence = m.confidence;
+                                    maxScore = score;
                                     bestMatch = m;
                                     bestCandidate = cand;
                                 }
@@ -193,7 +239,7 @@ namespace PhuXuanParkingSystem.Services.Anpr
                         }
                     }
 
-                    if (bestMatch.HasValue && maxConfidence > 0 && !string.IsNullOrWhiteSpace(bestMatch.Value.text))
+                    if (bestMatch.HasValue && maxScore > 0 && !string.IsNullOrWhiteSpace(bestMatch.Value.text))
                     {
                         Rectangle bbox = default;
                         Bitmap? croppedPlate = null;
@@ -222,7 +268,7 @@ namespace PhuXuanParkingSystem.Services.Anpr
 
                         var result = PlateRecognitionResult.Success(
                             bestMatch.Value.text,
-                            maxConfidence,
+                            bestMatch.Value.confidence,
                             bbox,
                             croppedPlate,
                             sw.ElapsedMilliseconds);
@@ -231,7 +277,7 @@ namespace PhuXuanParkingSystem.Services.Anpr
                         return result;
                     }
 
-                    return PlateRecognitionResult.Failed("Độ tin cậy nhận diện dưới ngưỡng cho phép.", sw.ElapsedMilliseconds);
+                    return PlateRecognitionResult.Failed("Không phát hiện được biển số xe hợp lệ (Độ dài / Cấu trúc không khớp).", sw.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {
