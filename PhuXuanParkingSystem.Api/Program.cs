@@ -40,7 +40,9 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtIssuer,
         ValidateAudience = true,
         ValidAudience = jwtAudience,
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        // Map đúng claim chứa role để User.IsInRole() và [Authorize(Roles)] hoạt động
+        RoleClaimType = System.Security.Claims.ClaimTypes.Role
     };
 });
 

@@ -278,11 +278,17 @@ namespace PhuXuanParkingSystem.Api.Controllers
                              ?? User.FindFirstValue("sub")
                              ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
 
-            var isCurrentUserAdmin = User.IsInRole("Admin") || User.IsInRole("1");
+            // Đọc role trực tiếp từ claim (tránh lỗi IsInRole() với JWT ClaimTypes.Role URI dài)
+            var roleClaim = User.FindFirstValue(ClaimTypes.Role)
+                         ?? User.FindFirstValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
+                         ?? User.FindFirstValue("role")
+                         ?? "";
+            var isCurrentUserAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase)
+                                  || roleClaim == "1";
 
-            // Nếu không phải Admin:
-            // 1. Chỉ được đổi mật khẩu của chính mình
-            // 2. Bắt buộc phải nhập đúng mật khẩu hiện tại
+            // Quy tắc phân quyền:
+            // - Admin: Được reset mật khẩu cho bất kỳ ai (kể cả chính mình), KHÔNG cần oldPassword.
+            // - Non-Admin: Chỉ được đổi mật khẩu của chính mình, BẮT BUỘC nhập đúng oldPassword.
             if (!isCurrentUserAdmin)
             {
                 if (user.Id != currentUserId)
