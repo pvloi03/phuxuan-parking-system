@@ -9,6 +9,7 @@ import { PeoplePage } from '@/pages/PeoplePage'
 import { CompaniesPage } from '@/pages/CompaniesPage'
 import { DepartmentsPage } from '@/pages/DepartmentsPage'
 import { PartnersPage } from '@/pages/PartnersPage'
+import { DevicesPage } from '@/pages/DevicesPage'
 
 export function AppRoutes() {
   return (
@@ -25,6 +26,7 @@ export function AppRoutes() {
           <Route path="/departments" element={<DepartmentsPage />} />
           <Route path="/partners" element={<PartnersPage />} />
           <Route path="/people" element={<PeoplePage />} />
+          <Route path="/devices" element={<DevicesPage />} />
         </Route>
       </Route>
 

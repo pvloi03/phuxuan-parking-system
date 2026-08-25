@@ -11,7 +11,7 @@ export type ParkingSessionStatus = 'Active' | 'Completed' | 'UnmatchedOut'
 export type UserRole = 'Admin' | 'Manager' | 'Operator' | 'Security' | 'Viewer'
 export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'VIP' | 'Other'
 
-export type DeviceType = 'Camera' | 'Barrier' | 'CardReader' | 'LedBoard' | 'Controller' | 'Other'
+export type DeviceType = 'Camera' | 'Controller'
 export type DeviceStatus = 'Connected' | 'Disconnected' | 'Error' | 'Maintenance'
 
 export interface ImageStoragePathDto {
@@ -195,12 +195,10 @@ export const getVehicleTypeLabel = (type?: VehicleType | number | string) => {
 }
 
 export const getDeviceTypeLabel = (type?: DeviceType | number | string) => {
-  if (type === 'Camera' || type === 1) return 'Camera IP'
-  if (type === 'Barrier' || type === 2) return 'Barrier Tự Động'
-  if (type === 'CardReader' || type === 3) return 'Đầu Đọc Thẻ RFID'
-  if (type === 'LedBoard' || type === 4) return 'Bảng LED Hiển Thị'
-  if (type === 'Controller' || type === 5) return 'Bộ Điều Khiển Trung Tâm'
-  return 'Thiết Bị Khác'
+  const v = String(type ?? '').toLowerCase()
+  if (v === 'camera' || v === '1') return 'Camera IP'
+  if (v === 'controller' || v === '2') return 'Bộ Điều Khiển'
+  return String(type ?? 'Khác')
 }
 
 export const getDeviceStatusLabel = (status?: DeviceStatus | number | string) => {
