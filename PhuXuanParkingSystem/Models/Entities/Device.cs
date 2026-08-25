@@ -27,11 +27,6 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string? UserName { get; set; }                                 // [LƯU DB] Tên đăng nhập (Camera)
         public string? Password { get; set; }                                 // [LƯU DB] Mật khẩu (Camera hoặc ZKTeco CommPassword)
 
-        // --- THÔNG SỐ CAMERA (SDK / ONVIF) ---
-        public int? CameraChannel { get; set; } = 1;                          // [LƯU DB] Kênh video camera / NVR (mặc định 1)
-        public int? OnvifPort { get; set; }                                   // [LƯU DB] Port dịch vụ ONVIF (80, 8080...)
-        public string? SnapshotUrl { get; set; }                              // [LƯU DB] URL HTTP tải ảnh snapshot trực tiếp
-
         // --- TRẠNG THÁI SỨC KHỎE THIẾT BỊ ---
         [BsonRepresentation(BsonType.String)]
         public DeviceStatus Status { get; set; } = DeviceStatus.Disconnected;// [LƯU DB] Trạng thái kết nối
