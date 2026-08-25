@@ -124,6 +124,14 @@ body {
 .dark ::-webkit-scrollbar-thumb { background: hsl(217 33% 25%); }
 .dark ::-webkit-scrollbar-thumb:hover { background: hsl(217 33% 35%); }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* ======================================================= */
 /* GLOBAL CARD STYLE                                       */
 /* ======================================================= */

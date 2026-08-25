@@ -45,22 +45,8 @@ interface NavSingleItem {
 type MenuItem = { type: 'single'; item: NavSingleItem } | { type: 'group'; group: NavGroup }
 
 const menuConfig: MenuItem[] = [
-  {
-    type: 'single',
-    item: {
-      title: 'Dashboard',
-      href: '/',
-      icon: LayoutDashboard,
-    },
-  },
-  {
-    type: 'single',
-    item: {
-      title: 'Lịch Sử Xe Ra Vào',
-      href: '/history',
-      icon: History,
-    },
-  },
+  { type: 'single', item: { title: 'Dashboard', href: '/', icon: LayoutDashboard } },
+  { type: 'single', item: { title: 'Lịch Sử Xe Ra Vào', href: '/history', icon: History } },
   {
     type: 'group',
     group: {
@@ -75,26 +61,11 @@ const menuConfig: MenuItem[] = [
       ],
     },
   },
-  {
-    type: 'single',
-    item: { title: 'Quản Lý Phương Tiện', href: '/vehicles', icon: Car, roles: ['Admin', 'Manager', '1', '2'] },
-  },
-  {
-    type: 'single',
-    item: { title: 'Làn Kiểm Soát', href: '/lanes', icon: Route, roles: ['Admin', 'Manager', '1', '2'] },
-  },
-  {
-    type: 'single',
-    item: { title: 'Thiết Bị Phần Cứng', href: '/devices', icon: Cpu, roles: ['Admin', 'Manager', '1', '2'] },
-  },
-  {
-    type: 'single',
-    item: { title: 'Quản Lý Tài Khoản', href: '/users', icon: Users, roles: ['Admin', '1'] },
-  },
-  {
-    type: 'single',
-    item: { title: 'Thùng Rác', href: '/recycle-bin', icon: Trash2, roles: ['Admin', '1'] },
-  },
+  { type: 'single', item: { title: 'Quản Lý Phương Tiện', href: '/vehicles', icon: Car, roles: ['Admin', 'Manager', '1', '2'] } },
+  { type: 'single', item: { title: 'Làn Kiểm Soát', href: '/lanes', icon: Route, roles: ['Admin', 'Manager', '1', '2'] } },
+  { type: 'single', item: { title: 'Thiết Bị Phần Cứng', href: '/devices', icon: Cpu, roles: ['Admin', 'Manager', '1', '2'] } },
+  { type: 'single', item: { title: 'Quản Lý Tài Khoản', href: '/users', icon: Users, roles: ['Admin', '1'] } },
+  { type: 'single', item: { title: 'Thùng Rác', href: '/recycle-bin', icon: Trash2, roles: ['Admin', '1'] } },
 ]
 
 export function Sidebar() {
@@ -109,7 +80,7 @@ export function Sidebar() {
     refetchInterval: 30000,
   })
 
-  const getRoleLabel = (role: any) => {
+  const getRoleLabel = (role: any): string => {
     if (role === 'Admin' || role === 1 || role === '1') return 'Admin'
     if (role === 'Manager' || role === 2 || role === '2') return 'Manager'
     if (role === 'Operator' || role === 3 || role === '3') return 'Operator'
@@ -117,7 +88,7 @@ export function Sidebar() {
     return 'Viewer'
   }
 
-  const isRoleAllowed = (roles?: string[]) => {
+  const isRoleAllowed = (roles?: string[]): boolean => {
     if (!roles || !user) return true
     return roles.includes(String(user.role)) || roles.includes(user.role)
   }
@@ -133,73 +104,71 @@ export function Sidebar() {
 
   const displayName = user?.username || user?.fullName || 'admin'
   const avatarLetter = displayName.charAt(0).toUpperCase()
+  const trashTotal = trashCounts?.totalCount || 0
 
   return (
     <aside
       className={cn(
-        'flex flex-col h-screen sticky top-0 z-30 transition-all duration-300 ease-in-out',
-        'bg-white dark:bg-[#0c1220]',
+        'flex flex-col h-screen sticky top-0 z-30 bg-white dark:bg-[#0c1220]',
         'border-r border-slate-200 dark:border-[#1e2d3d]',
+        'transition-all duration-300 ease-in-out',
         isCollapsed ? 'w-[68px]' : 'w-60'
       )}
     >
-      {/* ── Brand ─────────────────────────────────────── */}
+      {/* ── Brand Header ── */}
       <div
         className={cn(
-          'flex items-center border-b border-slate-100 dark:border-[#1e2d3d] shrink-0 h-14',
-          isCollapsed ? 'justify-center px-3' : 'px-4 justify-between'
+          'flex items-center h-14 border-b border-slate-100 dark:border-[#1e2d3d] shrink-0',
+          isCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'
         )}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-sm shrink-0">
-            <ShieldCheck className="h-4.5 w-4.5 text-white" />
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0 animate-fade-in">
-              <p className="text-[13px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">
-                HP<span className="text-blue-600 dark:text-blue-400">PARKING</span>
-              </p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium">
-                Admin Portal
-              </p>
+        {!isCollapsed ? (
+          <>
+            <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-xs">
+                <ShieldCheck className="h-4.5 w-4.5 text-white" />
+              </div>
+              <div className="min-w-0 overflow-hidden">
+                <p className="text-[13px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+                  HP<span className="text-blue-600 dark:text-blue-400">PARKING</span>
+                </p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">Admin Portal</p>
+              </div>
             </div>
-          )}
-        </div>
-
-        {!isCollapsed && (
-          <button
-            type="button"
-            onClick={() => setIsCollapsed(true)}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1e2d3d] transition-colors cursor-pointer shrink-0"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-        )}
-
-        {isCollapsed && (
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(true)}
+              className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0 ml-1"
+              title="Thu gọn sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </>
+        ) : (
           <button
             type="button"
             onClick={() => setIsCollapsed(false)}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1e2d3d] transition-colors cursor-pointer"
+            className="h-9 w-9 rounded-lg bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white transition-all cursor-pointer shadow-xs group"
+            title="Mở rộng sidebar"
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ShieldCheck className="h-4.5 w-4.5 group-hover:hidden" />
+            <ChevronRight className="h-4.5 w-4.5 hidden group-hover:block" />
           </button>
         )}
       </div>
 
-      {/* ── Navigation ────────────────────────────────── */}
-      <nav className={cn('flex-1 overflow-y-auto py-3', isCollapsed ? 'px-2' : 'px-3')}>
+      {/* ── Navigation ── */}
+      <nav className="flex-1 overflow-y-auto py-2 px-2">
         <div className="space-y-0.5">
           {menuConfig.map((menu, index) => {
             if (menu.type === 'single') {
               const { item } = menu
               if (!isRoleAllowed(item.roles)) return null
-              const isActive =
-                item.href === '/'
-                  ? location.pathname === '/'
-                  : location.pathname.startsWith(item.href)
+              const isActive = item.href === '/'
+                ? location.pathname === '/'
+                : location.pathname.startsWith(item.href)
               const Icon = item.icon
-              const trashCount = item.href === '/recycle-bin' ? (trashCounts?.totalCount || 0) : 0
+              const isTrash = item.href === '/recycle-bin'
 
               return (
                 <Link
@@ -207,30 +176,26 @@ export function Sidebar() {
                   to={item.href}
                   title={isCollapsed ? item.title : undefined}
                   className={cn(
-                    'flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 group relative',
-                    isCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-2',
+                    'flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors duration-150 group',
+                    isCollapsed ? 'justify-center p-2' : 'px-2.5 py-2',
                     isActive
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-[#1a2845]'
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-4 w-4 shrink-0',
-                      isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
-                    )}
-                  />
+                  <Icon className={cn(
+                    'h-4 w-4 shrink-0',
+                    isActive ? 'text-white' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                  )} />
                   {!isCollapsed && (
                     <>
                       <span className="truncate flex-1">{item.title}</span>
-                      {trashCount > 0 && (
+                      {isTrash && trashTotal > 0 && (
                         <span className={cn(
-                          'px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none',
-                          isActive
-                            ? 'bg-white/20 text-white'
-                            : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
+                          'text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none',
+                          isActive ? 'bg-white/25 text-white' : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
                         )}>
-                          {trashCount}
+                          {trashTotal}
                         </span>
                       )}
                     </>
@@ -253,35 +218,27 @@ export function Sidebar() {
                   onClick={() => toggleGroup(group.title)}
                   title={isCollapsed ? group.title : undefined}
                   className={cn(
-                    'w-full flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 group cursor-pointer',
-                    isCollapsed ? 'justify-center p-2.5' : 'px-2.5 py-2 justify-between',
+                    'w-full flex items-center gap-2.5 rounded-md text-[13px] font-medium transition-colors duration-150 cursor-pointer group',
+                    isCollapsed ? 'justify-center p-2' : 'px-2.5 py-2 justify-between',
                     isGroupActive
                       ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-[#1a2845]'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <GroupIcon
-                      className={cn(
-                        'h-4 w-4 shrink-0',
-                        isGroupActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'
-                      )}
-                    />
+                    <GroupIcon className={cn('h-4 w-4 shrink-0', isGroupActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500')} />
                     {!isCollapsed && <span className="truncate">{group.title}</span>}
                   </div>
                   {!isCollapsed && (
-                    <ChevronDown
-                      className={cn(
-                        'h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0',
-                        isOpen && 'rotate-180 text-blue-500'
-                      )}
-                    />
+                    <ChevronDown className={cn(
+                      'h-3.5 w-3.5 text-slate-400 transition-transform duration-200 shrink-0',
+                      isOpen && 'rotate-180 text-blue-500'
+                    )} />
                   )}
                 </button>
 
-                {/* Submenu */}
                 {!isCollapsed && isOpen && (
-                  <div className="mt-0.5 mb-1 ml-3.5 pl-2.5 border-l border-slate-200 dark:border-[#1e2d3d] space-y-0.5 animate-fade-in">
+                  <div className="ml-3 pl-3 border-l border-slate-200 dark:border-slate-700 mt-0.5 mb-1 space-y-0.5">
                     {group.children.map((child) => {
                       const isChildActive = location.pathname.startsWith(child.href)
                       const ChildIcon = child.icon
@@ -290,18 +247,13 @@ export function Sidebar() {
                           key={child.href}
                           to={child.href}
                           className={cn(
-                            'flex items-center gap-2 px-2 py-1.5 rounded-md text-[12.5px] font-medium transition-colors',
+                            'flex items-center gap-2 px-2 py-1.5 rounded-md text-[12px] font-medium transition-colors',
                             isChildActive
                               ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 font-semibold'
-                              : 'text-slate-500 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#1a2845]'
+                              : 'text-slate-500 dark:text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                           )}
                         >
-                          <ChildIcon
-                            className={cn(
-                              'h-3.5 w-3.5 shrink-0',
-                              isChildActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'
-                            )}
-                          />
+                          <ChildIcon className={cn('h-3.5 w-3.5 shrink-0', isChildActive ? 'text-blue-500' : 'text-slate-400')} />
                           <span className="truncate">{child.title}</span>
                         </Link>
                       )
@@ -314,55 +266,27 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* ── User Section ──────────────────────────────── */}
-      <div
-        className={cn(
-          'border-t border-slate-100 dark:border-[#1e2d3d] shrink-0',
-          isCollapsed ? 'p-2' : 'p-3'
-        )}
-      >
-        {isCollapsed ? (
-          <div className="flex flex-col items-center gap-2">
-            <div
-              title={`${displayName} · ${getRoleLabel(user?.role)}`}
-              className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-xs font-bold flex items-center justify-center"
-            >
-              {avatarLetter}
-            </div>
-            <button
-              type="button"
-              onClick={logout}
-              title="Đăng xuất"
-              className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
+      {/* ── User Section ── */}
+      <div className="border-t border-slate-100 dark:border-[#1e2d3d] p-3 shrink-0">
+        <div className={cn('flex items-center gap-2.5', isCollapsed && 'flex-col')}>
+          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+            {avatarLetter}
           </div>
-        ) : (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
-                {avatarLetter}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[12.5px] font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">
-                  {displayName}
-                </p>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-tight">
-                  {getRoleLabel(user?.role)}
-                </p>
-              </div>
+          {!isCollapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-100 truncate leading-tight">{displayName}</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">{getRoleLabel(user?.role)}</p>
             </div>
-            <button
-              type="button"
-              onClick={logout}
-              title="Đăng xuất"
-              className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={logout}
+            title="Đăng xuất"
+            className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </aside>
   )
