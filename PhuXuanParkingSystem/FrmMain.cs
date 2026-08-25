@@ -546,6 +546,7 @@ namespace PhuXuanParkingSystem
                 txtInPlate.Text = anprResult.FormattedPlate;
                 string cleanPlate = anprResult.CleanPlate;
 
+                ParkingSession? existingActiveSession = null;
                 Vehicle? vehicle = null;
                 Person? person = null;
                 Department? department = null;
@@ -554,6 +555,7 @@ namespace PhuXuanParkingSystem
 
                 try
                 {
+                    existingActiveSession = await _sessionRepo.FindOneAsync(s => s.PlateNumber == cleanPlate && s.Status == ParkingSessionStatus.Active && !s.IsDeleted);
                     vehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && !v.IsDeleted);
                     if (vehicle != null && !string.IsNullOrEmpty(vehicle.OwnerPersonId))
                     {
@@ -589,40 +591,73 @@ namespace PhuXuanParkingSystem
                 lblInDeptVal.Text = deptName;
                 lblInTypeVal.Text = vType == VehicleType.Car ? "Ô tô" : "Xe máy";
 
-                if (isRegistered)
+                if (existingActiveSession != null)
                 {
-                    lblInStatusVal.Text = "Cho phép vào - Xe nội bộ / Đã đăng ký";
-                    lblInStatusVal.ForeColor = Color.FromArgb(40, 140, 70); // Green
+                    // Xe ĐÃ CÓ trong bãi (vào lần 2 liên tiếp mà chưa ra) -> Cập nhật phiên hiện tại, KHÔNG tạo bản ghi mới trùng lặp!
+                    existingActiveSession.InOverviewImagePath = fileOverview;
+                    existingActiveSession.InPlateImagePath = filePlate;
+                    existingActiveSession.InLaneName = "Làn Vào Số 1";
+                    existingActiveSession.Note = string.IsNullOrWhiteSpace(existingActiveSession.Note)
+                        ? $"Xe vào lại lúc {DateTime.Now:dd/MM/yyyy HH:mm:ss}"
+                        : $"{existingActiveSession.Note}; Xe vào lại lúc {DateTime.Now:dd/MM/yyyy HH:mm:ss}";
+                    existingActiveSession.UpdatedAt = DateTime.Now;
+
+                    try
+                    {
+                        await _sessionRepo.UpdateAsync(existingActiveSession);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Error(ex, "Lỗi cập nhật phiên xe vào lặp lại");
+                    }
+
+                    lblInStatusVal.Text = $"Cho phép vào (Cảnh báo: Xe đang trong bãi từ {existingActiveSession.InTime:HH:mm:ss})";
+                    lblInStatusVal.ForeColor = Color.FromArgb(220, 110, 0); // Cam đậm cảnh báo
+
+                    AppNotificationService.NotifyWarning(
+                        NotificationCategory.LaneIn,
+                        "Xe vào lại liên tiếp",
+                        $"Biển số {anprResult.FormattedPlate} đang có trong bãi (Vào lúc {existingActiveSession.InTime:HH:mm:ss}). Đã cập nhật ảnh và ghi nhận lượt vào mới.",
+                        anprResult.FormattedPlate);
                 }
                 else
                 {
-                    lblInStatusVal.Text = "Cho phép vào - Xe lạ / Khách vãng lai";
-                    lblInStatusVal.ForeColor = Color.FromArgb(0, 120, 215); // Friendly Blue - không chặn ai!
-                }
+                    // Phiên mới hoàn toàn
+                    if (isRegistered)
+                    {
+                        lblInStatusVal.Text = "Cho phép vào - Xe nội bộ / Đã đăng ký";
+                        lblInStatusVal.ForeColor = Color.FromArgb(40, 140, 70); // Green
+                    }
+                    else
+                    {
+                        lblInStatusVal.Text = "Cho phép vào - Xe lạ / Khách vãng lai";
+                        lblInStatusVal.ForeColor = Color.FromArgb(0, 120, 215); // Friendly Blue
+                    }
 
-                try
-                {
-                    var session = ParkingSession.CheckIn(
-                        "LANE-IN-01",
-                        cleanPlate,
-                        fileOverview,
-                        filePlate,
-                        isRegistered ? ownerName : null,
-                        vType,
-                        $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms{(isRegistered ? " [Nội bộ]" : " [Xe lạ]")}");
+                    try
+                    {
+                        var session = ParkingSession.CheckIn(
+                            "Làn Vào Số 1",
+                            cleanPlate,
+                            fileOverview,
+                            filePlate,
+                            isRegistered ? ownerName : null,
+                            vType,
+                            $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms{(isRegistered ? " [Nội bộ]" : " [Xe lạ]")}");
 
-                    await _sessionRepo.AddAsync(session);
-                }
-                catch (Exception ex)
-                {
-                    AppLogger.Error(ex, "Lỗi lưu ParkingSession vào MongoDB");
-                }
+                        await _sessionRepo.AddAsync(session);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Error(ex, "Lỗi lưu ParkingSession vào MongoDB");
+                    }
 
-                AppNotificationService.NotifySuccess(
-                    NotificationCategory.LaneIn,
-                    "Nhận diện xe vào",
-                    $"Biển số: {anprResult.FormattedPlate} - {ownerName} ({(isRegistered ? deptName : "Xe lạ")}) (Độ tin cậy: {anprResult.Confidence:P0}, {anprResult.DurationMs}ms)",
-                    anprResult.FormattedPlate);
+                    AppNotificationService.NotifySuccess(
+                        NotificationCategory.LaneIn,
+                        "Nhận diện xe vào",
+                        $"Biển số: {anprResult.FormattedPlate} - {ownerName} ({(isRegistered ? deptName : "Xe lạ")}) (Độ tin cậy: {anprResult.Confidence:P0}, {anprResult.DurationMs}ms)",
+                        anprResult.FormattedPlate);
+                }
             }
             else
             {
@@ -638,7 +673,7 @@ namespace PhuXuanParkingSystem
                 try
                 {
                     var session = ParkingSession.CheckIn(
-                        "LANE-IN-01",
+                        "Làn Vào Số 1",
                         unknownPlate,
                         fileOverview,
                         filePlate,
@@ -776,7 +811,7 @@ namespace PhuXuanParkingSystem
 
                 if (activeSession != null)
                 {
-                    activeSession.CheckOut("LANE-OUT-01", fileOverview, filePlate, $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms");
+                    activeSession.CheckOut("Làn Ra Số 1", fileOverview, filePlate, $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms");
                     try
                     {
                         await _sessionRepo.UpdateAsync(activeSession);
@@ -803,7 +838,7 @@ namespace PhuXuanParkingSystem
                 {
                     // Xe ra không có lượt vào trước đó -> VẪN CHO PHÉP RA, tạo UnmatchedOut Session
                     var unmatchedSession = ParkingSession.CreateUnmatchedOut(
-                        "LANE-OUT-01",
+                        "Làn Ra Số 1",
                         cleanPlate,
                         fileOverview,
                         filePlate,
@@ -821,13 +856,13 @@ namespace PhuXuanParkingSystem
                         AppLogger.Error(ex, "Lỗi lưu Unmatched ParkingSession vào MongoDB");
                     }
 
-                    lblOutStatusVal.Text = "Cho phép ra (Ghi nhận xe ra không có lượt vào)";
-                    lblOutStatusVal.ForeColor = Color.FromArgb(0, 120, 215); // Friendly Blue - không chặn ai!
+                    lblOutStatusVal.Text = "Cho phép ra - Không có dữ liệu vào (Unmatched Out)";
+                    lblOutStatusVal.ForeColor = Color.FromArgb(210, 80, 20); // Cam đỏ
 
-                    AppNotificationService.NotifyInfo(
+                    AppNotificationService.NotifyWarning(
                         NotificationCategory.LaneOut,
-                        "Xe ra ghi nhận mới",
-                        $"Biển số {anprResult.FormattedPlate} - {ownerName} (Không tìm thấy lượt vào trước đó - đã tự động ghi nhận)",
+                        "Xe ra không có lượt vào (Unmatched Out)",
+                        $"Biển số {anprResult.FormattedPlate} - {ownerName} (Không tìm thấy lượt vào trước đó - Đã ghi nhận bản ghi Unmatched Out)",
                         anprResult.FormattedPlate);
                 }
             }
@@ -838,13 +873,13 @@ namespace PhuXuanParkingSystem
                 lblOutOwnerVal.Text = "Xe lạ";
                 lblOutDeptVal.Text = "Khách vãng lai";
                 lblOutTypeVal.Text = "Ô tô";
-                lblOutStatusVal.Text = "Cho phép ra - Ghi nhận hình ảnh (Không đọc được biển)";
+                lblOutStatusVal.Text = "Cho phép ra - Ghi nhận hình ảnh (Không đọc được biển - Unmatched Out)";
                 lblOutStatusVal.ForeColor = Color.FromArgb(200, 120, 30);
 
                 try
                 {
                     var unmatchedSession = ParkingSession.CreateUnmatchedOut(
-                        "LANE-OUT-01",
+                        "Làn Ra Số 1",
                         unknownPlate,
                         fileOverview,
                         filePlate,
