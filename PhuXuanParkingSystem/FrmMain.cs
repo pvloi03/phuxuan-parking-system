@@ -1,7 +1,12 @@
-﻿using PhuXuanParkingSystem.Services.Logging;
-using PhuXuanParkingSystem.Services.Notification;
+using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
+using PhuXuanParkingSystem.Repositories;
+using PhuXuanParkingSystem.Services.Anpr;
 using PhuXuanParkingSystem.Services.Camera;
 using PhuXuanParkingSystem.Services.Controller;
+using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Notification;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Configuration;
 using System.Diagnostics;
@@ -36,6 +41,12 @@ namespace PhuXuanParkingSystem
         // ── 1 Controller ZKTeco C3-200 dùng chung ───────────────────────────
         private readonly ZKTecoDeviceAdapter _controller = new();
 
+        // ── Dịch vụ Nhận diện biển số & CSDL MongoDB ────────────────────────
+        private readonly IPlateRecognitionService _anprService;
+        private readonly IRepository<ParkingSession> _sessionRepo;
+        private readonly IRepository<Vehicle> _vehicleRepo;
+        private readonly IRepository<Person> _personRepo;
+
         // ── Bộ nhớ Cache GDI+ (Tránh cấp phát lại liên tục trong sự kiện Paint) ──
         private readonly Font _fontBoldStatus = new("Segoe UI", 10.5F, FontStyle.Bold);
         private readonly Font _fontSubStatus = new("Segoe UI", 9F, FontStyle.Regular);
@@ -55,6 +66,42 @@ namespace PhuXuanParkingSystem
         public FrmMain()
         {
             InitializeComponent();
+
+            if (Program.ServiceProvider != null)
+            {
+                _anprService = Program.ServiceProvider.GetService<IPlateRecognitionService>() ?? new SimpleLprAnprService();
+                _sessionRepo = Program.ServiceProvider.GetService<IRepository<ParkingSession>>() ?? new MongoRepository<ParkingSession>();
+                _vehicleRepo = Program.ServiceProvider.GetService<IRepository<Vehicle>>() ?? new MongoRepository<Vehicle>();
+                _personRepo = Program.ServiceProvider.GetService<IRepository<Person>>() ?? new MongoRepository<Person>();
+            }
+            else
+            {
+                _anprService = new SimpleLprAnprService();
+                _sessionRepo = new MongoRepository<ParkingSession>();
+                _vehicleRepo = new MongoRepository<Vehicle>();
+                _personRepo = new MongoRepository<Person>();
+            }
+
+            // Đăng ký sự kiện Controller ZKTeco
+            _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
+
+            // Hỗ trợ phím tắt tiện lợi cho vận hành
+            KeyPreview = true;
+            KeyDown += FrmMain_KeyDown;
+        }
+
+        public FrmMain(
+            IPlateRecognitionService anprService,
+            IRepository<ParkingSession> sessionRepo,
+            IRepository<Vehicle> vehicleRepo,
+            IRepository<Person> personRepo)
+        {
+            InitializeComponent();
+
+            _anprService = anprService ?? new SimpleLprAnprService();
+            _sessionRepo = sessionRepo ?? new MongoRepository<ParkingSession>();
+            _vehicleRepo = vehicleRepo ?? new MongoRepository<Vehicle>();
+            _personRepo = personRepo ?? new MongoRepository<Person>();
 
             // Đăng ký sự kiện Controller ZKTeco
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
@@ -375,21 +422,106 @@ namespace PhuXuanParkingSystem
                 if (File.Exists(filePlate)) DisplayCapturedImage(picInPlate, filePlate);
                 if (File.Exists(fileOverview)) DisplayCapturedImage(picInOverview, fileOverview);
 
-                if (tPlate.Result && tOverview.Result)
+                // Nhận diện biển số xe bằng SimpleLPR3 Engine
+                PlateRecognitionResult? anprResult = null;
+                if (File.Exists(filePlate))
                 {
-                    AppNotificationService.NotifySuccess(
-                        NotificationCategory.LaneIn, "Chụp ảnh Làn Vào", $"Đã chụp và lưu ảnh xe vào thành công ({Path.GetFileName(filePlate)}, {Path.GetFileName(fileOverview)}).", triggerSource);
+                    anprResult = await _anprService.RecognizeAsync(filePlate);
+                }
+
+                // Cập nhật thông tin giao diện và lưu trữ CSDL
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action(async () => await UpdateInLaneUiAsync(anprResult, triggerSource, filePlate, fileOverview)));
                 }
                 else
                 {
-                    AppNotificationService.NotifyWarning(NotificationCategory.LaneIn, "Chụp ảnh Làn Vào", "Chụp ảnh từ một trong các camera Làn Vào không thành công.", triggerSource);
+                    await UpdateInLaneUiAsync(anprResult, triggerSource, filePlate, fileOverview);
                 }
 
-                SetFooterStatus($"📸 Đã chụp và lưu ảnh LÀN VÀO lúc {DateTime.Now:HH:mm:ss.fff}");
+                SetFooterStatus($"📸 Đã chụp và xử lý LÀN VÀO lúc {DateTime.Now:HH:mm:ss.fff}");
             }
             catch (Exception ex)
             {
+                AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Vào: {ex.Message}");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Vào: {ex.Message}");
+            }
+        }
+
+        private async Task UpdateInLaneUiAsync(PlateRecognitionResult? anprResult, string triggerSource, string filePlate, string fileOverview)
+        {
+            lblInTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+
+            if (anprResult != null && anprResult.IsSuccess)
+            {
+                txtInPlate.Text = anprResult.FormattedPlate;
+                string cleanPlate = anprResult.CleanPlate;
+
+                Vehicle? vehicle = null;
+                Person? person = null;
+                try
+                {
+                    vehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && !v.IsDeleted);
+                    if (vehicle != null && !string.IsNullOrEmpty(vehicle.OwnerPersonId))
+                    {
+                        person = await _personRepo.GetByIdAsync(vehicle.OwnerPersonId!);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"Lỗi truy vấn CSDL xe vào: {ex.Message}");
+                }
+
+                string ownerName = person?.FullName ?? vehicle?.OwnerName ?? "Xe vãng lai";
+                string deptName = person?.DepartmentName ?? "Khách";
+                VehicleType vType = vehicle?.Type ?? VehicleType.Car;
+
+                lblInOwnerVal.Text = ownerName;
+                lblInDeptVal.Text = deptName;
+                lblInTypeVal.Text = vType == VehicleType.Car ? "Ô tô" : "Xe máy";
+                lblInStatusVal.Text = vehicle != null ? "Hợp lệ - Cho phép vào" : "Xe vãng lai - Đã ghi nhận";
+                lblInStatusVal.ForeColor = vehicle != null ? Color.FromArgb(40, 140, 70) : Color.FromArgb(200, 120, 30);
+
+                try
+                {
+                    var session = ParkingSession.CheckIn(
+                        "Lane_In_1",
+                        cleanPlate,
+                        fileOverview,
+                        filePlate,
+                        person?.Id,
+                        ownerName,
+                        deptName,
+                        vType,
+                        $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms");
+
+                    await _sessionRepo.AddAsync(session);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Error(ex, "Lỗi lưu ParkingSession vào MongoDB");
+                }
+
+                AppNotificationService.NotifySuccess(
+                    NotificationCategory.LaneIn,
+                    "Nhận diện xe vào",
+                    $"Biển số: {anprResult.FormattedPlate} - {ownerName} (Độ tin cậy: {anprResult.Confidence:P0}, {anprResult.DurationMs}ms)",
+                    anprResult.FormattedPlate);
+            }
+            else
+            {
+                txtInPlate.Text = "---";
+                lblInOwnerVal.Text = "---";
+                lblInDeptVal.Text = "---";
+                lblInTypeVal.Text = "---";
+                lblInStatusVal.Text = "Không nhận dạng được biển số";
+                lblInStatusVal.ForeColor = Color.FromArgb(220, 53, 69);
+
+                AppNotificationService.NotifyWarning(
+                    NotificationCategory.LaneIn,
+                    "Nhận diện biển số",
+                    "Chụp ảnh thành công nhưng không nhận dạng được biển số xe vào.",
+                    triggerSource);
             }
         }
 
@@ -417,20 +549,116 @@ namespace PhuXuanParkingSystem
                 if (File.Exists(filePlate)) DisplayCapturedImage(picOutPlate, filePlate);
                 if (File.Exists(fileOverview)) DisplayCapturedImage(picOutOverview, fileOverview);
 
-                if (tPlate.Result && tOverview.Result)
+                // Nhận diện biển số xe bằng SimpleLPR3 Engine
+                PlateRecognitionResult? anprResult = null;
+                if (File.Exists(filePlate))
                 {
-                    AppNotificationService.NotifySuccess(NotificationCategory.LaneOut, "Chụp ảnh Làn Ra", $"Đã chụp và lưu ảnh xe ra thành công ({Path.GetFileName(filePlate)}, {Path.GetFileName(fileOverview)}).", triggerSource);
+                    anprResult = await _anprService.RecognizeAsync(filePlate);
+                }
+
+                // Cập nhật thông tin giao diện và kiểm tra lượt ra
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action(async () => await UpdateOutLaneUiAsync(anprResult, triggerSource, filePlate, fileOverview)));
                 }
                 else
                 {
-                    AppNotificationService.NotifyWarning(NotificationCategory.LaneOut, "Chụp ảnh Làn Ra", "Chụp ảnh từ một trong các camera Làn Ra không thành công.", triggerSource);
+                    await UpdateOutLaneUiAsync(anprResult, triggerSource, filePlate, fileOverview);
                 }
 
-                SetFooterStatus($"📸 Đã chụp và lưu ảnh LÀN RA lúc {DateTime.Now:HH:mm:ss.fff}");
+                SetFooterStatus($"📸 Đã chụp và xử lý LÀN RA lúc {DateTime.Now:HH:mm:ss.fff}");
             }
             catch (Exception ex)
             {
+                AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Ra: {ex.Message}");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Ra: {ex.Message}");
+            }
+        }
+
+        private async Task UpdateOutLaneUiAsync(PlateRecognitionResult? anprResult, string triggerSource, string filePlate, string fileOverview)
+        {
+            lblOutTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+
+            if (anprResult != null && anprResult.IsSuccess)
+            {
+                txtOutPlate.Text = anprResult.FormattedPlate;
+                string cleanPlate = anprResult.CleanPlate;
+
+                ParkingSession? activeSession = null;
+                try
+                {
+                    activeSession = await _sessionRepo.FindOneAsync(s => s.PlateNumber == cleanPlate && s.Status == ParkingSessionStatus.Active && !s.IsDeleted);
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"Lỗi truy vấn ParkingSession xe ra: {ex.Message}");
+                }
+
+                if (activeSession != null)
+                {
+                    activeSession.CheckOut("Lane_Out_1", fileOverview, filePlate, $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms");
+                    try
+                    {
+                        await _sessionRepo.UpdateAsync(activeSession);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Error(ex, "Lỗi cập nhật Checkout ParkingSession");
+                    }
+
+                    lblOutOwnerVal.Text = activeSession.PersonName ?? "---";
+                    lblOutDeptVal.Text = activeSession.DepartmentName ?? "---";
+                    lblOutTypeVal.Text = activeSession.VehicleType == VehicleType.Car ? "Ô tô" : "Xe máy";
+
+                    string durationText = activeSession.Duration.HasValue
+                        ? $"{activeSession.Duration.Value.Hours}h {activeSession.Duration.Value.Minutes}m"
+                        : "";
+
+                    lblOutStatusVal.Text = $"Hợp lệ - Cho phép ra ({durationText})";
+                    lblOutStatusVal.ForeColor = Color.FromArgb(40, 140, 70);
+
+                    AppNotificationService.NotifySuccess(
+                        NotificationCategory.LaneOut,
+                        "Nhận diện xe ra",
+                        $"Biển số: {anprResult.FormattedPlate} - Khớp lượt vào lúc {activeSession.InTime:HH:mm:ss} (Đỗ: {durationText})",
+                        anprResult.FormattedPlate);
+                }
+                else
+                {
+                    Vehicle? vehicle = null;
+                    try
+                    {
+                        vehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && !v.IsDeleted);
+                    }
+                    catch { }
+
+                    lblOutOwnerVal.Text = vehicle?.OwnerName ?? "Không có dữ liệu vào";
+                    lblOutDeptVal.Text = "---";
+                    lblOutTypeVal.Text = vehicle?.Type == VehicleType.Car ? "Ô tô" : "---";
+                    lblOutStatusVal.Text = "Cảnh báo: Không có lượt vào!";
+                    lblOutStatusVal.ForeColor = Color.FromArgb(220, 53, 69);
+
+                    AppNotificationService.NotifyWarning(
+                        NotificationCategory.LaneOut,
+                        "Cảnh báo xe ra",
+                        $"Biển số {anprResult.FormattedPlate} không tìm thấy lượt xe vào tương ứng trong hệ thống!",
+                        anprResult.FormattedPlate);
+                }
+            }
+            else
+            {
+                txtOutPlate.Text = "---";
+                lblOutOwnerVal.Text = "---";
+                lblOutDeptVal.Text = "---";
+                lblOutTypeVal.Text = "---";
+                lblOutStatusVal.Text = "Không nhận dạng được biển số";
+                lblOutStatusVal.ForeColor = Color.FromArgb(220, 53, 69);
+
+                AppNotificationService.NotifyWarning(
+                    NotificationCategory.LaneOut,
+                    "Nhận diện biển số",
+                    "Chụp ảnh thành công nhưng không nhận dạng được biển số xe ra.",
+                    triggerSource);
             }
         }
 
@@ -550,15 +778,17 @@ namespace PhuXuanParkingSystem
                 _outPlateCam.Dispose();
                 _outOverviewCam.Dispose();
 
+                // 2. Giải phóng dịch vụ ANPR
+                _anprService.Dispose();
 
                 // 3. Dừng và giải phóng Controller C3-200
                 _controller.Dispose();
 
-                // 3. Dọn dẹp SDK tĩnh
+                // 4. Dọn dẹp SDK tĩnh
                 PlateCameraService.CleanupSdk();
                 OverviewCameraService.CleanupSdk();
 
-                // 4. Giải phóng tài nguyên GDI+ Cache
+                // 5. Giải phóng tài nguyên GDI+ Cache
                 _fontBoldStatus.Dispose();
                 _fontSubStatus.Dispose();
                 _penNormalBorder.Dispose();

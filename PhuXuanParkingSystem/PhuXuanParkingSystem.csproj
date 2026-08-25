@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -31,6 +31,16 @@
 
   <ItemGroup>
     <Reference Include="System.Configuration" />
+    <Reference Include="SimpleLPR3">
+      <HintPath>SDK\Native\x86\SimpleLPR3\SimpleLPR3.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SDK\Native\x86\SimpleLPR3\SimpleLPR3_key.xml">
+      <LogicalName>SimpleLPR3_key.xml</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <ItemGroup>
@@ -60,6 +70,16 @@
       <Visible>false</Visible>
     </None>
     <None Include="SDK\Native\x86\ZKTeco\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(FileName)%(Extension)</Link>
+      <Visible>false</Visible>
+    </None>
+    <None Include="SDK\Native\x86\SimpleLPR3\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(FileName)%(Extension)</Link>
+      <Visible>false</Visible>
+    </None>
+    <None Include="SDK\Native\x86\SimpleLPR3\SimpleLPR3_key.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>%(FileName)%(Extension)</Link>
       <Visible>false</Visible>

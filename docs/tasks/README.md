@@ -1,4 +1,4 @@
-﻿# DANH SÁCH & TIẾN ĐỘ CÁC TASK DỰ ÁN (TASK ROADMAP)
+# DANH SÁCH & TIẾN ĐỘ CÁC TASK DỰ ÁN (TASK ROADMAP)
 **Hệ thống Quản lý Bãi đỗ xe Thái Thụy (PhuXuanParkingSystem)**
 
 ---
@@ -14,7 +14,9 @@
 | **[Task 004-SDK](task-004-x86-native-sdk-integration.md)** | Tích Hợp x86 Native SDKs | ✅ **Hoàn thành** | Tích hợp ZKTeco Pull SDK (`plcommpro.dll`), Hikvision SDK (`HCNetSDK.dll`), NST SDK (`HISDK.dll`). |
 | **[Task 005](task-005-winforms-ui-presentation.md)** | Triển Khai WinForms UI Presentation Layer | ⏳ **Đang hoàn thiện** | Giao diện chính `FrmMain`, Live Stream 4 camera, hiển thị thông tin lượt xe vào/ra. |
 | **[Task 006](task-006-unit-and-integration-testing.md)** | Xây Dựng Hệ Thống Kiểm Thử Tự Động | ✅ **Hoàn thành** | Thiết lập `PhuXuanParkingSystem.Tests` (xUnit, FluentAssertions), 58/58 Unit Tests passed 100%. |
-| **[Task 007](task-007-logging-system-serilog.md)** | Xây Dựng Hệ Thống Logging Bất Đồng Bộ | ⏳ **Đang thực hiện** | Triển khai Serilog Async File Sink, Global Exception Handler và Live UI Log. |
+| **[Task 007](task-007-logging-system-serilog.md)** | Xây Dựng Hệ Thống Logging Bất Đồng Bộ | ✅ **Hoàn thành** | Triển khai Serilog Async File Sink, Global Exception Handler và Live UI Log. |
+| **[Task 008](task-008-application-notification-system.md)** | Xây Dựng Hệ Thống Thông Báo Toàn Cục | ✅ **Hoàn thành** | Triển khai `AppNotificationService` (Pub/Sub pattern) đồng bộ trạng thái phần cứng và thông báo lên UI. |
+| **[Task 009](task-009-anpr-vietnam-plate-recognition.md)** | Tích Hợp Nhận Diện Biển Số SimpleLPR3 x86 | ✅ **Hoàn thành** | Tích hợp Engine AI SimpleLPR3 32-bit cho nhận diện biển số xe Việt Nam tốc độ cao (~30-50ms), đồng bộ UI và MongoDB. |
 
 ---
 
@@ -24,4 +26,3 @@
 - **[thiet-ke-kien-truc-he-thong-kiem-soat-xe.md](../thiet-ke-kien-truc-he-thong-kiem-soat-xe.md)**: Bản thiết kế kiến trúc hệ thống tổng thể.
 - **[layout-kien-truc-du-an.md](../layout-kien-truc-du-an.md)**: Bản vẽ kiến trúc phân lớp và luồng dữ liệu.
 - **[layout-giao-dien-winforms.md](../layout-giao-dien-winforms.md)**: Thiết kế bố cục giao diện WinForms LiveMonitor 2 làn Vào/Ra.
-| [Task 008](task-008-application-notification-system.md) | Xây dựng hệ thống sự kiện thông báo toàn cục (AppNotificationService) | Hoàn thành |

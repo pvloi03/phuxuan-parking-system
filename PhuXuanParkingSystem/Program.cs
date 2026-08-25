@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,6 +105,9 @@ namespace PhuXuanParkingSystem
 
             // Generic Repository bao quát toàn bộ Entities kế thừa BaseEntity
             services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
+
+            // ANPR License Plate Recognition Service (SimpleLPR3 x86 Engine)
+            services.AddSingleton<Services.Anpr.IPlateRecognitionService, Services.Anpr.SimpleLprAnprService>();
 
             // Forms
             services.AddTransient<FrmMain>();
