@@ -14,8 +14,6 @@ import {
   Unlock,
   Mail,
   Phone,
-  Calendar,
-  Clock,
   Eye,
   FileText,
   X,
@@ -383,7 +381,7 @@ export const UsersPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Users className="w-7 h-7 text-primary-600 dark:text-primary-400" />
+            <Users className="w-7 h-7 text-blue-600 dark:text-blue-400" />
             Quản Lý Tài Khoản & Phân Quyền
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -394,10 +392,10 @@ export const UsersPage: React.FC = () => {
         {isAdmin && (
           <button
             onClick={handleOpenAdd}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
-            Thêm Tài Khoản Mới
+            <UserPlus className="w-4 h-4 text-white" />
+            <span>Thêm Tài Khoản Mới</span>
           </button>
         )}
       </div>
@@ -465,7 +463,7 @@ export const UsersPage: React.FC = () => {
               setSearch(e.target.value)
               setPageNumber(1)
             }}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+            className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
           />
         </div>
 
@@ -476,7 +474,7 @@ export const UsersPage: React.FC = () => {
               setRoleFilter(e.target.value)
               setPageNumber(1)
             }}
-            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700 dark:text-gray-300"
+            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-300"
           >
             <option value="">Tất cả vai trò</option>
             <option value="Admin">👑 Quản Trị Viên (Admin)</option>
@@ -492,7 +490,7 @@ export const UsersPage: React.FC = () => {
               setStatusFilter(e.target.value)
               setPageNumber(1)
             }}
-            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-700 dark:text-gray-300"
+            className="px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-gray-300"
           >
             <option value="">Tất cả trạng thái</option>
             <option value="true">Đang hoạt động</option>
@@ -502,7 +500,7 @@ export const UsersPage: React.FC = () => {
           <button
             onClick={() => fetchUsers()}
             title="Làm mới"
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -515,26 +513,24 @@ export const UsersPage: React.FC = () => {
           <table className="w-full text-left border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50/80 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                <th className="py-3.5 px-4">Tài Khoản & Người Dùng</th>
+                <th className="py-3.5 px-4">Tài Khoản</th>
                 <th className="py-3.5 px-4">Liên Hệ</th>
                 <th className="py-3.5 px-4">Vai Trò</th>
                 <th className="py-3.5 px-4">Trạng Thái</th>
-                <th className="py-3.5 px-4">Đăng Nhập Cuối</th>
-                <th className="py-3.5 px-4">Ngày Tạo</th>
                 <th className="py-3.5 px-4 text-center">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-500 dark:text-gray-400">
-                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-primary-500" />
+                  <td colSpan={5} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
                     Đang tải danh sách người dùng...
                   </td>
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="py-12 text-center text-gray-500 dark:text-gray-400">
                     <Users className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
                     Không tìm thấy tài khoản nào phù hợp.
                   </td>
@@ -550,33 +546,17 @@ export const UsersPage: React.FC = () => {
                       key={user.id}
                       className="hover:bg-gray-50/60 dark:hover:bg-gray-750/50 transition-colors group"
                     >
-                      {/* User Info */}
+                      {/* User Info - Chỉ hiện username */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${
-                              user.role === 'Admin'
-                                ? 'bg-gradient-to-tr from-purple-600 to-indigo-500 text-white'
-                                : user.role === 'Manager'
-                                ? 'bg-gradient-to-tr from-blue-600 to-cyan-500 text-white'
-                                : user.role === 'Operator'
-                                ? 'bg-gradient-to-tr from-teal-600 to-emerald-500 text-white'
-                                : 'bg-gradient-to-tr from-gray-600 to-slate-500 text-white'
-                            }`}
-                          >
-                            {getInitials(user.fullName)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-900 dark:text-white">{user.fullName}</span>
-                              {isCurrent && (
-                                <span className="text-[10px] bg-primary-100 dark:bg-primary-950/60 text-primary-700 dark:text-primary-300 font-bold px-1.5 py-0.5 rounded border border-primary-300 dark:border-primary-800">
-                                  Bạn
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">@{user.username}</p>
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900 dark:text-white">
+                            {user.username}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-bold px-1.5 py-0.5 rounded border border-blue-300 dark:border-blue-800">
+                              Bạn
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -615,7 +595,7 @@ export const UsersPage: React.FC = () => {
                         {isAdmin && !isCurrent ? (
                           <button
                             onClick={() => handleToggleStatus(user)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                               user.isActive
                                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800'
                                 : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 hover:bg-rose-100 border border-rose-200 dark:border-rose-800'
@@ -648,33 +628,13 @@ export const UsersPage: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Last Login */}
-                      <td className="py-3.5 px-4 text-xs text-gray-500 dark:text-gray-400">
-                        {user.lastLoginAt ? (
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{new Date(user.lastLoginAt).toLocaleString('vi-VN')}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic">Chưa đăng nhập</span>
-                        )}
-                      </td>
-
-                      {/* Created Date */}
-                      <td className="py-3.5 px-4 text-xs text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                          <span>{new Date(user.createdAt).toLocaleDateString('vi-VN')}</span>
-                        </div>
-                      </td>
-
                       {/* Actions */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-center gap-1.5">
                           {/* Standard Detail Button */}
                           <button
                             onClick={() => handleOpenDetail(user)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-950/40 dark:border-blue-900 dark:hover:bg-blue-900/50 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-950/40 dark:border-blue-900 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
                             title="Xem chi tiết tài khoản"
                           >
                             <FileText className="w-3.5 h-3.5" />
@@ -685,7 +645,7 @@ export const UsersPage: React.FC = () => {
                           {(isAdmin || isCurrent) && (
                             <button
                               onClick={() => handleOpenPasswordModal(user)}
-                              className="p-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 rounded-md border border-amber-200 dark:border-amber-900 transition-colors"
+                              className="p-1.5 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/40 rounded-md border border-amber-200 dark:border-amber-900 transition-colors cursor-pointer"
                               title="Đổi mật khẩu"
                             >
                               <Key className="w-3.5 h-3.5" />
@@ -696,7 +656,7 @@ export const UsersPage: React.FC = () => {
                           {isAdmin && (
                             <button
                               onClick={() => handleOpenEdit(user)}
-                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40 rounded-md border border-blue-200 dark:border-blue-900 transition-colors"
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/40 rounded-md border border-blue-200 dark:border-blue-900 transition-colors cursor-pointer"
                               title="Chỉnh sửa thông tin"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -707,7 +667,7 @@ export const UsersPage: React.FC = () => {
                           {isAdmin && !isCurrent && (
                             <button
                               onClick={() => handleRequestDelete(user)}
-                              className="p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 rounded-md border border-rose-200 dark:border-rose-900 transition-colors"
+                              className="p-1.5 text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 rounded-md border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer"
                               title="Xóa tài khoản"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -774,82 +734,86 @@ export const UsersPage: React.FC = () => {
       {/* ========================================================================= */}
       {isAddEditOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-lg overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-xl overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-                {editingUser ? <Edit2 className="w-5 h-5 text-primary-500" /> : <UserPlus className="w-5 h-5 text-primary-500" />}
+            <div className="px-6 py-3.5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
+              <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
+                {editingUser ? <Edit2 className="w-4 h-4 text-blue-500" /> : <UserPlus className="w-4 h-4 text-blue-500" />}
                 {editingUser ? 'Chỉnh Sửa Tài Khoản Người Dùng' : 'Thêm Mới Tài Khoản Người Dùng'}
               </h3>
               <button
                 onClick={() => setIsAddEditOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Error Banner */}
             {modalError && (
-              <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
+              <div className="mx-6 mt-3 p-2.5 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg text-xs text-red-700 dark:text-red-300 flex items-center gap-2">
                 <XCircle className="w-4 h-4 shrink-0" />
                 <span>{modalError}</span>
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handleSaveUser} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                  Tên Đăng Nhập <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  disabled={!!editingUser}
-                  placeholder="Ví dụ: nguyenvan_a"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-                />
-                {editingUser && (
-                  <p className="text-xs text-gray-500 mt-1">Tên đăng nhập không thể thay đổi sau khi tạo.</p>
-                )}
-              </div>
-
-              {!editingUser && (
+            {/* Form - 2 Columns Compact Grid */}
+            <form onSubmit={handleSaveUser} className="p-6 space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Tên Đăng Nhập */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                    Mật Khẩu Khởi Tạo <span className="text-red-500">*</span>
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
+                    Tên Đăng Nhập <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="password"
+                    type="text"
                     required
-                    placeholder="Tối thiểu 6 ký tự"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                    disabled={!!editingUser}
+                    placeholder="VD: nguyenvan_a"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                  />
+                  {editingUser && (
+                    <p className="text-[10px] text-gray-500 mt-0.5">Không thể sửa username.</p>
+                  )}
+                </div>
+
+                {/* Mật Khẩu (Khi Thêm mới) */}
+                {!editingUser && (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
+                      Mật Khẩu <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="Tối thiểu 6 ký tự"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                )}
+
+                {/* Họ Và Tên */}
+                <div className={editingUser ? 'col-span-1' : ''}>
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
+                    Họ Và Tên <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="VD: Nguyễn Văn An"
+                    value={formData.fullName}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   />
                 </div>
-              )}
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
-                  Họ Và Tên <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ví dụ: Nguyễn Văn An"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Email */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                     Email
                   </label>
                   <input
@@ -857,12 +821,13 @@ export const UsersPage: React.FC = () => {
                     placeholder="user@phuxuan.vn"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   />
                 </div>
 
+                {/* Số Điện Thoại */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                     Số Điện Thoại
                   </label>
                   <input
@@ -870,20 +835,19 @@ export const UsersPage: React.FC = () => {
                     placeholder="0912345678"
                     value={formData.phoneNumber}
                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Vai Trò Phân Quyền */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                     Vai Trò Phân Quyền <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   >
                     <option value="Admin">👑 Quản Trị Viên (Admin)</option>
                     <option value="Manager">👔 Quản Lý (Manager)</option>
@@ -893,14 +857,15 @@ export const UsersPage: React.FC = () => {
                   </select>
                 </div>
 
+                {/* Trạng Thái */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                     Trạng Thái
                   </label>
                   <select
                     value={formData.isActive ? 'true' : 'false'}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.value === 'true' })}
-                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
                   >
                     <option value="true">Đang hoạt động</option>
                     <option value="false">Khóa tài khoản</option>
@@ -909,17 +874,17 @@ export const UsersPage: React.FC = () => {
               </div>
 
               {/* Actions */}
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2.5">
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddEditOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
                 >
                   {editingUser ? 'Lưu Thay Đổi' : 'Tạo Tài Khoản'}
                 </button>
