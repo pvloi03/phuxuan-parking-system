@@ -15,6 +15,7 @@ import {
   Mail,
   Phone,
   Eye,
+  EyeOff,
   FileText,
   X,
   CheckCircle2,
@@ -125,6 +126,12 @@ export const UsersPage: React.FC = () => {
     confirmPassword: '',
   })
 
+  // Password visibility & loading
+  const [showOldPassword, setShowOldPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isSavingPassword, setIsSavingPassword] = useState(false)
+
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
@@ -206,6 +213,10 @@ export const UsersPage: React.FC = () => {
       newPassword: '',
       confirmPassword: '',
     })
+    setShowOldPassword(false)
+    setShowNewPassword(false)
+    setShowConfirmPassword(false)
+    setIsSavingPassword(false)
     setIsPasswordModalOpen(true)
   }
 
@@ -269,29 +280,38 @@ export const UsersPage: React.FC = () => {
     setModalError(null)
     if (!passwordUser) return
 
-    if (!passwordData.newPassword) {
+    // Với tài khoản không phải Admin: bắt buộc nhập mật khẩu cũ
+    if (!isAdmin && !passwordData.oldPassword?.trim()) {
+      setModalError('Vui lòng nhập mật khẩu hiện tại.')
+      return
+    }
+
+    if (!passwordData.newPassword || !passwordData.newPassword.trim()) {
       setModalError('Vui lòng nhập mật khẩu mới.')
       return
     }
-    if (passwordData.newPassword.length < 6) {
+    if (passwordData.newPassword.trim().length < 6) {
       setModalError('Mật khẩu mới phải có tối thiểu 6 ký tự.')
       return
     }
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setModalError('Mật khẩu xác nhận không khớp.')
+    if (passwordData.newPassword.trim() !== passwordData.confirmPassword.trim()) {
+      setModalError('Mật khẩu xác nhận không khớp với mật khẩu mới.')
       return
     }
 
     try {
+      setIsSavingPassword(true)
       const payload: ChangePasswordPayload = {
-        oldPassword: passwordData.oldPassword || undefined,
-        newPassword: passwordData.newPassword,
+        oldPassword: passwordData.oldPassword?.trim() || undefined,
+        newPassword: passwordData.newPassword.trim(),
       }
       await userService.changePassword(passwordUser.id, payload)
-      setFeedbackMessage({ type: 'success', text: 'Đổi mật khẩu thành công!' })
+      setFeedbackMessage({ type: 'success', text: `Đổi mật khẩu cho tài khoản @${passwordUser.username} thành công!` })
       setIsPasswordModalOpen(false)
     } catch (err: any) {
-      setModalError(err?.response?.data?.message || 'Đổi mật khẩu thất bại.')
+      setModalError(err?.response?.data?.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại.')
+    } finally {
+      setIsSavingPassword(false)
     }
   }
 
@@ -900,14 +920,14 @@ export const UsersPage: React.FC = () => {
       {isPasswordModalOpen && passwordUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-amber-50/50 dark:bg-amber-950/20">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-                <Key className="w-5 h-5 text-amber-500" />
-                Đổi Mật Khẩu
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-blue-50/40 dark:bg-blue-950/20">
+              <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
+                <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                Đổi Mật Khẩu Tài Khoản
               </h3>
               <button
                 onClick={() => setIsPasswordModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -922,75 +942,111 @@ export const UsersPage: React.FC = () => {
             )}
 
             <form onSubmit={handleSavePassword} className="p-6 space-y-4">
-              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-xs space-y-1 text-gray-600 dark:text-gray-400">
+              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl text-xs space-y-1.5 text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
                 <p>
-                  Đang đổi mật khẩu cho tài khoản:{' '}
-                  <strong className="text-gray-900 dark:text-white font-mono">@{passwordUser.username}</strong> (
-                  {passwordUser.fullName})
+                  Đổi mật khẩu cho: <strong className="text-gray-900 dark:text-white font-mono">@{passwordUser.username}</strong>
                 </p>
-                {isAdmin && passwordUser.id !== currentUser?.id && (
+                {isAdmin ? (
+                  <p className="text-blue-600 dark:text-blue-400 font-medium">
+                    ⚡ Quyền Quản Trị Viên: Bạn có thể thiết lập trực tiếp mật khẩu mới cho tài khoản.
+                  </p>
+                ) : (
                   <p className="text-amber-600 dark:text-amber-400 font-medium">
-                    ⚡ Với tư cách Quản Trị Viên, bạn có quyền Reset mật khẩu trực tiếp mà không cần mật khẩu cũ.
+                    🔒 Vui lòng nhập đúng mật khẩu hiện tại để xác thực trước khi đổi mật khẩu mới.
                   </p>
                 )}
               </div>
 
-              {!isAdmin || passwordUser.id === currentUser?.id ? (
+              {/* Mật khẩu hiện tại (Chỉ bắt buộc đối với người dùng không phải Admin) */}
+              {!isAdmin && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                     Mật Khẩu Hiện Tại <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    required
-                    value={passwordData.oldPassword}
-                    onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900 dark:text-white"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showOldPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Nhập mật khẩu hiện tại"
+                      value={passwordData.oldPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                      className="w-full pl-3.5 pr-10 py-2.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOldPassword(!showOldPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                    >
+                      {showOldPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-              ) : null}
+              )}
 
+              {/* Mật khẩu mới */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                   Mật Khẩu Mới <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Tối thiểu 6 ký tự"
-                  value={passwordData.newPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900 dark:text-white"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Tối thiểu 6 ký tự"
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    className="w-full pl-3.5 pr-10 py-2.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
+              {/* Xác nhận mật khẩu mới */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                   Xác Nhận Mật Khẩu Mới <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Nhập lại mật khẩu mới"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-gray-900 dark:text-white"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Nhập lại mật khẩu mới"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    className="w-full pl-3.5 pr-10 py-2.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2.5">
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  className="px-3.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
                 >
                   Hủy Bỏ
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all"
+                  disabled={isSavingPassword}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-sm hover:shadow transition-all cursor-pointer"
                 >
-                  Xác Nhận Đổi
+                  {isSavingPassword && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{isSavingPassword ? 'Đang Xử Lý...' : 'Xác Nhận Đổi'}</span>
                 </button>
               </div>
             </form>

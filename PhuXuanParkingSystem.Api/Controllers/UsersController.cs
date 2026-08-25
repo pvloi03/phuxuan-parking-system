@@ -260,26 +260,39 @@ namespace PhuXuanParkingSystem.Api.Controllers
         {
             if (request == null || string.IsNullOrWhiteSpace(request.NewPassword))
             {
-                return BadRequest(ApiResponse.Fail("Mật khẩu mới không được để trống."));
+                return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu mới."));
             }
 
-            if (request.NewPassword.Length < 6)
+            if (request.NewPassword.Trim().Length < 6)
             {
                 return BadRequest(ApiResponse.Fail("Mật khẩu mới phải có tối thiểu 6 ký tự."));
             }
 
             var user = await _userRepo.GetByIdAsync(id);
-            if (user == null || user.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng."));
+            if (user == null || user.IsDeleted)
+            {
+                return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng trong hệ thống."));
+            }
 
-            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                             ?? User.FindFirstValue("sub")
+                             ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
+
             var isCurrentUserAdmin = User.IsInRole("Admin") || User.IsInRole("1");
 
-            // Nếu người dùng tự đổi mật khẩu cho chính mình và không phải Admin thì phải kiểm tra mật khẩu cũ
-            if (user.Id == currentUserId && !isCurrentUserAdmin)
+            // Nếu không phải Admin:
+            // 1. Chỉ được đổi mật khẩu của chính mình
+            // 2. Bắt buộc phải nhập đúng mật khẩu hiện tại
+            if (!isCurrentUserAdmin)
             {
+                if (user.Id != currentUserId)
+                {
+                    return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail("Bạn không có quyền đổi mật khẩu của tài khoản khác."));
+                }
+
                 if (string.IsNullOrWhiteSpace(request.OldPassword))
                 {
-                    return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu hiện tại."));
+                    return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu hiện tại để xác thực."));
                 }
 
                 bool isOldValid = false;
@@ -294,19 +307,16 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
                 if (!isOldValid)
                 {
-                    return BadRequest(ApiResponse.Fail("Mật khẩu hiện tại không chính xác."));
+                    return BadRequest(ApiResponse.Fail("Mật khẩu hiện tại không chính xác. Vui lòng kiểm tra lại."));
                 }
             }
-            else if (!isCurrentUserAdmin && user.Id != currentUserId)
-            {
-                return Forbid();
-            }
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            // Cập nhật mật khẩu mới (Mã hóa BCrypt an toàn)
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
             user.UpdatedAt = DateTime.Now;
 
             await _userRepo.UpdateAsync(user);
-            return Ok(ApiResponse.Ok("Đổi mật khẩu thành công!"));
+            return Ok(ApiResponse.Ok("Đổi mật khẩu tài khoản thành công!"));
         }
 
         /// <summary>
