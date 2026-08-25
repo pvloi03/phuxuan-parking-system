@@ -60,6 +60,11 @@
             this.lblInTypeVal = new System.Windows.Forms.Label();
             this.lblInStatusTag = new System.Windows.Forms.Label();
             this.lblInStatusVal = new System.Windows.Forms.Label();
+            this.grpLogConsole = new System.Windows.Forms.GroupBox();
+            this.lstLogConsole = new System.Windows.Forms.ListBox();
+            this.pnlLogToolbar = new System.Windows.Forms.Panel();
+            this.btnOpenLogFolder = new System.Windows.Forms.Button();
+            this.btnClearLogConsole = new System.Windows.Forms.Button();
             this.grpOutInfo = new System.Windows.Forms.GroupBox();
             this.tblOutInfo = new System.Windows.Forms.TableLayoutPanel();
             this.lblOutPlateTag = new System.Windows.Forms.Label();
@@ -808,5 +813,10 @@
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterStatus;
         private System.Windows.Forms.Timer timerClock;
+        private System.Windows.Forms.GroupBox grpLogConsole;
+        private System.Windows.Forms.ListBox lstLogConsole;
+        private System.Windows.Forms.Panel pnlLogToolbar;
+        private System.Windows.Forms.Button btnOpenLogFolder;
+        private System.Windows.Forms.Button btnClearLogConsole;
     }
 }
