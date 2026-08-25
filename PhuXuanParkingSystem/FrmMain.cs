@@ -387,6 +387,50 @@ namespace PhuXuanParkingSystem
                 }
 
                 SetFooterStatus($"📸 Đã chụp và lưu ảnh LÀN VÀO lúc {DateTime.Now:HH:mm:ss.fff}");
+
+                // Tự động nhận diện biển số ANPR Làn Vào
+                if (File.Exists(filePlate))
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        AppLogger.Information($"[LÀN VÀO] Bắt đầu nhận diện biển số từ file: {Path.GetFileName(filePlate)}", "ANPR");
+                        var anprResult = await AnprLaneCoordinator.Instance.ProcessLaneInFileAsync(filePlate);
+
+                        BeginInvoke(new Action(() =>
+                        {
+                            if (anprResult.IsSuccess && !string.IsNullOrWhiteSpace(anprResult.LicensePlate))
+                            {
+                                txtInPlate.Text = anprResult.LicensePlate;
+                                txtInPlate.ForeColor = Color.FromArgb(20, 30, 40);
+                                SetFooterStatus($"🔍 [LÀN VÀO] Biển số: {anprResult.LicensePlate} ({anprResult.ProcessTimeMs}ms)");
+                            }
+                            else
+                            {
+                                txtInPlate.Text = "---";
+                                txtInPlate.ForeColor = Color.FromArgb(120, 130, 140);
+                                string rawPreview = string.IsNullOrWhiteSpace(anprResult.RawOcrText) ? "Không có ký tự" : anprResult.RawOcrText.Replace("\r", "").Replace("\n", " ");
+                                SetFooterStatus($"🔍 [LÀN VÀO] OCR thô: '{rawPreview}'");
+                            }
+                        }));
+
+                        if (anprResult.IsSuccess && !string.IsNullOrWhiteSpace(anprResult.LicensePlate))
+                        {
+                            AppNotificationService.NotifySuccess(
+                                NotificationCategory.Vehicle,
+                                "Nhận diện biển số Vào",
+                                $"Biển số: {anprResult.LicensePlate} (Độ tin cậy: {anprResult.Confidence:P0}, Thời gian: {anprResult.ProcessTimeMs}ms)",
+                                anprResult.LicensePlate);
+                        }
+                        else
+                        {
+                            AppNotificationService.NotifyWarning(
+                                NotificationCategory.Vehicle,
+                                "Nhận diện biển số Vào",
+                                $"Ký tự thô: '{anprResult.RawOcrText}'. Chưa trích xuất được biển số hợp lệ.",
+                                filePlate);
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -428,6 +472,50 @@ namespace PhuXuanParkingSystem
                 }
 
                 SetFooterStatus($"📸 Đã chụp và lưu ảnh LÀN RA lúc {DateTime.Now:HH:mm:ss.fff}");
+
+                // Tự động nhận diện biển số ANPR Làn Ra
+                if (File.Exists(filePlate))
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        AppLogger.Information($"[LÀN RA] Bắt đầu nhận diện biển số từ file: {Path.GetFileName(filePlate)}", "ANPR");
+                        var anprResult = await AnprLaneCoordinator.Instance.ProcessLaneOutFileAsync(filePlate);
+
+                        BeginInvoke(new Action(() =>
+                        {
+                            if (anprResult.IsSuccess && !string.IsNullOrWhiteSpace(anprResult.LicensePlate))
+                            {
+                                txtOutPlate.Text = anprResult.LicensePlate;
+                                txtOutPlate.ForeColor = Color.FromArgb(20, 30, 40);
+                                SetFooterStatus($"🔍 [LÀN RA] Biển số: {anprResult.LicensePlate} ({anprResult.ProcessTimeMs}ms)");
+                            }
+                            else
+                            {
+                                txtOutPlate.Text = "---";
+                                txtOutPlate.ForeColor = Color.FromArgb(120, 130, 140);
+                                string rawPreview = string.IsNullOrWhiteSpace(anprResult.RawOcrText) ? "Không có ký tự" : anprResult.RawOcrText.Replace("\r", "").Replace("\n", " ");
+                                SetFooterStatus($"🔍 [LÀN RA] OCR thô: '{rawPreview}'");
+                            }
+                        }));
+
+                        if (anprResult.IsSuccess && !string.IsNullOrWhiteSpace(anprResult.LicensePlate))
+                        {
+                            AppNotificationService.NotifySuccess(
+                                NotificationCategory.Vehicle,
+                                "Nhận diện biển số Ra",
+                                $"Biển số: {anprResult.LicensePlate} (Độ tin cậy: {anprResult.Confidence:P0}, Thời gian: {anprResult.ProcessTimeMs}ms)",
+                                anprResult.LicensePlate);
+                        }
+                        else
+                        {
+                            AppNotificationService.NotifyWarning(
+                                NotificationCategory.Vehicle,
+                                "Nhận diện biển số Ra",
+                                $"Ký tự thô: '{anprResult.RawOcrText}'. Chưa trích xuất được biển số hợp lệ.",
+                                filePlate);
+                        }
+                    });
+                }
             }
             catch (Exception ex)
             {

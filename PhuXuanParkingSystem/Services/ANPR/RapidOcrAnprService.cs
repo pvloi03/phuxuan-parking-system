@@ -79,7 +79,7 @@ namespace PhuXuanParkingSystem.Services.ANPR
 
             if (_engine == null)
             {
-                AppLogger.Error(null, $"[ANPR {LaneId}] Mô hình AI OCR chưa sẵn sàng (_engine is null).", "ANPR");
+                AppLogger.Error($"[ANPR {LaneId}] Mô hình AI OCR chưa sẵn sàng (_engine is null).", "ANPR");
                 return Task.FromResult(AnprResult.Failed("Mô hình AI OCR chưa sẵn sàng."));
             }
 
