@@ -103,6 +103,16 @@ namespace PhuXuanParkingSystem.Repositories
             return await _collection.Find(filter).ToListAsync(cancellationToken);
         }
 
+        public virtual async Task<IReadOnlyList<T>> FindAsync(FilterDefinition<T> filter, SortDefinition<T>? sort = null, int skip = 0, int limit = 0, CancellationToken cancellationToken = default)
+        {
+            var combinedFilter = CombineSoftDeleteFilter(filter);
+            var query = _collection.Find(combinedFilter);
+            if (sort != null) query = query.Sort(sort);
+            if (skip > 0) query = query.Skip(skip);
+            if (limit > 0) query = query.Limit(limit);
+            return await query.ToListAsync(cancellationToken);
+        }
+
         public virtual async Task<T?> FindOneAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         {
             var filter = CombineSoftDeleteFilter(Builders<T>.Filter.Where(predicate));
@@ -122,6 +132,12 @@ namespace PhuXuanParkingSystem.Repositories
                 : CombineSoftDeleteFilter();
 
             return await _collection.CountDocumentsAsync(filter, null, cancellationToken);
+        }
+
+        public virtual async Task<long> CountAsync(FilterDefinition<T> filter, CancellationToken cancellationToken = default)
+        {
+            var combinedFilter = CombineSoftDeleteFilter(filter);
+            return await _collection.CountDocumentsAsync(combinedFilter, null, cancellationToken);
         }
 
         public virtual async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)

@@ -3,6 +3,11 @@
     <Platform Name="Any CPU" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/tests/">
+    <Project Path="tests/PhuXuanParkingSystem.Api.Tests/PhuXuanParkingSystem.Api.Tests.csproj" />
+  </Folder>
+  <Project Path="PhuXuanParkingSystem.Api/PhuXuanParkingSystem.Api.csproj" />
+  <Project Path="PhuXuanParkingSystem.Domain/PhuXuanParkingSystem.Domain.csproj" />
   <Project Path="PhuXuanParkingSystem/PhuXuanParkingSystem.csproj" Id="c2d7eea6-036f-4a8c-b688-bd55ff8ccaa1">
     <Platform Solution="*|x86" Project="x86" />
   </Project>

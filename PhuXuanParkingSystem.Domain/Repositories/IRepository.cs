@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Common;
+using PhuXuanParkingSystem.Models.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -33,6 +33,11 @@ namespace PhuXuanParkingSystem.Repositories
         Task<IReadOnlyList<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Tìm kiếm danh sách bản ghi theo FilterDefinition với sắp xếp và phân trang
+        /// </summary>
+        Task<IReadOnlyList<T>> FindAsync(MongoDB.Driver.FilterDefinition<T> filter, MongoDB.Driver.SortDefinition<T>? sort = null, int skip = 0, int limit = 0, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Tìm bản ghi đầu tiên khớp điều kiện
         /// </summary>
         Task<T?> FindOneAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
@@ -46,6 +51,11 @@ namespace PhuXuanParkingSystem.Repositories
         /// Đếm số lượng bản ghi thỏa mãn điều kiện (hoặc toàn bộ nếu predicate = null)
         /// </summary>
         Task<long> CountAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Đếm số lượng bản ghi theo FilterDefinition
+        /// </summary>
+        Task<long> CountAsync(MongoDB.Driver.FilterDefinition<T> filter, CancellationToken cancellationToken = default);
 
         // =========================================================================
         // --- 2. THAO TÁC GHI (WRITE) ---

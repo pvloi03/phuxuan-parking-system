@@ -1,5 +1,3 @@
-﻿using PhuXuanParkingSystem.Services.Notification;
-using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Models.Entities;
 using MongoDB.Driver;
 using System;
@@ -25,7 +23,7 @@ namespace PhuXuanParkingSystem.Models.Data
         // --- CÁC COLLECTIONS QUẢN LÝ ---
         public IMongoCollection<ParkingSession> ParkingSessions => _database.GetCollection<ParkingSession>("ParkingSessions");
         public IMongoCollection<Vehicle> Vehicles => _database.GetCollection<Vehicle>("Vehicles");
-        public IMongoCollection<Person> Persons => _database.GetCollection<Person>("Persons");
+        public IMongoCollection<Person> Persons => _database.GetCollection<Person>("People");
         public IMongoCollection<Department> Departments => _database.GetCollection<Department>("Departments");
         public IMongoCollection<Company> Companies => _database.GetCollection<Company>("Companies");
         public IMongoCollection<Contractor> Contractors => _database.GetCollection<Contractor>("Contractors");
@@ -33,16 +31,19 @@ namespace PhuXuanParkingSystem.Models.Data
         public IMongoCollection<Device> Devices => _database.GetCollection<Device>("Devices");
         public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
 
-        public MongoDbContext()
+        public MongoDbContext() : this(
+            ConfigurationManager.AppSettings?["MongoDb_ConnectionString"] ?? "mongodb://localhost:27017",
+            ConfigurationManager.AppSettings?["MongoDb_DatabaseName"] ?? "PhuXuanParkingSystemDb")
         {
-            string connectionString = ConfigurationManager.AppSettings["MongoDb_ConnectionString"] ?? "mongodb://localhost:27017";
-            string databaseName = ConfigurationManager.AppSettings["MongoDb_DatabaseName"] ?? "PhuXuanParkingSystemDb";
+        }
 
-            var settings = MongoClientSettings.FromConnectionString(connectionString);
+        public MongoDbContext(string connectionString, string databaseName)
+        {
+            var settings = MongoClientSettings.FromConnectionString(string.IsNullOrWhiteSpace(connectionString) ? "mongodb://localhost:27017" : connectionString);
             settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
 
             _client = new MongoClient(settings);
-            _database = _client.GetDatabase(databaseName);
+            _database = _client.GetDatabase(string.IsNullOrWhiteSpace(databaseName) ? "PhuXuanParkingSystemDb" : databaseName);
 
             // Tự động khởi tạo Index hỗ trợ truy vấn siêu nhanh
             _ = CreateIndexesAsync();
@@ -69,7 +70,6 @@ namespace PhuXuanParkingSystem.Models.Data
                 // Index cho Persons: Mã nhân viên
                 var personIndexKeys = Builders<Person>.IndexKeys.Ascending(p => p.Code);
                 await Persons.Indexes.CreateOneAsync(new CreateIndexModel<Person>(personIndexKeys));
-                AppNotificationService.NotifySuccess(NotificationCategory.Database, "Cơ Sở Dữ Liệu", "Đã kết nối và cấu hình Index MongoDB thành công.");
             }
             catch
             {
