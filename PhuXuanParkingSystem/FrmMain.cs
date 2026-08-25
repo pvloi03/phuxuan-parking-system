@@ -68,6 +68,20 @@ namespace PhuXuanParkingSystem
         private string _controllerIp = "192.168.1.202";
         private int _controllerPort = 4370;
 
+        // ── Cơ chế Chống quét chéo liên làn (Cross-Lane Lockout) & Chống rung Radar (Radar Debounce) ──
+        private readonly object _lockDebounce = new();
+        private DateTime _lastInRadarTriggerTime = DateTime.MinValue;
+        private DateTime _lastOutRadarTriggerTime = DateTime.MinValue;
+        private string _lastInProcessedPlate = string.Empty;
+        private DateTime _lastInProcessedTime = DateTime.MinValue;
+        private string _lastOutProcessedPlate = string.Empty;
+        private DateTime _lastOutProcessedTime = DateTime.MinValue;
+
+        // Cấu hình thời gian trễ chống quét chéo (có thể tinh chỉnh theo khoảng cách thực tế giữa 2 làn)
+        private const int RADAR_DEBOUNCE_MS = 3000;           // Chống rung radar trên cùng 1 làn: 3 giây
+        private const int CROSS_LANE_LOCKOUT_SECONDS = 12;    // Khóa chéo biển số giữa 2 làn sát nhau: 12 giây
+        private const int SAME_LANE_PLATE_DEBOUNCE_SECONDS = 5;// Chống chụp lặp cùng 1 biển số trên 1 làn: 5 giây
+
         public FrmMain()
         {
             InitializeComponent();
@@ -427,9 +441,20 @@ namespace PhuXuanParkingSystem
 
             if (e.AuxPort == 1)
             {
-                // LÀN VÀO
+                // LÀN VÀO (Aux 1)
                 if (e.IsActive)
                 {
+                    lock (_lockDebounce)
+                    {
+                        var elapsed = (DateTime.Now - _lastInRadarTriggerTime).TotalMilliseconds;
+                        if (elapsed < RADAR_DEBOUNCE_MS)
+                        {
+                            AppLogger.Debug($"[RADAR LÀN VÀO] Bỏ qua tín hiệu radar rung/lặp (Debounce: {elapsed:F0}ms < {RADAR_DEBOUNCE_MS}ms).");
+                            return;
+                        }
+                        _lastInRadarTriggerTime = DateTime.Now;
+                    }
+
                     lblInStatusVal.Text = "🟢 Phát hiện xe vào (Radar kích hoạt)";
                     lblInStatusVal.ForeColor = Color.SeaGreen;
                     lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
@@ -444,9 +469,20 @@ namespace PhuXuanParkingSystem
             }
             else if (e.AuxPort == 2)
             {
-                // LÀN RA
+                // LÀN RA (Aux 2)
                 if (e.IsActive)
                 {
+                    lock (_lockDebounce)
+                    {
+                        var elapsed = (DateTime.Now - _lastOutRadarTriggerTime).TotalMilliseconds;
+                        if (elapsed < RADAR_DEBOUNCE_MS)
+                        {
+                            AppLogger.Debug($"[RADAR LÀN RA] Bỏ qua tín hiệu radar rung/lặp (Debounce: {elapsed:F0}ms < {RADAR_DEBOUNCE_MS}ms).");
+                            return;
+                        }
+                        _lastOutRadarTriggerTime = DateTime.Now;
+                    }
+
                     lblOutStatusVal.Text = "🔴 Phát hiện xe ra (Radar kích hoạt)";
                     lblOutStatusVal.ForeColor = Color.SeaGreen;
                     lblOutTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
@@ -545,6 +581,32 @@ namespace PhuXuanParkingSystem
             {
                 txtInPlate.Text = anprResult.FormattedPlate;
                 string cleanPlate = anprResult.CleanPlate;
+
+                // ── Kiểm tra Cơ chế Chống Quét Chéo (Cross-lane Lockout) ──
+                lock (_lockDebounce)
+                {
+                    if (!string.IsNullOrEmpty(_lastOutProcessedPlate) &&
+                        _lastOutProcessedPlate == cleanPlate &&
+                        (DateTime.Now - _lastOutProcessedTime).TotalSeconds < CROSS_LANE_LOCKOUT_SECONDS)
+                    {
+                        double secondsSinceOut = (DateTime.Now - _lastOutProcessedTime).TotalSeconds;
+                        AppLogger.Warning($"[CHỐNG QUÉT CHÉO] Bỏ qua Làn Vào cho biển số '{anprResult.FormattedPlate}' vì vừa qua Làn Ra cách đây {secondsSinceOut:F1}s.");
+                        lblInStatusVal.Text = $"Bỏ qua quét chéo (Xe vừa qua Làn Ra {secondsSinceOut:F0}s trước)";
+                        lblInStatusVal.ForeColor = Color.FromArgb(220, 100, 20);
+                        return;
+                    }
+
+                    if (!string.IsNullOrEmpty(_lastInProcessedPlate) &&
+                        _lastInProcessedPlate == cleanPlate &&
+                        (DateTime.Now - _lastInProcessedTime).TotalSeconds < SAME_LANE_PLATE_DEBOUNCE_SECONDS)
+                    {
+                        AppLogger.Debug($"[CHỐNG CHỤP LẶP] Bỏ qua Làn Vào cho biển số '{anprResult.FormattedPlate}' vì vừa xử lý cách đây {(DateTime.Now - _lastInProcessedTime).TotalSeconds:F1}s.");
+                        return;
+                    }
+
+                    _lastInProcessedPlate = cleanPlate;
+                    _lastInProcessedTime = DateTime.Now;
+                }
 
                 ParkingSession? existingActiveSession = null;
                 Vehicle? vehicle = null;
@@ -763,6 +825,32 @@ namespace PhuXuanParkingSystem
             {
                 txtOutPlate.Text = anprResult.FormattedPlate;
                 string cleanPlate = anprResult.CleanPlate;
+
+                // ── Kiểm tra Cơ chế Chống Quét Chéo (Cross-lane Lockout) ──
+                lock (_lockDebounce)
+                {
+                    if (!string.IsNullOrEmpty(_lastInProcessedPlate) &&
+                        _lastInProcessedPlate == cleanPlate &&
+                        (DateTime.Now - _lastInProcessedTime).TotalSeconds < CROSS_LANE_LOCKOUT_SECONDS)
+                    {
+                        double secondsSinceIn = (DateTime.Now - _lastInProcessedTime).TotalSeconds;
+                        AppLogger.Warning($"[CHỐNG QUÉT CHÉO] Bỏ qua Làn Ra cho biển số '{anprResult.FormattedPlate}' vì vừa qua Làn Vào cách đây {secondsSinceIn:F1}s (đuôi xe chạm radar ra).");
+                        lblOutStatusVal.Text = $"Bỏ qua quét chéo (Xe vừa qua Làn Vào {secondsSinceIn:F0}s trước)";
+                        lblOutStatusVal.ForeColor = Color.FromArgb(220, 100, 20);
+                        return;
+                    }
+
+                    if (!string.IsNullOrEmpty(_lastOutProcessedPlate) &&
+                        _lastOutProcessedPlate == cleanPlate &&
+                        (DateTime.Now - _lastOutProcessedTime).TotalSeconds < SAME_LANE_PLATE_DEBOUNCE_SECONDS)
+                    {
+                        AppLogger.Debug($"[CHỐNG CHỤP LẶP] Bỏ qua Làn Ra cho biển số '{anprResult.FormattedPlate}' vì vừa xử lý cách đây {(DateTime.Now - _lastOutProcessedTime).TotalSeconds:F1}s.");
+                        return;
+                    }
+
+                    _lastOutProcessedPlate = cleanPlate;
+                    _lastOutProcessedTime = DateTime.Now;
+                }
 
                 ParkingSession? activeSession = null;
                 Vehicle? vehicle = null;
