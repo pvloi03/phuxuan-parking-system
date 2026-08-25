@@ -87,6 +87,33 @@ function getDeviceTypeBadge(type?: DeviceType | string | number) {
   return <Badge variant="secondary" className="text-[11px] px-2 py-0.5">{label}</Badge>
 }
 
+// Live status badge
+function getDeviceLiveStatusBadge(status?: DeviceStatus | string) {
+  const s = String(status || '').toLowerCase()
+  if (s === 'connected' || s === '1') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+        Đang kết nối
+      </span>
+    )
+  }
+  if (s === 'error' || s === '3') {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
+        <span className="h-2 w-2 rounded-full bg-rose-500" />
+        Lỗi kết nối
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
+      <span className="h-2 w-2 rounded-full bg-slate-400" />
+      Mất kết nối
+    </span>
+  )
+}
+
 // Default port theo loại thiết bị
 function getDefaultPort(type: DeviceType): number {
   if (type === 'PlateCamera') return 3000
@@ -146,6 +173,7 @@ export function DevicesPage() {
       })
       return res.data.data
     },
+    refetchInterval: 15000, // Tự động cập nhật trạng thái kết nối từ WinForms mỗi 15 giây
   })
 
   const items = data?.items || []
@@ -577,15 +605,12 @@ export function DevicesPage() {
                         </div>
                       </td>
                       <td className="p-3.5">
-                        {device.isActive ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
-                            <Wifi className="h-3.5 w-3.5" /> Đang dùng
+                        <div className="flex flex-col gap-1 items-start">
+                          {getDeviceLiveStatusBadge(device.status)}
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            {device.isActive ? '• Cấu hình: Kích hoạt' : '• Cấu hình: Tạm dừng'}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500 font-medium text-[11px]">
-                            <WifiOff className="h-3.5 w-3.5" /> Tạm dừng
-                          </span>
-                        )}
+                        </div>
                       </td>
                       <td className="p-3.5 text-right pr-4">
                         <div className="flex items-center justify-end gap-1.5">
@@ -813,35 +838,38 @@ export function DevicesPage() {
                 <div className="col-span-1 md:col-span-2 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
                   <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400 border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
                     <Shield className="h-4 w-4" />
-                    <span>Trạng Thái Vận Hành & Hệ Thống</span>
+                    <span>Trạng Thái Vận Hành & Kết Nối Thực Tế</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-0.5">
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Trạng thái kích hoạt:</span>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="text-slate-400 block text-[11px]">Kết nối mạng thực tế:</span>
+                      <div className="mt-1">{getDeviceLiveStatusBadge(selectedDevice.status)}</div>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Cấu hình kích hoạt:</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block mt-1">
                         {selectedDevice.isActive ? '✅ Đang kích hoạt' : '⏸ Đang tạm dừng'}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Mã ID hệ thống:</span>
-                      <span className="font-mono text-[10px] text-slate-500 truncate block" title={selectedDevice.id}>
-                        {selectedDevice.id}
+                      <span className="text-slate-400 block text-[11px]">Phản hồi gần nhất (WinForms):</span>
+                      <span className="text-slate-700 dark:text-slate-300 font-mono text-[11px] block mt-1">
+                        {selectedDevice.lastHeartbeat
+                          ? new Date(selectedDevice.lastHeartbeat).toLocaleString('vi-VN')
+                          : 'Chưa có dữ liệu'}
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-400 block text-[11px]">Ngày tạo:</span>
-                      <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                      <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px] block mt-1">
                         {selectedDevice.createdAt ? new Date(selectedDevice.createdAt).toLocaleString('vi-VN') : '--'}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[11px]">Cập nhật lần cuối:</span>
-                      <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                        {selectedDevice.lastHeartbeat
-                          ? new Date(selectedDevice.lastHeartbeat).toLocaleString('vi-VN')
-                          : '--'}
-                      </span>
-                    </div>
+                    {selectedDevice.errorMessage && (
+                      <div className="col-span-2 sm:col-span-4 mt-1 p-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-rose-700 dark:text-rose-300 text-[11px]">
+                        <strong>⚠️ Chi tiết lỗi kết nối:</strong> {selectedDevice.errorMessage}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
