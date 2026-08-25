@@ -24,7 +24,7 @@ namespace PhuXuanParkingSystem
 
             // 2. Đăng ký Global Unhandled Exception Handlers (Không lộ chi tiết kỹ thuật lên UI)
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-            
+
             Application.ThreadException += (s, e) =>
             {
                 // Ghi log chi tiết kỹ thuật (Stack trace, inner exception) vào file log
@@ -32,7 +32,7 @@ namespace PhuXuanParkingSystem
 
                 // Thông báo thân thiện lên UI cho người vận hành
                 MessageBox.Show(
-                    "Hệ thống đã ghi nhận một sự cố bất thường và lưu lại vào nhật ký lỗi.\nQuá trình vận hành vẫn được bảo vệ an toàn.\nVui lòng liên hệ bộ phận kỹ thuật nếu sự cố tiếp tục xảy ra.",
+                    "Hệ thống đã ghi nhận một sự cố bất thường.\nLiên hệ bộ phận kỹ thuật nếu sự cố tiếp tục xảy ra.",
                     "Thông Báo Hệ Thống",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);

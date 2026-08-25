@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Services.Camera;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Camera;
 using PhuXuanParkingSystem.Services.Controller;
 using System;
 using System.Configuration;
@@ -519,6 +520,54 @@ namespace PhuXuanParkingSystem
 
         #endregion
 
+        #region Xử Lý Logging & Tra Cứu Sự Cố
+
+        private void AppLogger_OnLogEmitted(object? sender, LogMessageEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => AppLogger_OnLogEmitted(sender, e)));
+                return;
+            }
+
+            string icon = e.Level switch
+            {
+                Serilog.Events.LogEventLevel.Fatal => "❌ [NGHIÊM TRỌNG] ",
+                Serilog.Events.LogEventLevel.Error => "❌ [LỖI] ",
+                Serilog.Events.LogEventLevel.Warning => "⚠️ [CẢNH BÁO] ",
+                _ => "ℹ️ "
+            };
+
+            Color color = e.Level switch
+            {
+                Serilog.Events.LogEventLevel.Fatal => Color.DarkRed,
+                Serilog.Events.LogEventLevel.Error => Color.FromArgb(220, 53, 69),
+                Serilog.Events.LogEventLevel.Warning => Color.FromArgb(210, 105, 0),
+                _ => Color.FromArgb(40, 120, 70)
+            };
+
+            lblFooterStatus.ForeColor = color;
+            lblFooterStatus.Text = $"[{e.Timestamp:HH:mm:ss}] {icon}{(string.IsNullOrEmpty(e.SourceContext) ? "" : $"[{e.SourceContext}] ")}{e.UserFriendlyMessage}";
+        }
+
+        private void OpenLogFolder()
+        {
+            try
+            {
+                string logDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+                if (!Directory.Exists(logDir))
+                {
+                    Directory.CreateDirectory(logDir);
+                }
+                Process.Start("explorer.exe", logDir);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Không thể mở thư mục Log: {ex.Message}", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        #endregion
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             try
