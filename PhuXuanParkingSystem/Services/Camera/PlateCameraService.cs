@@ -30,7 +30,6 @@ namespace PhuXuanParkingSystem.Services.Camera
 
         public bool IsLoggedIn { get; private set; }
 
-        public event Action<bool, string> OnStatusChanged = delegate { };
 
         public PlateCameraService()
         {
@@ -88,13 +87,11 @@ namespace PhuXuanParkingSystem.Services.Camera
                         CHISDK.HI_SDK_SetReconnect(_handle, 5000);
 
                         AppNotificationService.NotifySuccess(NotificationCategory.Camera, "Camera Biển Số", $"Đã kết nối Camera Biển Số ({Config.Ip}:{Config.Port}) thành công.", Config.Ip);
-                        OnStatusChanged?.Invoke(true, "Đã kết nối Camera biển số thành công.");
                         return true;
                     }
 
                     AppLogger.Error($"[NST Camera {Config.Ip}] Login thất bại. Handle={_handle}, Error={errCode}", "NSTCamera");
                     AppNotificationService.NotifyError(NotificationCategory.Camera, "Camera Biển Số", $"Kết nối Camera Biển Số ({Config.Ip}) thất bại. Mã lỗi: {errCode}", Config.Ip);
-                    OnStatusChanged?.Invoke(false, $"Kết nối Camera biển số thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
             }, cancellationToken);

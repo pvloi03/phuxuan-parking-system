@@ -32,7 +32,6 @@ namespace PhuXuanParkingSystem.Services.Camera
 
         public bool IsLoggedIn { get; private set; }
 
-        public event Action<bool, string> OnStatusChanged = delegate { };
 
         public OverviewCameraService()
         {
@@ -101,14 +100,12 @@ namespace PhuXuanParkingSystem.Services.Camera
                     if (IsLoggedIn)
                     {
                         AppNotificationService.NotifySuccess(NotificationCategory.Camera, "Camera Toàn Cảnh", $"Đã kết nối Camera Toàn Cảnh ({Config.Ip}:{Config.Port}) thành công.", Config.Ip);
-                        OnStatusChanged?.Invoke(true, "Đã kết nối Camera toàn cảnh thành công.");
                         return true;
                     }
 
                     uint errCode = CHCNetSDK.NET_DVR_GetLastError();
                     AppLogger.Error($"[Hikvision {Config.Ip}] Login thất bại. Error={errCode}", "Hikvision");
                     AppNotificationService.NotifyError(NotificationCategory.Camera, "Camera Toàn Cảnh", $"Kết nối Camera Toàn Cảnh ({Config.Ip}) thất bại. Mã lỗi: {errCode}", Config.Ip);
-                    OnStatusChanged?.Invoke(false, $"Kết nối Camera toàn cảnh thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
             }, cancellationToken);

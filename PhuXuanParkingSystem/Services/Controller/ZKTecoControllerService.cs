@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Services.Logging;
+﻿using PhuXuanParkingSystem.Services.Notification;
+using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.SDK.ZKTeco;
 using System;
 using System.Text;
@@ -18,7 +19,6 @@ namespace PhuXuanParkingSystem.Services.Controller
 
         public bool IsConnected => _handle != IntPtr.Zero;
 
-        public event Action<bool, string> OnStatusChanged = delegate { };
 
         /// <summary>
         /// Sự kiện nhận mọi bản ghi log từ Controller
@@ -46,13 +46,13 @@ namespace PhuXuanParkingSystem.Services.Controller
                     if (_handle != IntPtr.Zero)
                     {
                         StartLogPolling();
-                        OnStatusChanged?.Invoke(true, "Đã kết nối Controller (Cảm biến Radar AUX).");
+                        AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Bộ Điều Khiển ZKTeco", "Đã kết nối Controller (Cảm biến Radar AUX).");
                         return true;
                     }
 
                     int errCode = ZKTecoPullSDK.PullLastError();
                     AppLogger.Error($"[ZKTeco] Kết nối thất bại. Mã lỗi: {errCode}", "ZKTeco");
-                    OnStatusChanged?.Invoke(false, $"Kết nối Controller thất bại. Mã lỗi: {errCode}");
+                    AppNotificationService.NotifyError(NotificationCategory.Controller, "Bộ Điều Khiển ZKTeco", $"Kết nối Controller thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
             });
@@ -157,7 +157,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                 {
                     ZKTecoPullSDK.Disconnect(_handle);
                     _handle = IntPtr.Zero;
-                    OnStatusChanged?.Invoke(false, "Đã ngắt kết nối Controller.");
+                    // Disconnected
                 }
             }
         }

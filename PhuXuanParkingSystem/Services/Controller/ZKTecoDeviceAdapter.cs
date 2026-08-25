@@ -22,7 +22,6 @@ namespace PhuXuanParkingSystem.Services.Controller
 
         public event EventHandler<AuxTriggerEventArgs>? OnAuxInputTriggered;
 
-        public event Action<bool, string>? OnStatusChanged;
 
         public bool IsConnected => _handle != IntPtr.Zero;
 
@@ -53,12 +52,10 @@ namespace PhuXuanParkingSystem.Services.Controller
                     {
                         StartListening();
                         AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Bộ Điều Khiển ZKTeco", $"Đã kết nối C3-200 ({ipAddress}:{port}) thành công.", ipAddress);
-                        OnStatusChanged?.Invoke(true, $"Đã kết nối C3-200 ({ipAddress}:{port}) thành công.");
                         return true;
                     }
 
                     int errCode = ZKTecoPullSDK.PullLastError();
-                    OnStatusChanged?.Invoke(false, $"Kết nối C3-200 thất bại. Mã lỗi: {errCode}");
                     return false;
                 }
             }, cancellationToken);
@@ -86,7 +83,6 @@ namespace PhuXuanParkingSystem.Services.Controller
             {
                 ZKTecoPullSDK.Disconnect(_handle);
                 _handle = IntPtr.Zero;
-                OnStatusChanged?.Invoke(false, "Đã ngắt kết nối Controller.");
             }
 
             _lastRawLog = string.Empty;

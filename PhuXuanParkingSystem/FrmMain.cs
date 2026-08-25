@@ -56,7 +56,6 @@ namespace PhuXuanParkingSystem
             InitializeComponent();
 
             // Đăng ký sự kiện Controller ZKTeco
-            _controller.OnStatusChanged += Controller_OnStatusChanged;
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
 
             // Hỗ trợ phím tắt tiện lợi cho vận hành
