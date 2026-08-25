@@ -100,7 +100,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.Port = updated.Port > 0 ? updated.Port : existing.Port;
             existing.UserName = updated.UserName;
             existing.Password = updated.Password;
-            existing.LaneId = updated.LaneId;
             existing.Note = updated.Note;
             existing.IsActive = updated.IsActive;
             existing.UpdatedAt = DateTime.Now;

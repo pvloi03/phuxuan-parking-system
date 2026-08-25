@@ -1,13 +1,15 @@
 namespace PhuXuanParkingSystem.Models.Enums
 {
     /// <summary>
-    /// Loại thiết bị phần cứng trong hệ thống bãi đỗ xe HPParking.
-    /// Chỉ có 2 loại: Camera IP giám sát/nhận diện biển số
-    /// và Controller điều khiển Barrier qua tín hiệu Radar/cảm biến xe.
+    /// Phân loại thiết bị phần cứng trong hệ thống bãi đỗ xe HPParking:
+    /// - PlateCamera: Camera chuyên dụng chụp và nhận diện biển số xe (ANPR/LPR)
+    /// - OverviewCamera: Camera quan sát toàn cảnh người và phương tiện
+    /// - Controller: Bộ điều khiển Barrier nhận tín hiệu cảm biến/Radar & điều khiển đóng/mở cổng
     /// </summary>
     public enum DeviceType
     {
-        Camera = 1,      // Camera IP (Hikvision, NST, ONVIF...) — quan sát & nhận diện biển số
-        Controller = 2   // Bộ điều khiển Barrier — nhận tín hiệu Radar → mở/đóng cổng
+        PlateCamera = 1,     // Camera chụp ảnh nhận diện biển số xe
+        OverviewCamera = 2,  // Camera chụp ảnh toàn cảnh làn xe
+        Controller = 3,      // Bộ điều khiển Barrier & Cảm biến Radar
     }
 }

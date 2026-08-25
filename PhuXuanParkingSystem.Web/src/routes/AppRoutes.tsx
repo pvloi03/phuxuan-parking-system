@@ -10,6 +10,7 @@ import { CompaniesPage } from '@/pages/CompaniesPage'
 import { DepartmentsPage } from '@/pages/DepartmentsPage'
 import { PartnersPage } from '@/pages/PartnersPage'
 import { DevicesPage } from '@/pages/DevicesPage'
+import { LanesPage } from '@/pages/LanesPage'
 
 export function AppRoutes() {
   return (
@@ -22,6 +23,7 @@ export function AppRoutes() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/vehicles" element={<VehiclesPage />} />
+          <Route path="/lanes" element={<LanesPage />} />
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/departments" element={<DepartmentsPage />} />
           <Route path="/partners" element={<PartnersPage />} />

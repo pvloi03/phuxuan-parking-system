@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export function HistoryPage() {
   const queryClient = useQueryClient()
@@ -46,7 +47,12 @@ export function HistoryPage() {
   const [isExporting, setIsExporting] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [isBatchDeleting, setIsBatchDeleting] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean
+    id?: string
+    plate?: string
+    isBatch?: boolean
+  }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
     queryKey: ['parking-history', plateNumber, status, page, pageSize],
@@ -81,28 +87,13 @@ export function HistoryPage() {
       queryClient.invalidateQueries({ queryKey: ['parking-history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] })
       setSelectedIds([])
-      setIsBatchDeleting(false)
     },
     onError: () => {
       alert('Có lỗi xảy ra khi xóa hàng loạt. Vui lòng thử lại.')
-      setIsBatchDeleting(false)
     },
   })
 
-  const handleDeleteSingle = (id: string, plate: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa bản ghi lượt xe [${plate}] không?`)) {
-      setDeletingId(id)
-      deleteMutation.mutate(id)
-    }
-  }
 
-  const handleDeleteBatch = () => {
-    if (selectedIds.length === 0) return
-    if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} bản ghi đã chọn trên trang này không?`)) {
-      setIsBatchDeleting(true)
-      deleteBatchMutation.mutate(selectedIds)
-    }
-  }
 
   const toggleSelectAll = () => {
     if (!data?.items) return
@@ -353,35 +344,25 @@ export function HistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header & Export Action */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-50 tracking-tight">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Lịch Sử Xe Ra Vào
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Tra cứu, xem lại hình ảnh và quản lý dữ liệu xe vào/ra trên toàn hệ thống
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {selectedIds.length > 0 && (
-            <Button
-              variant="outline"
-              onClick={handleDeleteBatch}
-              disabled={isBatchDeleting}
-              className="bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 dark:text-rose-300 dark:border-rose-800 gap-1.5 text-xs h-9 cursor-pointer"
-            >
-              <Trash2 className="h-4 w-4" />
-              {isBatchDeleting ? 'Đang xóa...' : `Xóa ${selectedIds.length} mục đã chọn`}
-            </Button>
-          )}
-
+        <div className="flex flex-wrap items-center gap-2">
           <Button
+            variant="outline"
+            size="sm"
             onClick={handleExport}
             disabled={isExporting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-xs cursor-pointer text-xs h-9"
+            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
           >
-            <Download className="h-4 w-4" />
-            {isExporting ? 'Đang xuất Excel...' : 'Xuất Báo Cáo Excel'}
+            <Download className="h-3.5 w-3.5 text-blue-600" />
+            {isExporting ? 'Đang xuất Excel...' : 'Xuất Excel'}
           </Button>
         </div>
       </div>
@@ -531,7 +512,14 @@ export function HistoryPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleDeleteSingle(session.id, session.plateNumber)}
+                            onClick={() => {
+                              setDeleteConfirm({
+                                isOpen: true,
+                                id: session.id,
+                                plate: session.plateNumber,
+                                isBatch: false,
+                              })
+                            }}
                             disabled={deletingId === session.id}
                             className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg cursor-pointer transition-colors"
                             title="Xóa bản ghi này"
@@ -665,14 +653,14 @@ export function HistoryPage() {
 
       {/* Interactive Image Slide & Comprehensive Details Dialog */}
       <Dialog open={!!selectedSession} onOpenChange={() => setSelectedSession(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800 shadow-2xl">
-          <DialogHeader className="border-b border-slate-200 dark:border-slate-800 pb-3 pr-8">
-            <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm sm:text-base">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+        <DialogContent className="max-w-3xl max-h-[90vh] p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800 shadow-2xl">
+          <DialogHeader className="p-4 sm:p-5 pb-3 border-b border-slate-200 dark:border-slate-800 pr-16">
+            <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm sm:text-base">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="h-7 w-7 rounded-lg bg-blue-50 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
                   <Car className="h-4 w-4" />
                 </div>
-                <div>
+                <div className="truncate">
                   <span className="font-bold text-slate-900 dark:text-white tracking-wide">
                     Chi Tiết Lượt Xe: {selectedSession?.plateNumber}
                   </span>
@@ -682,8 +670,8 @@ export function HistoryPage() {
                 </div>
               </div>
 
-              {/* Header Badges: Status & Duration */}
-              <div className="flex items-center gap-1.5 mr-2">
+              {/* Header Badges: Status & Duration — Dịch sang trái cách xa nút Close */}
+              <div className="flex items-center gap-1.5 shrink-0 mr-8 sm:mr-12">
                 {selectedSession && getStatusBadge(selectedSession.status)}
                 {selectedSession?.inTime && (
                   <Badge variant="outline" className="text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-[11px] px-2 py-0.5 font-mono flex items-center gap-1">
@@ -736,7 +724,7 @@ export function HistoryPage() {
           </DialogHeader>
 
           {selectedSession && (
-            <div className="space-y-4 pt-1">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               {/* SECTION 1: IMAGE SLIDER */}
               {(activeTab === 'all' || activeTab === 'slider') && slides.length > 0 && (
                 <div className="space-y-3">
@@ -1048,6 +1036,86 @@ export function HistoryPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ===================================================================== */}
+      {/* FLOATING BULK ACTION BAR — HIỆN/ẨN PHÍA DƯỚI BÊN PHẢI KHI CHỌN DÒNG */}
+      {/* ===================================================================== */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-40 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl px-4 py-2.5 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+            <span>
+              Đã chọn <strong className="text-blue-600 dark:text-blue-400 font-mono text-sm">{selectedIds.length}</strong> bản ghi
+            </span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+            className="h-8 px-2.5 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+          >
+            Hủy chọn
+          </Button>
+
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              setDeleteConfirm({
+                isOpen: true,
+                isBatch: true,
+              })
+            }}
+            disabled={deleteBatchMutation.isPending}
+            className="h-8 gap-1.5 text-xs font-bold shadow-md cursor-pointer bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa {selectedIds.length} Đã Chọn
+          </Button>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE DIALOG HIỆN ĐẠI CHUYÊN NGHIỆP */}
+      <ConfirmDialog
+        open={deleteConfirm.isOpen}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, isOpen: open }))}
+        title={deleteConfirm.isBatch ? 'Xác Nhận Xóa Nhiều Lượt Xe' : 'Xác Nhận Xóa Lượt Xe'}
+        description={
+          deleteConfirm.isBatch ? (
+            <span>
+              Bạn có chắc chắn muốn xóa{' '}
+              <strong className="text-red-600 dark:text-red-400 font-semibold">
+                {selectedIds.length} bản ghi lượt xe
+              </strong>{' '}
+              đã chọn? Dữ liệu sẽ được lưu trữ trong thùng rác hệ thống.
+            </span>
+          ) : (
+            <span>
+              Bạn có chắc chắn muốn xóa bản ghi lượt xe biển số{' '}
+              <strong className="text-blue-600 dark:text-blue-400 font-mono font-bold">
+                [{deleteConfirm.plate}]
+              </strong>
+              ? Dữ liệu sẽ được chuyển vào thùng rác.
+            </span>
+          )
+        }
+        confirmText={deleteConfirm.isBatch ? `Xóa ${selectedIds.length} Bản Ghi` : 'Xác Nhận Xóa'}
+        isLoading={deleteMutation.isPending || deleteBatchMutation.isPending}
+        onConfirm={() => {
+          if (deleteConfirm.isBatch) {
+            deleteBatchMutation.mutate(selectedIds, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          } else if (deleteConfirm.id) {
+            deleteMutation.mutate(deleteConfirm.id, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          }
+        }}
+      />
     </div>
   )
 }

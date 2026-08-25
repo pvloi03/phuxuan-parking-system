@@ -1,6 +1,8 @@
 [
   {
-    "_id": { "$oid": "66c8e001a1b2c3d4e5f67801" },
+    "_id": {
+      "$oid": "66c8e001a1b2c3d4e5f67801"
+    },
     "Code": "CAM-IN-PLT",
     "Name": "Camera Biển Số Làn Vào (NST)",
     "Type": "PlateCamera",
@@ -11,13 +13,17 @@
     "Status": "Disconnected",
     "LastHeartbeat": null,
     "ErrorMessage": null,
-    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "CreatedAt": {
+      "$date": "2026-08-01T08:00:00.000Z"
+    },
     "UpdatedAt": null,
     "IsDeleted": false,
     "DeletedAt": null
   },
   {
-    "_id": { "$oid": "66c8e001a1b2c3d4e5f67802" },
+    "_id": {
+      "$oid": "66c8e001a1b2c3d4e5f67802"
+    },
     "Code": "CAM-IN-OVW",
     "Name": "Camera Toàn Cảnh Làn Vào (Hikvision)",
     "Type": "OverviewCamera",
@@ -28,13 +34,17 @@
     "Status": "Disconnected",
     "LastHeartbeat": null,
     "ErrorMessage": null,
-    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "CreatedAt": {
+      "$date": "2026-08-01T08:00:00.000Z"
+    },
     "UpdatedAt": null,
     "IsDeleted": false,
     "DeletedAt": null
   },
   {
-    "_id": { "$oid": "66c8e001a1b2c3d4e5f67803" },
+    "_id": {
+      "$oid": "66c8e001a1b2c3d4e5f67803"
+    },
     "Code": "CAM-OUT-PLT",
     "Name": "Camera Biển Số Làn Ra (NST)",
     "Type": "PlateCamera",
@@ -45,13 +55,17 @@
     "Status": "Disconnected",
     "LastHeartbeat": null,
     "ErrorMessage": null,
-    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "CreatedAt": {
+      "$date": "2026-08-01T08:00:00.000Z"
+    },
     "UpdatedAt": null,
     "IsDeleted": false,
     "DeletedAt": null
   },
   {
-    "_id": { "$oid": "66c8e001a1b2c3d4e5f67804" },
+    "_id": {
+      "$oid": "66c8e001a1b2c3d4e5f67804"
+    },
     "Code": "CAM-OUT-OVW",
     "Name": "Camera Toàn Cảnh Làn Ra (Hikvision)",
     "Type": "OverviewCamera",
@@ -62,13 +76,17 @@
     "Status": "Disconnected",
     "LastHeartbeat": null,
     "ErrorMessage": null,
-    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "CreatedAt": {
+      "$date": "2026-08-01T08:00:00.000Z"
+    },
     "UpdatedAt": null,
     "IsDeleted": false,
     "DeletedAt": null
   },
   {
-    "_id": { "$oid": "66c8e001a1b2c3d4e5f67805" },
+    "_id": {
+      "$oid": "66c8e001a1b2c3d4e5f67805"
+    },
     "Code": "CTRL-C3-200",
     "Name": "Bộ Điều Khiển ZKTeco C3-200 (Radar & Barrier)",
     "Type": "Controller",
@@ -79,7 +97,9 @@
     "Status": "Disconnected",
     "LastHeartbeat": null,
     "ErrorMessage": null,
-    "CreatedAt": { "$date": "2026-08-01T08:00:00.000Z" },
+    "CreatedAt": {
+      "$date": "2026-08-01T08:00:00.000Z"
+    },
     "UpdatedAt": null,
     "IsDeleted": false,
     "DeletedAt": null

@@ -11,22 +11,19 @@ namespace PhuXuanParkingSystem.Models.Entities
     [BsonIgnoreExtraElements]
     public class Person : BaseEntity
     {
-        // =========================================================================
-        // --- CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
-        // =========================================================================
-        public string Code { get; set; } = string.Empty;              // [LƯU DB] Mã nhân viên / Mã định danh
-        public string FullName { get; set; } = string.Empty;          // [LƯU DB] Họ và tên
+        public string Code { get; set; } = string.Empty;              // Mã nhân viên / Mã định danh
+        public string FullName { get; set; } = string.Empty;          // Họ và tên
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? DepartmentId { get; set; }                     // [LƯU DB] ID Phòng ban / Bộ phận
-        public string? PhoneNumber { get; set; }                      // [LƯU DB] Số điện thoại
-        public string? Email { get; set; }                            // [LƯU DB] Email
+        public string? DepartmentId { get; set; }                     // ID Phòng ban / Bộ phận
+        public string? PhoneNumber { get; set; }                      // Số điện thoại
+        public string? Email { get; set; }                            // Email
         [BsonRepresentation(BsonType.String)]
-        public PersonType Type { get; set; } = PersonType.Employee;   // [LƯU DB] Loại người dùng (Employee, Contractor, Visitor, VIP, Other)
+        public PersonType Type { get; set; } = PersonType.Employee;   // Loại người dùng (Employee, Contractor, Visitor, VIP, Other)
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? CompanyId { get; set; }                        // [LƯU DB] Liên kết công ty / đơn vị thành viên
+        public string? CompanyId { get; set; }                        // Liên kết công ty / đơn vị thành viên
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? ContractorId { get; set; }                     // [LƯU DB] Liên kết đơn vị nhà thầu nếu là nhân sự nhà thầu
-        public bool IsActive { get; set; } = true;                    // [LƯU DB] Trạng thái hoạt động
+        public string? ContractorId { get; set; }                     // Liên kết đơn vị nhà thầu nếu là nhân sự nhà thầu
+        public bool IsActive { get; set; } = true;                    // Trạng thái hoạt động
 
         public Person() { }
 

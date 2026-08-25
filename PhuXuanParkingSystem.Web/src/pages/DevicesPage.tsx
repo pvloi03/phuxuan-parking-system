@@ -7,7 +7,7 @@ import {
   Plus,
   Trash2,
   Edit,
-  Eye,
+  FileText,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -19,7 +19,11 @@ import {
   Wifi,
   WifiOff,
   Network,
-  MapPin,
+  Info,
+  Shield,
+  Layers,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Device, DeviceType } from '@/types'
@@ -28,6 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/excelHelper'
 
 // =====================================================================
@@ -35,8 +40,10 @@ import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/exce
 // =====================================================================
 function getDeviceTypeLabel(type?: DeviceType | string | number) {
   const v = String(type ?? '').toLowerCase()
-  if (v === 'camera' || v === '1') return 'Camera IP'
-  if (v === 'controller' || v === '2') return 'Bộ Điều Khiển'
+  if (v === 'platecamera' || v === '1') return 'Camera Biển Số'
+  if (v === 'overviewcamera' || v === '2') return 'Camera Toàn Cảnh'
+  if (v === 'controller' || v === '3') return 'Bộ Điều Khiển'
+  if (v === 'camera') return 'Camera IP'
   return String(type ?? 'Khác')
 }
 
@@ -44,7 +51,18 @@ function getDeviceTypeBadge(type?: DeviceType | string | number) {
   const label = getDeviceTypeLabel(type)
   const v = String(type ?? '').toLowerCase()
 
-  if (v === 'camera' || v === '1') {
+  if (v === 'platecamera' || v === '1') {
+    return (
+      <Badge
+        variant="outline"
+        className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-[11px] px-2.5 py-0.5 font-medium gap-1"
+      >
+        <Camera className="h-3 w-3" />
+        {label}
+      </Badge>
+    )
+  }
+  if (v === 'overviewcamera' || v === '2' || v === 'camera') {
     return (
       <Badge
         variant="outline"
@@ -55,7 +73,7 @@ function getDeviceTypeBadge(type?: DeviceType | string | number) {
       </Badge>
     )
   }
-  if (v === 'controller' || v === '2') {
+  if (v === 'controller' || v === '3') {
     return (
       <Badge
         variant="outline"
@@ -71,7 +89,8 @@ function getDeviceTypeBadge(type?: DeviceType | string | number) {
 
 // Default port theo loại thiết bị
 function getDefaultPort(type: DeviceType): number {
-  if (type === 'Camera') return 8000
+  if (type === 'PlateCamera') return 3000
+  if (type === 'OverviewCamera') return 8000
   if (type === 'Controller') return 4370
   return 8000
 }
@@ -94,16 +113,22 @@ export function DevicesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean
+    id?: string
+    name?: string
+    isBatch?: boolean
+  }>({ isOpen: false })
 
   // Form State
   const [formCode, setFormCode] = useState('')
   const [formName, setFormName] = useState('')
-  const [formType, setFormType] = useState<DeviceType>('Camera')
+  const [formType, setFormType] = useState<DeviceType>('PlateCamera')
   const [formIp, setFormIp] = useState('')
-  const [formPort, setFormPort] = useState(8000)
+  const [formPort, setFormPort] = useState(3000)
   const [formUser, setFormUser] = useState('')
   const [formPass, setFormPass] = useState('')
-  const [formLaneId, setFormLaneId] = useState('')
   const [formNote, setFormNote] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
 
@@ -138,7 +163,6 @@ export function DevicesPage() {
         port: formPort,
         userName: formUser.trim() || undefined,
         password: formPass.trim() || undefined,
-        laneId: formLaneId.trim() || undefined,
         note: formNote.trim() || undefined,
         isActive: formIsActive,
       })
@@ -161,7 +185,6 @@ export function DevicesPage() {
         port: formPort,
         userName: formUser.trim() || undefined,
         password: formPass.trim() || undefined,
-        laneId: formLaneId.trim() || undefined,
         note: formNote.trim() || undefined,
         isActive: formIsActive,
       })
@@ -210,29 +233,29 @@ export function DevicesPage() {
   const resetForm = () => {
     setFormCode('')
     setFormName('')
-    setFormType('Camera')
+    setFormType('PlateCamera')
     setFormIp('')
-    setFormPort(8000)
+    setFormPort(3000)
     setFormUser('')
     setFormPass('')
-    setFormLaneId('')
     setFormNote('')
     setFormIsActive(true)
     setSelectedDevice(null)
+    setShowPassword(false)
   }
 
   const openEditModal = (device: Device) => {
     setSelectedDevice(device)
     setFormCode(device.code || '')
     setFormName(device.name || '')
-    setFormType((device.type as DeviceType) || 'Camera')
+    setFormType((device.type as DeviceType) || 'PlateCamera')
     setFormIp(device.ipAddress || '')
-    setFormPort(device.port || 8000)
+    setFormPort(device.port || 3000)
     setFormUser(device.userName || '')
     setFormPass(device.password || '')
-    setFormLaneId(device.laneId || '')
     setFormNote(device.note || '')
     setFormIsActive(device.isActive ?? true)
+    setShowPassword(false)
     setIsEditOpen(true)
   }
 
@@ -267,7 +290,6 @@ export function DevicesPage() {
       'Địa Chỉ IP': d.ipAddress,
       'Port': d.port,
       'Tên Đăng Nhập': d.userName || '',
-      'ID Làn': d.laneId || '',
       'Ghi Chú': d.note || '',
       'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
     }))
@@ -278,25 +300,33 @@ export function DevicesPage() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Thiết Bị': 'CAM-LV-01',
-        'Tên Thiết Bị': 'Camera Làn Vào Cổng Chính',
-        'Loại Thiết Bị (Camera/Controller)': 'Camera',
-        'Địa Chỉ IP': '192.168.1.101',
-        'Port': '8000',
+        'Mã Thiết Bị': 'CAM-IN-PLT',
+        'Tên Thiết Bị': 'Camera Biển Số Làn Vào (NST)',
+        'Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)': 'PlateCamera',
+        'Địa Chỉ IP': '192.168.1.200',
+        'Port': '3000',
         'Tên Đăng Nhập': 'admin',
-        'Mật Khẩu': 'Abc@12345',
-        'ID Làn': 'LANE-IN-01',
-        'Ghi Chú': 'Camera Hikvision DS-2CD2143G2-I',
+        'Mật Khẩu': 'admin',
+        'Ghi Chú': 'Camera nhận diện biển số NST LPR',
       },
       {
-        'Mã Thiết Bị': 'CTRL-LV-01',
-        'Tên Thiết Bị': 'Controller Làn Vào Cổng Chính',
-        'Loại Thiết Bị (Camera/Controller)': 'Controller',
-        'Địa Chỉ IP': '192.168.1.201',
+        'Mã Thiết Bị': 'CAM-IN-OVW',
+        'Tên Thiết Bị': 'Camera Toàn Cảnh Làn Vào (Hikvision)',
+        'Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)': 'OverviewCamera',
+        'Địa Chỉ IP': '192.168.1.61',
+        'Port': '8000',
+        'Tên Đăng Nhập': 'admin',
+        'Mật Khẩu': 'Hoangphat130225',
+        'Ghi Chú': 'Camera toàn cảnh Hikvision',
+      },
+      {
+        'Mã Thiết Bị': 'CTRL-C3-200',
+        'Tên Thiết Bị': 'Bộ Điều Khiển ZKTeco C3-200 (Radar & Barrier)',
+        'Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)': 'Controller',
+        'Địa Chỉ IP': '192.168.1.202',
         'Port': '4370',
         'Tên Đăng Nhập': '',
         'Mật Khẩu': '',
-        'ID Làn': 'LANE-IN-01',
         'Ghi Chú': 'ZKTeco C3-200 — Nhận tín hiệu radar, điều khiển Barrier',
       },
     ]
@@ -312,9 +342,13 @@ export function DevicesPage() {
       if (!rawData?.length) { alert('File Excel không có dữ liệu.'); return }
 
       const formattedData: Partial<Device>[] = rawData.map((row) => {
-        const rawType = String(row['Loại Thiết Bị (Camera/Controller)'] || row['type'] || '').toLowerCase()
-        const deviceType: DeviceType = rawType.includes('controller') ? 'Controller' : 'Camera'
-        const port = Number(row['Port'] || row['port'] || (deviceType === 'Camera' ? 8000 : 4370))
+        const rawType = String(row['Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)'] || row['type'] || '').toLowerCase()
+        let deviceType: DeviceType = 'PlateCamera'
+        if (rawType.includes('overview')) deviceType = 'OverviewCamera'
+        else if (rawType.includes('controller')) deviceType = 'Controller'
+        else if (rawType.includes('plate') || rawType.includes('camera')) deviceType = 'PlateCamera'
+
+        const port = Number(row['Port'] || row['port'] || getDefaultPort(deviceType))
 
         return {
           code: String(row['Mã Thiết Bị'] || row['code'] || '').trim(),
@@ -324,17 +358,14 @@ export function DevicesPage() {
           port,
           userName: String(row['Tên Đăng Nhập'] || row['userName'] || '').trim() || undefined,
           password: String(row['Mật Khẩu'] || row['password'] || '').trim() || undefined,
-          laneId: String(row['ID Làn'] || row['laneId'] || '').trim() || undefined,
           note: String(row['Ghi Chú'] || row['note'] || '').trim() || undefined,
           isActive: true,
         }
       }).filter((d) => d.name)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi hợp lệ (Cần có cột Tên Thiết Bị).'); return }
+      if (!formattedData.length) { alert('Không tìm thấy bản ghi thiết bị hợp lệ trong file Excel.'); return }
 
-      if (confirm(`Đã đọc ${formattedData.length} thiết bị từ file Excel. Bạn có muốn lưu vào hệ thống?`)) {
-        batchImportMutation.mutate(formattedData as Device[])
-      }
+      batchImportMutation.mutate(formattedData as Device[])
     } catch (err: any) {
       alert('Lỗi đọc file Excel: ' + err.message)
     } finally {
@@ -348,7 +379,7 @@ export function DevicesPage() {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="font-semibold text-slate-700 dark:text-slate-300">Mã thiết bị</label>
-          <Input placeholder="VD: CAM-LV-01" value={formCode} onChange={(e) => setFormCode(e.target.value)} className="text-xs" />
+          <Input placeholder="VD: CAM-IN-PLT" value={formCode} onChange={(e) => setFormCode(e.target.value)} className="text-xs" />
         </div>
         <div className="space-y-1">
           <label className="font-semibold text-slate-700 dark:text-slate-300">Loại thiết bị</label>
@@ -361,22 +392,23 @@ export function DevicesPage() {
             }}
             className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
           >
-            <option value="Camera">📷 Camera IP</option>
-            <option value="Controller">🖥️ Bộ Điều Khiển</option>
+            <option value="PlateCamera">📸 Camera Biển Số (PlateCamera)</option>
+            <option value="OverviewCamera">📷 Camera Toàn Cảnh (OverviewCamera)</option>
+            <option value="Controller">🖥️ Bộ Điều Khiển (Controller)</option>
           </select>
         </div>
       </div>
 
       <div className="space-y-1">
         <label className="font-semibold text-slate-700 dark:text-slate-300">Tên mô tả thiết bị *</label>
-        <Input placeholder="VD: Camera Làn Vào Cổng Chính" value={formName} onChange={(e) => setFormName(e.target.value)} className="text-xs" />
+        <Input placeholder="VD: Camera Biển Số Làn Vào (NST)" value={formName} onChange={(e) => setFormName(e.target.value)} className="text-xs" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="font-semibold text-slate-700 dark:text-slate-300">Địa chỉ IP *</label>
           <Input
-            placeholder="VD: 192.168.1.101"
+            placeholder="VD: 192.168.1.200"
             value={formIp}
             onChange={(e) => setFormIp(e.target.value)}
             className="text-xs font-mono"
@@ -386,7 +418,7 @@ export function DevicesPage() {
           <label className="font-semibold text-slate-700 dark:text-slate-300">Port kết nối</label>
           <Input
             type="number"
-            placeholder="8000"
+            placeholder={String(getDefaultPort(formType))}
             value={formPort}
             onChange={(e) => setFormPort(Number(e.target.value))}
             className="text-xs font-mono"
@@ -394,7 +426,7 @@ export function DevicesPage() {
         </div>
       </div>
 
-      {formType === 'Camera' && (
+      {formType !== 'Controller' && (
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="font-semibold text-slate-700 dark:text-slate-300">Tên đăng nhập</label>
@@ -408,13 +440,8 @@ export function DevicesPage() {
       )}
 
       <div className="space-y-1">
-        <label className="font-semibold text-slate-700 dark:text-slate-300">ID Làn kiểm soát (Lane ID)</label>
-        <Input placeholder="VD: LANE-IN-01" value={formLaneId} onChange={(e) => setFormLaneId(e.target.value)} className="text-xs font-mono" />
-      </div>
-
-      <div className="space-y-1">
         <label className="font-semibold text-slate-700 dark:text-slate-300">Ghi chú kỹ thuật</label>
-        <Input placeholder="VD: Hikvision DS-2CD2143G2-I, IR 40m" value={formNote} onChange={(e) => setFormNote(e.target.value)} className="text-xs" />
+        <Input placeholder="VD: NST LPR Camera / Hikvision IR 40m" value={formNote} onChange={(e) => setFormNote(e.target.value)} className="text-xs" />
       </div>
 
       <div className="flex items-center gap-2 pt-1">
@@ -435,50 +462,35 @@ export function DevicesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="max-w-2xl min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Quản Lý Thiết Bị Phần Cứng
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Camera IP giám sát & Bộ điều khiển Barrier tại các làn kiểm soát ra vào
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Camera nhận diện biển số, Camera toàn cảnh & Bộ điều khiển Access Control kiểm soát vào ra
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.length > 0 && (
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => {
-                if (confirm(`Xóa ${selectedIds.length} thiết bị đã chọn?`))
-                  batchDeleteMutation.mutate(selectedIds)
-              }}
-              disabled={batchDeleteMutation.isPending}
-              className="gap-1.5 text-xs font-semibold cursor-pointer"
-            >
-              <Trash2 className="h-4 w-4" />
-              Xóa {selectedIds.length} Đã Chọn
-            </Button>
-          )}
-
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls,.csv" className="hidden" />
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}
-            className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs">
+            className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap">
             <Upload className="h-3.5 w-3.5 text-emerald-600" /> Nhập Excel
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadTemplate}
-            className="gap-1.5 text-xs text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs" title="Tải file mẫu Excel">
+            className="gap-1.5 text-xs text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap" title="Tải file mẫu Excel">
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" /> Tải Mẫu
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportExcel}
-            className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs">
+            className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap">
             <Download className="h-3.5 w-3.5 text-blue-600" /> Xuất Excel
           </Button>
           <Button
             size="sm"
             onClick={() => { resetForm(); setIsCreateOpen(true) }}
-            className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs"
+            className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Plus className="h-4 w-4" /> Thêm Thiết Bị Mới
           </Button>
@@ -492,20 +504,21 @@ export function DevicesPage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Tìm theo mã, tên hoặc địa chỉ IP..."
+                placeholder="Tìm theo tên hoặc địa chỉ IP..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPageNumber(1) }}
                 className="pl-9 text-xs"
               />
             </div>
-            <div className="w-52">
+            <div className="w-56">
               <select
                 value={typeFilter}
                 onChange={(e) => { setTypeFilter(e.target.value); setPageNumber(1) }}
                 className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
               >
                 <option value="">-- Tất cả thiết bị --</option>
-                <option value="Camera">📷 Camera IP</option>
+                <option value="PlateCamera">📸 Camera Biển Số</option>
+                <option value="OverviewCamera">📷 Camera Toàn Cảnh</option>
                 <option value="Controller">🖥️ Bộ Điều Khiển</option>
               </select>
             </div>
@@ -531,17 +544,16 @@ export function DevicesPage() {
                   <input type="checkbox" checked={isAllSelected} onChange={handleSelectAll}
                     className="rounded border-slate-300 dark:border-slate-700 text-blue-600 cursor-pointer" />
                 </th>
-                <th className="p-3.5">Mã / Loại</th>
                 <th className="p-3.5">Tên Thiết Bị</th>
-                <th className="p-3.5">Địa Chỉ Mạng</th>
-                <th className="p-3.5">ID Làn</th>
+                <th className="p-3.5">Loại Thiết Bị</th>
+                <th className="p-3.5">Địa Chỉ IP</th>
                 <th className="p-3.5">Trạng Thái</th>
                 <th className="p-3.5 text-right pr-4">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoading ? (
-                <tr><td colSpan={7} className="p-8 text-center text-slate-400">Đang tải danh sách thiết bị...</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-slate-400">Đang tải danh sách thiết bị...</td></tr>
               ) : items.length > 0 ? (
                 items.map((device) => {
                   const isSelected = selectedIds.includes(device.id)
@@ -552,71 +564,54 @@ export function DevicesPage() {
                         <input type="checkbox" checked={isSelected} onChange={() => handleToggleSelect(device.id)}
                           className="rounded border-slate-300 dark:border-slate-700 text-blue-600 cursor-pointer" />
                       </td>
-                      <td className="p-3.5">
-                        <div className="space-y-1">
-                          <div className="font-mono font-semibold text-slate-800 dark:text-slate-200 text-xs">
-                            {device.code || '--'}
-                          </div>
-                          {getDeviceTypeBadge(device.type)}
-                        </div>
+                      <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">
+                        {device.name}
                       </td>
                       <td className="p-3.5">
-                        <div className="font-semibold text-slate-900 dark:text-slate-100">
-                          {device.name}
-                        </div>
-                        {device.note && (
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 max-w-[240px] truncate" title={device.note}>
-                            {device.note}
-                          </div>
-                        )}
+                        {getDeviceTypeBadge(device.type)}
                       </td>
-                      <td className="p-3.5 font-mono text-slate-600 dark:text-slate-400">
+                      <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300 font-medium">
                         <div className="flex items-center gap-1.5">
                           <Network className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="font-medium">{device.ipAddress}:{device.port}</span>
+                          <span>{device.ipAddress}</span>
                         </div>
-                        {device.userName && (
-                          <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-                            👤 {device.userName}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3.5">
-                        {device.laneId ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                            <Badge variant="secondary" className="font-mono text-[11px] px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                              {device.laneId}
-                            </Badge>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-500 italic text-[11px]">Chưa gán</span>
-                        )}
                       </td>
                       <td className="p-3.5">
                         {device.isActive ? (
                           <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
-                            <Wifi className="h-3 w-3" /> Đang dùng
+                            <Wifi className="h-3.5 w-3.5" /> Đang dùng
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500 font-medium text-[11px]">
-                            <WifiOff className="h-3 w-3" /> Tạm dừng
+                            <WifiOff className="h-3.5 w-3.5" /> Tạm dừng
                           </span>
                         )}
                       </td>
                       <td className="p-3.5 text-right pr-4">
                         <div className="flex items-center justify-end gap-1.5">
-                          <Button size="sm" variant="outline"
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => { setSelectedDevice(device); setIsDetailOpen(true) }}
-                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/40 cursor-pointer">
-                            <Eye className="h-3.5 w-3.5 mr-1" /> Chi tiết
+                            className="h-7 px-2.5 text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/60 dark:hover:bg-blue-950/50 text-[11px] font-semibold cursor-pointer shadow-2xs"
+                            title="Xem Bảng Thông Số Chi Tiết Thiết Bị"
+                          >
+                            <FileText className="h-3.5 w-3.5 mr-1 text-blue-500" />
+                            Chi tiết
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => openEditModal(device)}
                             className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 cursor-pointer" title="Chỉnh sửa">
                             <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="sm" variant="ghost"
-                            onClick={() => { if (confirm(`Xóa thiết bị [${device.name}]?`)) deleteMutation.mutate(device.id) }}
+                            onClick={() => {
+                              setDeleteConfirm({
+                                isOpen: true,
+                                id: device.id,
+                                name: device.name,
+                                isBatch: false,
+                              })
+                            }}
                             className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer" title="Xóa thiết bị">
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -627,7 +622,7 @@ export function DevicesPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">
                     Chưa có thiết bị nào trong danh sách
                   </td>
                 </tr>
@@ -684,61 +679,214 @@ export function DevicesPage() {
         </div>
       </Card>
 
-      {/* MODAL CHI TIẾT */}
+      {/* ===================================================================== */}
+      {/* MODAL CHI TIẾT THIẾT BỊ — PHONG CÁCH CHUYÊN NGHIỆP GIỐNG TRANG LỊCH SỬ */}
+      {/* ===================================================================== */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
-              {selectedDevice && String(selectedDevice.type).toLowerCase() === 'camera'
-                ? <Camera className="h-5 w-5 text-violet-600" />
-                : <Cpu className="h-5 w-5 text-amber-600" />}
-              Chi Tiết Thiết Bị
+        <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-800 shadow-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800 pr-8">
+            <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm sm:text-base">
+              <div className="flex items-center gap-2.5">
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                  selectedDevice && String(selectedDevice.type).toLowerCase().includes('camera')
+                    ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300'
+                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                }`}>
+                  {selectedDevice && String(selectedDevice.type).toLowerCase().includes('camera')
+                    ? <Camera className="h-4.5 w-4.5" />
+                    : <Cpu className="h-4.5 w-4.5" />}
+                </div>
+                <div>
+                  <span className="font-bold text-slate-900 dark:text-white tracking-wide text-base">
+                    {selectedDevice?.name || 'Chi Tiết Thiết Bị'}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-2 font-mono hidden sm:inline">
+                    ({selectedDevice?.code || 'Chưa đặt mã'})
+                  </span>
+                </div>
+              </div>
+
+              {/* Header Badges: Status & Type */}
+              <div className="flex items-center gap-1.5 mr-2">
+                {selectedDevice && getDeviceTypeBadge(selectedDevice.type)}
+                {selectedDevice?.isActive ? (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[11px] px-2 py-0.5 font-medium gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Hoạt động
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 text-[11px] px-2 py-0.5 font-medium gap-1">
+                    <XCircle className="h-3 w-3" /> Tạm dừng
+                  </Badge>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
+
           {selectedDevice && (
-            <div className="space-y-3 py-2 text-xs">
-              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div><span className="text-slate-400 block text-[11px]">Mã thiết bị:</span><span className="font-mono font-bold text-slate-900 dark:text-slate-100">{selectedDevice.code || '--'}</span></div>
-                  <div><span className="text-slate-400 block text-[11px]">Loại thiết bị:</span><div className="mt-1">{getDeviceTypeBadge(selectedDevice.type)}</div></div>
-                  <div className="col-span-2"><span className="text-slate-400 block text-[11px]">Tên mô tả:</span><span className="font-bold text-slate-900 dark:text-slate-100">{selectedDevice.name}</span></div>
-                  <div><span className="text-slate-400 block text-[11px]">Địa chỉ IP:</span><span className="font-mono text-slate-800 dark:text-slate-200">{selectedDevice.ipAddress}</span></div>
-                  <div><span className="text-slate-400 block text-[11px]">Port kết nối:</span><span className="font-mono text-slate-800 dark:text-slate-200">{selectedDevice.port}</span></div>
-                  {selectedDevice.userName && <div><span className="text-slate-400 block text-[11px]">Tên đăng nhập:</span><span className="font-mono text-slate-800 dark:text-slate-200">{selectedDevice.userName}</span></div>}
-                  <div><span className="text-slate-400 block text-[11px]">ID Làn kiểm soát:</span>
-                    {selectedDevice.laneId ? (
-                      <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{selectedDevice.laneId}</span>
-                    ) : (
-                      <span className="text-slate-400 italic">Chưa gán</span>
-                    )}
+            <div className="flex-1 overflow-y-auto p-5 space-y-3.5 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span>THÔNG SỐ KỸ THUẬT & CẤU HÌNH CHI TIẾT</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                {/* Card 1: Định danh thiết bị */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400 border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+                    <Layers className="h-4 w-4" />
+                    <span>Định Danh Thiết Bị</span>
                   </div>
-                  {selectedDevice.note && <div className="col-span-2"><span className="text-slate-400 block text-[11px]">Ghi chú kỹ thuật:</span><span className="italic text-slate-600 dark:text-slate-400">{selectedDevice.note}</span></div>}
-                  <div><span className="text-slate-400 block text-[11px]">Trạng thái:</span>
-                    {selectedDevice.isActive
-                      ? <span className="text-emerald-600 dark:text-emerald-400 font-medium">✅ Đang hoạt động</span>
-                      : <span className="text-slate-400 font-medium">⏸ Tạm dừng</span>}
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Mã thiết bị:</span>
+                      <span className="font-mono font-extrabold text-slate-900 dark:text-white text-sm">
+                        {selectedDevice.code || '--'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Phân loại phần cứng:</span>
+                      <div className="mt-0.5">{getDeviceTypeBadge(selectedDevice.type)}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-400 block text-[11px]">Tên thiết bị:</span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100">
+                        {selectedDevice.name}
+                      </span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-slate-400 block text-[11px]">Ghi chú kỹ thuật:</span>
+                      <span className="text-slate-700 dark:text-slate-300 italic">
+                        {selectedDevice.note || 'Không có ghi chú mô tả'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2: Cấu hình mạng & Xác thực */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+                    <Network className="h-4 w-4" />
+                    <span>Cấu Hình Mạng & Xác Thực</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-0.5">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Địa chỉ IP:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-emerald-400">
+                        {selectedDevice.ipAddress}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Port kết nối:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                        {selectedDevice.port}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Tài khoản đăng nhập:</span>
+                      <span className="font-mono text-slate-800 dark:text-slate-200">
+                        {selectedDevice.userName || '--'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Mật khẩu kết nối:</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="font-mono text-slate-800 dark:text-slate-200">
+                          {selectedDevice.password
+                            ? (showPassword ? selectedDevice.password : '••••••••')
+                            : '--'}
+                        </span>
+                        {selectedDevice.password && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-[10px] text-blue-600 hover:underline cursor-pointer"
+                          >
+                            {showPassword ? 'Ẩn' : 'Hiện'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 3: Trạng thái Vận hành & Hệ thống */}
+                <div className="col-span-1 md:col-span-2 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400 border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+                    <Shield className="h-4 w-4" />
+                    <span>Trạng Thái Vận Hành & Hệ Thống</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-0.5">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Trạng thái kích hoạt:</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        {selectedDevice.isActive ? '✅ Đang kích hoạt' : '⏸ Đang tạm dừng'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Mã ID hệ thống:</span>
+                      <span className="font-mono text-[10px] text-slate-500 truncate block" title={selectedDevice.id}>
+                        {selectedDevice.id}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Ngày tạo:</span>
+                      <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                        {selectedDevice.createdAt ? new Date(selectedDevice.createdAt).toLocaleString('vi-VN') : '--'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Cập nhật lần cuối:</span>
+                      <span className="text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+                        {selectedDevice.lastHeartbeat
+                          ? new Date(selectedDevice.lastHeartbeat).toLocaleString('vi-VN')
+                          : '--'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setIsDetailOpen(false)} className="text-xs cursor-pointer">Đóng</Button>
+
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (selectedDevice) {
+                  const dev = selectedDevice
+                  setIsDetailOpen(false)
+                  openEditModal(dev)
+                }
+              }}
+              className="text-xs cursor-pointer gap-1.5 text-slate-700 dark:text-slate-300"
+            >
+              <Edit className="h-3.5 w-3.5" /> Chỉnh Sửa
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsDetailOpen(false)}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs cursor-pointer"
+            >
+              Đóng
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* MODAL THÊM MỚI */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
               <Plus className="h-5 w-5 text-blue-600" />
               Thêm Thiết Bị Mới
             </DialogTitle>
           </DialogHeader>
-          {renderFormFields()}
-          <DialogFooter className="gap-2">
+          <div className="flex-1 overflow-y-auto p-5">
+            {renderFormFields()}
+          </div>
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
             <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(false)} className="text-xs cursor-pointer">Hủy</Button>
             <Button size="sm" disabled={!formName.trim() || !formIp.trim() || createMutation.isPending}
               onClick={() => createMutation.mutate()}
@@ -751,15 +899,17 @@ export function DevicesPage() {
 
       {/* MODAL CHỈNH SỬA */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
               <Edit className="h-5 w-5 text-blue-600" />
               Chỉnh Sửa Thiết Bị
             </DialogTitle>
           </DialogHeader>
-          {renderFormFields()}
-          <DialogFooter className="gap-2">
+          <div className="flex-1 overflow-y-auto p-5">
+            {renderFormFields()}
+          </div>
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
             <Button variant="outline" size="sm" onClick={() => setIsEditOpen(false)} className="text-xs cursor-pointer">Hủy</Button>
             <Button size="sm" disabled={!formName.trim() || !formIp.trim() || updateMutation.isPending}
               onClick={() => updateMutation.mutate()}
@@ -769,6 +919,84 @@ export function DevicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ===================================================================== */}
+      {/* FLOATING BULK ACTION BAR — HIỆN/ẨN PHÍA DƯỚI BÊN PHẢI KHI CHỌN DÒNG */}
+      {/* ===================================================================== */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-40 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl px-4 py-2.5 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+            <span>Đã chọn <strong className="text-blue-600 dark:text-blue-400 font-mono text-sm">{selectedIds.length}</strong> thiết bị</span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+            className="h-8 px-2.5 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+          >
+            Hủy chọn
+          </Button>
+
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              setDeleteConfirm({
+                isOpen: true,
+                isBatch: true,
+              })
+            }}
+            disabled={batchDeleteMutation.isPending}
+            className="h-8 gap-1.5 text-xs font-bold shadow-md cursor-pointer bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa {selectedIds.length} Đã Chọn
+          </Button>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE DIALOG HIỆN ĐẠI CHUYÊN NGHIỆP */}
+      <ConfirmDialog
+        open={deleteConfirm.isOpen}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, isOpen: open }))}
+        title={deleteConfirm.isBatch ? 'Xác Nhận Xóa Nhiều Thiết Bị' : 'Xác Nhận Xóa Thiết Bị'}
+        description={
+          deleteConfirm.isBatch ? (
+            <span>
+              Bạn có chắc chắn muốn xóa{' '}
+              <strong className="text-red-600 dark:text-red-400 font-semibold">
+                {selectedIds.length} thiết bị
+              </strong>{' '}
+              đã chọn? Dữ liệu sẽ được lưu trữ trong thùng rác hệ thống.
+            </span>
+          ) : (
+            <span>
+              Bạn có chắc chắn muốn xóa thiết bị{' '}
+              <strong className="text-slate-900 dark:text-slate-100 font-semibold">
+                [{deleteConfirm.name}]
+              </strong>
+              ? Dữ liệu sẽ được chuyển vào thùng rác.
+            </span>
+          )
+        }
+        confirmText={deleteConfirm.isBatch ? `Xóa ${selectedIds.length} Thiết Bị` : 'Xác Nhận Xóa'}
+        isLoading={deleteMutation.isPending || batchDeleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteConfirm.isBatch) {
+            batchDeleteMutation.mutate(selectedIds, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          } else if (deleteConfirm.id) {
+            deleteMutation.mutate(deleteConfirm.id, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          }
+        }}
+      />
     </div>
   )
 }

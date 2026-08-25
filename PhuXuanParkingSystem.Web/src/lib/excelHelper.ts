@@ -64,7 +64,7 @@ export function parseExcelFile<T = any>(file: File): Promise<T[]> {
  * Tải file Excel mẫu để người dùng nhập liệu
  */
 export function downloadExcelTemplate(
-  templateHeaders: Record<string, string>[],
+  templateHeaders: Record<string, any>[],
   fileName: string = 'Mau_Nhap_Lieu.xlsx'
 ) {
   const worksheet = XLSX.utils.json_to_sheet(templateHeaders)

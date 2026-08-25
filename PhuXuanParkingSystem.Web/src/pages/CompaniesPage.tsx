@@ -6,7 +6,7 @@ import {
   Plus,
   Trash2,
   Edit,
-  Eye,
+  FileText,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -17,13 +17,19 @@ import {
   Phone,
   Mail,
   FileSpreadsheet,
+  CheckCircle2,
+  XCircle,
+  FileBadge,
+  Info,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Company } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/excelHelper'
 
 export function CompaniesPage() {
@@ -40,6 +46,12 @@ export function CompaniesPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean
+    id?: string
+    name?: string
+    isBatch?: boolean
+  }>({ isOpen: false })
 
   // Form State
   const [formCode, setFormCode] = useState('')
@@ -48,7 +60,7 @@ export function CompaniesPage() {
   const [formEmail, setFormEmail] = useState('')
   const [formNote, setFormNote] = useState('')
 
-  // Query Data
+  // Query Companies
   const { data, isLoading } = useQuery({
     queryKey: ['companies-list', search, pageNumber, pageSize],
     queryFn: async () => {
@@ -71,7 +83,7 @@ export function CompaniesPage() {
   const createMutation = useMutation({
     mutationFn: async () => {
       await apiClient.post('/companies', {
-        code: formCode.trim(),
+        code: formCode.trim().toUpperCase(),
         name: formName.trim(),
         phoneNumber: formPhone.trim() || undefined,
         email: formEmail.trim() || undefined,
@@ -84,6 +96,9 @@ export function CompaniesPage() {
       setIsCreateOpen(false)
       resetForm()
     },
+    onError: (err: any) => {
+      alert('Lỗi thêm công ty: ' + (err?.response?.data?.message || err.message))
+    },
   })
 
   // Update Mutation
@@ -91,7 +106,7 @@ export function CompaniesPage() {
     mutationFn: async () => {
       if (!selectedCompany) return
       await apiClient.put(`/companies/${selectedCompany.id}`, {
-        code: formCode.trim(),
+        code: formCode.trim().toUpperCase(),
         name: formName.trim(),
         phoneNumber: formPhone.trim() || undefined,
         email: formEmail.trim() || undefined,
@@ -103,6 +118,9 @@ export function CompaniesPage() {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
       setIsEditOpen(false)
       resetForm()
+    },
+    onError: (err: any) => {
+      alert('Lỗi cập nhật công ty: ' + (err?.response?.data?.message || err.message))
     },
   })
 
@@ -130,18 +148,19 @@ export function CompaniesPage() {
 
   // Batch Import Mutation
   const batchImportMutation = useMutation({
-    mutationFn: async (companies: Partial<Company>[]) => {
-      await apiClient.post('/companies/batch', companies)
+    mutationFn: async (companyList: Partial<Company>[]) => {
+      await apiClient.post('/companies/batch-import', companyList)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
-      alert('Nhập danh sách công ty từ Excel thành công!')
+      alert('Nhập danh sách công ty thành công!')
     },
     onError: (err: any) => {
       alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
     },
   })
 
+  // Reset Form
   const resetForm = () => {
     setFormCode('')
     setFormName('')
@@ -151,6 +170,7 @@ export function CompaniesPage() {
     setSelectedCompany(null)
   }
 
+  // Open Edit
   const openEditModal = (comp: Company) => {
     setSelectedCompany(comp)
     setFormCode(comp.code || '')
@@ -170,32 +190,31 @@ export function CompaniesPage() {
 
   const handleSelectAll = () => {
     if (!items.length) return
-    const currentPageIds = items.map((c) => c.id)
-    const allSelected = currentPageIds.every((id) => selectedIds.includes(id))
+    const allIds = items.map((i) => i.id)
+    const allSelected = allIds.every((id) => selectedIds.includes(id))
 
     if (allSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !currentPageIds.includes(id)))
+      setSelectedIds([])
     } else {
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...currentPageIds])))
+      setSelectedIds(allIds)
     }
   }
 
-  const isAllSelected =
-    items.length > 0 && items.every((c) => selectedIds.includes(c.id))
+  const isAllSelected = items.length > 0 && items.every((i) => selectedIds.includes(i.id))
 
   // Excel Handlers
   const handleExportExcel = () => {
     if (!items.length) {
-      alert('Không có dữ liệu để xuất Excel.')
+      alert('Không có dữ liệu công ty để xuất Excel.')
       return
     }
 
     const exportData = items.map((c, index) => ({
       STT: (pageNumber - 1) * pageSize + index + 1,
-      'Mã Công Ty': c.code,
-      'Tên Công Ty / Doanh Nghiệp': c.name,
+      'Mã Công Ty': c.code || '',
+      'Tên Công Ty': c.name,
       'Số Điện Thoại': c.phoneNumber || '',
-      'Email Liên Hệ': c.email || '',
+      'Email': c.email || '',
       'Ghi Chú': c.note || '',
       'Trạng Thái': c.isActive ? 'Đang hoạt động' : 'Tạm dừng',
     }))
@@ -206,18 +225,18 @@ export function CompaniesPage() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Công Ty': 'CT-001',
+        'Mã Công Ty': 'CT-HP',
         'Tên Công Ty': 'Công Ty Cổ Phần Công Nghệ HP',
         'Số Điện Thoại': '0243123456',
         'Email': 'contact@hptech.vn',
-        'Ghi Chú': 'Doanh nghiệp thành viên',
+        'Ghi Chú': 'Chủ đầu tư quản lý tòa nhà',
       },
       {
-        'Mã Công Ty': 'CT-002',
-        'Tên Công Ty': 'Tập Đoàn Đầu Tư Phú Xuân',
-        'Số Điện Thoại': '0289876543',
-        'Email': 'info@phuxuancorp.vn',
-        'Ghi Chú': 'Chủ đầu tư dự án',
+        'Mã Công Ty': 'CT-PX',
+        'Tên Công Ty': 'Công Ty TNHH Phú Xuân',
+        'Số Điện Thoại': '0243987654',
+        'Email': 'info@phuxuan.vn',
+        'Ghi Chú': 'Đối tác vận hành hệ thống',
       },
     ]
     downloadExcelTemplate(template, 'Mau_Nhap_Cong_Ty.xlsx')
@@ -235,22 +254,17 @@ export function CompaniesPage() {
       }
 
       const formattedData: Partial<Company>[] = rawData.map((row) => ({
-        code: String(row['Mã Công Ty'] || row['code'] || '').trim(),
-        name: String(row['Tên Công Ty'] || row['Tên Công Ty / Doanh Nghiệp'] || row['name'] || '').trim(),
+        code: String(row['Mã Công Ty'] || row['code'] || '').trim().toUpperCase(),
+        name: String(row['Tên Công Ty'] || row['name'] || '').trim(),
         phoneNumber: String(row['Số Điện Thoại'] || row['phone'] || '').trim() || undefined,
-        email: String(row['Email'] || row['Email Liên Hệ'] || row['email'] || '').trim() || undefined,
+        email: String(row['Email'] || row['email'] || '').trim() || undefined,
         note: String(row['Ghi Chú'] || row['note'] || '').trim() || undefined,
         isActive: true,
       })).filter((c) => c.name)
 
-      if (formattedData.length === 0) {
-        alert('Không tìm thấy bản ghi công ty hợp lệ (Cần có cột Tên Công Ty).')
-        return
-      }
+      if (!formattedData.length) { alert('Không tìm thấy bản ghi công ty hợp lệ trong file Excel.'); return }
 
-      if (confirm(`Đã đọc ${formattedData.length} công ty từ file Excel. Bạn có muốn lưu vào hệ thống?`)) {
-        batchImportMutation.mutate(formattedData)
-      }
+      batchImportMutation.mutate(formattedData as Company[])
     } catch (err: any) {
       alert('Lỗi đọc file Excel: ' + err.message)
     } finally {
@@ -258,38 +272,97 @@ export function CompaniesPage() {
     }
   }
 
+  // Render Compact Form Fields
+  const renderFormFields = () => (
+    <div className="space-y-3.5 py-1 text-xs">
+      {/* Khối 1: Định danh */}
+      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+        <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+          <Building className="h-4 w-4" />
+          <span>Thông Tin Doanh Nghiệp</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="font-semibold text-slate-700 dark:text-slate-300">
+              Mã công ty / Mã số thuế
+            </label>
+            <Input
+              placeholder="VD: CT-001, MST010203"
+              value={formCode}
+              onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+              className="text-xs font-mono font-bold"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="font-semibold text-slate-700 dark:text-slate-300">
+              Số điện thoại liên hệ
+            </label>
+            <Input
+              placeholder="VD: 024.3123456"
+              value={formPhone}
+              onChange={(e) => setFormPhone(e.target.value)}
+              className="text-xs"
+            />
+          </div>
+          <div className="sm:col-span-2 space-y-1">
+            <label className="font-semibold text-slate-700 dark:text-slate-300">
+              Tên công ty / Doanh nghiệp *
+            </label>
+            <Input
+              placeholder="VD: Công Ty Cổ Phần Công Nghệ & Thương Mại ABC"
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              className="text-xs font-medium"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Khối 2: Liên hệ & Ghi chú */}
+      <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label className="font-medium text-slate-600 dark:text-slate-400 text-[11px]">
+              Email công ty
+            </label>
+            <Input
+              placeholder="VD: info@company.vn"
+              value={formEmail}
+              onChange={(e) => setFormEmail(e.target.value)}
+              className="text-xs"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="font-medium text-slate-600 dark:text-slate-400 text-[11px]">
+              Ghi chú thêm
+            </label>
+            <Input
+              placeholder="VD: Đối tác thuê văn phòng tầng 5"
+              value={formNote}
+              onChange={(e) => setFormNote(e.target.value)}
+              className="text-xs"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="max-w-2xl min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Quản Lý Công Ty & Doanh Nghiệp
+            Quản Lý Công Ty / Doanh Nghiệp
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Danh mục công ty thành viên, đơn vị chủ quản và doanh nghiệp thuê trụ sở
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+            Danh mục các công ty, doanh nghiệp và đối tác thuê mặt bằng trong hệ thống
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.length > 0 && (
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => {
-                if (confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} công ty đã chọn?`)) {
-                  batchDeleteMutation.mutate(selectedIds)
-                }
-              }}
-              disabled={batchDeleteMutation.isPending}
-              className="gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
-            >
-              <Trash2 className="h-4 w-4" />
-              Xóa {selectedIds.length} Đã Chọn
-            </Button>
-          )}
-
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           {/* Import Excel */}
           <input
             type="file"
@@ -302,7 +375,7 @@ export function CompaniesPage() {
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Upload className="h-3.5 w-3.5 text-emerald-600" />
             Nhập Excel
@@ -313,7 +386,7 @@ export function CompaniesPage() {
             variant="outline"
             size="sm"
             onClick={handleDownloadTemplate}
-            className="gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+            className="gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
             title="Tải file Excel mẫu để nhập liệu"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
@@ -325,7 +398,7 @@ export function CompaniesPage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
-            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Download className="h-3.5 w-3.5 text-blue-600" />
             Xuất Excel
@@ -338,7 +411,7 @@ export function CompaniesPage() {
               setIsCreateOpen(true)
             }}
             size="sm"
-            className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs"
+            className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Plus className="h-4 w-4" />
             Thêm Công Ty Mới
@@ -349,17 +422,19 @@ export function CompaniesPage() {
       {/* Filter & Search Bar */}
       <Card className="shadow-xs border-slate-200 dark:border-slate-800">
         <CardContent className="p-4 flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="relative flex-1 max-w-sm w-full">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <Input
-              placeholder="Tìm theo mã hoặc tên công ty..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPageNumber(1)
-              }}
-              className="pl-9 text-xs"
-            />
+          <div className="flex flex-1 items-center gap-3 w-full">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Tìm theo mã hoặc tên công ty..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPageNumber(1)
+                }}
+                className="pl-9 text-xs"
+              />
+            </div>
           </div>
 
           {search && (
@@ -373,7 +448,7 @@ export function CompaniesPage() {
               className="text-xs text-slate-600 dark:text-slate-400 gap-1.5 cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              Đặt lại
+              Đặt lại bộ lọc
             </Button>
           )}
         </CardContent>
@@ -394,25 +469,28 @@ export function CompaniesPage() {
                   />
                 </th>
                 <th className="p-3.5">Mã Công Ty</th>
-                <th className="p-3.5">Tên Công Ty / Doanh Nghiệp</th>
-                <th className="p-3.5">Thông Tin Liên Hệ</th>
+                <th className="p-3.5">Tên Doanh Nghiệp</th>
+                <th className="p-3.5">Số Điện Thoại</th>
+                <th className="p-3.5">Email</th>
                 <th className="p-3.5">Ghi Chú</th>
+                <th className="p-3.5 text-center">Trạng Thái</th>
                 <th className="p-3.5 text-right pr-4">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400">
+                  <td colSpan={8} className="p-8 text-center text-slate-400">
                     Đang tải danh sách công ty...
                   </td>
                 </tr>
               ) : items.length > 0 ? (
-                items.map((company) => {
-                  const isSelected = selectedIds.includes(company.id)
+                items.map((comp) => {
+                  const isSelected = selectedIds.includes(comp.id)
+
                   return (
                     <tr
-                      key={company.id}
+                      key={comp.id}
                       className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
                         isSelected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
                       }`}
@@ -421,31 +499,57 @@ export function CompaniesPage() {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleToggleSelect(company.id)}
+                          onChange={() => handleToggleSelect(comp.id)}
                           className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                       </td>
-                      <td className="p-3.5 font-mono font-semibold text-slate-800 dark:text-slate-200">
-                        {company.code || '--'}
+                      <td className="p-3.5 font-mono font-bold text-slate-900 dark:text-slate-100">
+                        {comp.code || '--'}
                       </td>
-                      <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">
-                        {company.name}
+                      <td className="p-3.5">
+                        <div className="font-bold text-slate-900 dark:text-slate-100">
+                          {comp.name}
+                        </div>
                       </td>
-                      <td className="p-3.5 text-slate-500 space-y-0.5">
-                        {company.phoneNumber && (
+                      <td className="p-3.5 text-slate-700 dark:text-slate-300">
+                        {comp.phoneNumber ? (
                           <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3 text-slate-400" /> {company.phoneNumber}
+                            <Phone className="h-3 w-3 text-slate-400" />
+                            <span>{comp.phoneNumber}</span>
                           </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">--</span>
                         )}
-                        {company.email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3 text-slate-400" /> {company.email}
-                          </div>
-                        )}
-                        {!company.phoneNumber && !company.email && <span>--</span>}
                       </td>
-                      <td className="p-3.5 text-slate-600 dark:text-slate-400 italic">
-                        {company.note || '--'}
+                      <td className="p-3.5 text-slate-700 dark:text-slate-300">
+                        {comp.email ? (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3 w-3 text-slate-400" />
+                            <span>{comp.email}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">--</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-slate-600 dark:text-slate-400">
+                        {comp.note ? (
+                          <span className="text-xs line-clamp-1" title={comp.note}>
+                            {comp.note}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic text-[11px]">--</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        {comp.isActive ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium text-[11px]">
+                            <CheckCircle2 className="h-3.5 w-3.5" /> Hoạt động
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500 font-medium text-[11px]">
+                            <XCircle className="h-3.5 w-3.5" /> Tạm dừng
+                          </span>
+                        )}
                       </td>
                       <td className="p-3.5 text-right pr-4">
                         <div className="flex items-center justify-end gap-1.5">
@@ -453,21 +557,21 @@ export function CompaniesPage() {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              setSelectedCompany(company)
+                              setSelectedCompany(comp)
                               setIsDetailOpen(true)
                             }}
-                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/40 cursor-pointer"
-                            title="Xem chi tiết"
+                            className="h-7 px-2.5 text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/60 dark:hover:bg-blue-950/50 text-[11px] font-semibold cursor-pointer shadow-2xs"
+                            title="Xem Bảng Chi Tiết"
                           >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            <FileText className="h-3.5 w-3.5 mr-1 text-blue-500" />
                             Chi tiết
                           </Button>
 
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => openEditModal(company)}
-                            className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
+                            onClick={() => openEditModal(comp)}
+                            className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 cursor-pointer"
                             title="Chỉnh sửa"
                           >
                             <Edit className="h-3.5 w-3.5" />
@@ -477,9 +581,12 @@ export function CompaniesPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              if (confirm(`Bạn có chắc muốn xóa công ty [${company.name}]?`)) {
-                                deleteMutation.mutate(company.id)
-                              }
+                              setDeleteConfirm({
+                                isOpen: true,
+                                id: comp.id,
+                                name: comp.name,
+                                isBatch: false,
+                              })
                             }}
                             className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer"
                             title="Xóa công ty"
@@ -493,8 +600,8 @@ export function CompaniesPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">
-                    Chưa có công ty nào trong danh sách
+                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                    Không tìm thấy công ty nào phù hợp
                   </td>
                 </tr>
               )}
@@ -502,169 +609,188 @@ export function CompaniesPage() {
           </table>
         </div>
 
-        {/* FULL PAGINATION BAR */}
-        <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-          {/* Summary & PageSize Selector */}
-          <div className="flex items-center gap-3">
-            <span className="text-slate-500 dark:text-slate-400">
-              Hiển thị{' '}
-              <strong className="font-semibold text-slate-800 dark:text-slate-200">
-                {totalItems > 0 ? (pageNumber - 1) * pageSize + 1 : 0} -{' '}
-                {Math.min(pageNumber * pageSize, totalItems)}
-              </strong>{' '}
-              trên tổng số{' '}
-              <strong className="font-semibold text-slate-800 dark:text-slate-200">
-                {totalItems}
-              </strong>{' '}
-              công ty
-            </span>
-
-            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
-              <span className="text-slate-400 text-[11px]">Dòng/trang:</span>
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value))
-                  setPageNumber(1)
-                }}
-                className="h-7 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={15}>15</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
+        {/* Pagination Bar */}
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+            <span>Hiển thị</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value))
+                setPageNumber(1)
+              }}
+              className="h-8 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 text-xs text-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+            <span>/ trang • Tổng số <strong>{totalItems}</strong> doanh nghiệp</span>
           </div>
 
-          {/* Navigation Buttons */}
           <div className="flex items-center gap-1">
             <Button
               variant="outline"
               size="sm"
-              disabled={pageNumber <= 1}
               onClick={() => setPageNumber(1)}
-              className="h-7 w-7 p-0 cursor-pointer"
-              title="Trang đầu"
+              disabled={pageNumber === 1}
+              className="h-8 w-8 p-0 cursor-pointer"
             >
-              <ChevronsLeft className="h-3.5 w-3.5" />
+              <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={pageNumber <= 1}
               onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              className="h-7 w-7 p-0 cursor-pointer"
-              title="Trang trước"
+              disabled={pageNumber === 1}
+              className="h-8 w-8 p-0 cursor-pointer"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((p) => {
-                if (totalPages <= 5) return true
-                return Math.abs(p - pageNumber) <= 1 || p === 1 || p === totalPages
-              })
-              .map((p, idx, arr) => {
-                const prev = arr[idx - 1]
-                const showEllipsis = prev && p - prev > 1
-                return (
-                  <div key={p} className="flex items-center">
-                    {showEllipsis && <span className="px-1 text-slate-400 select-none">...</span>}
-                    <Button
-                      variant={pageNumber === p ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setPageNumber(p)}
-                      className={`h-7 min-w-[28px] px-2 text-xs cursor-pointer ${
-                        pageNumber === p
-                          ? 'bg-blue-600 text-white font-bold'
-                          : 'text-slate-600 dark:text-slate-400'
-                      }`}
-                    >
-                      {p}
-                    </Button>
-                  </div>
-                )
-              })}
+            <span className="px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Trang {pageNumber} / {totalPages}
+            </span>
 
             <Button
               variant="outline"
               size="sm"
-              disabled={pageNumber >= totalPages}
               onClick={() => setPageNumber((p) => Math.min(totalPages, p + 1))}
-              className="h-7 w-7 p-0 cursor-pointer"
-              title="Trang sau"
+              disabled={pageNumber === totalPages}
+              className="h-8 w-8 p-0 cursor-pointer"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={pageNumber >= totalPages}
               onClick={() => setPageNumber(totalPages)}
-              className="h-7 w-7 p-0 cursor-pointer"
-              title="Trang cuối"
+              disabled={pageNumber === totalPages}
+              className="h-8 w-8 p-0 cursor-pointer"
             >
-              <ChevronsRight className="h-3.5 w-3.5" />
+              <ChevronsRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </Card>
 
-      {/* MODAL CHI TIẾT CÔNG TY */}
+      {/* ===================================================================== */}
+      {/* MODAL CHI TIẾT CÔNG TY — CARD THÔNG SỐ CHUYÊN NGHIỆP */}
+      {/* ===================================================================== */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
-              <Building className="h-5 w-5 text-blue-600" />
-              Chi Tiết Công Ty / Doanh Nghiệp
+        <DialogContent className="max-w-xl max-h-[90vh] p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800 pr-8">
+            <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-base">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <Building className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-slate-900 dark:text-white tracking-wide text-base">
+                    {selectedCompany?.name || 'Chi Tiết Doanh Nghiệp'}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 ml-2 font-mono hidden sm:inline">
+                    ({selectedCompany?.code || 'Chưa đặt mã'})
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 mr-2">
+                {selectedCompany?.isActive ? (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[11px] px-2 py-0.5 font-medium gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Hoạt động
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 text-[11px] px-2 py-0.5 font-medium gap-1">
+                    <XCircle className="h-3 w-3" /> Tạm dừng
+                  </Badge>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
+
           {selectedCompany && (
-            <div className="space-y-3 py-2 text-xs">
-              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Mã công ty:</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">
-                      {selectedCompany.code || '--'}
-                    </span>
+            <div className="flex-1 overflow-y-auto p-5 space-y-3.5 text-xs">
+              <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                <Info className="h-4 w-4 text-blue-600" />
+                <span>HỒ SƠ THÔNG TIN DOANH NGHIỆP</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Card 1: Định danh */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400 border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+                    <FileBadge className="h-4 w-4" />
+                    <span>Định Danh Doanh Nghiệp</span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Tên công ty:</span>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                      {selectedCompany.name}
-                    </span>
+                  <div className="space-y-1.5 pt-0.5">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Mã công ty / MST:</span>
+                      <span className="font-mono font-extrabold text-slate-900 dark:text-white text-sm">
+                        {selectedCompany.code || 'Chưa đặt mã'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Tên công ty:</span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                        {selectedCompany.name}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Số điện thoại:</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCompany.phoneNumber || 'Chưa cập nhật'}
-                    </span>
+                </div>
+
+                {/* Card 2: Liên hệ */}
+                <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-emerald-600 dark:text-emerald-400 border-b border-slate-200 dark:border-slate-700/60 pb-1.5">
+                    <Phone className="h-4 w-4" />
+                    <span>Kênh Liên Hệ</span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Email liên hệ:</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCompany.email || 'Chưa cập nhật'}
-                    </span>
+                  <div className="space-y-1.5 pt-0.5">
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Số điện thoại:</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {selectedCompany.phoneNumber || 'Chưa cập nhật'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Email liên hệ:</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {selectedCompany.email || 'Chưa cập nhật'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <span className="text-slate-400 block text-[11px]">Ghi chú:</span>
-                    <span className="text-slate-700 dark:text-slate-300 italic">
-                      {selectedCompany.note || 'Không có ghi chú'}
-                    </span>
-                  </div>
+                </div>
+
+                {/* Card 3: Ghi chú */}
+                <div className="col-span-1 md:col-span-2 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-1.5">
+                  <span className="text-slate-400 block text-[11px]">Mô tả & Ghi chú nghiệp vụ:</span>
+                  <span className="text-slate-700 dark:text-slate-300 font-medium">
+                    {selectedCompany.note || 'Không có ghi chú thêm cho công ty này.'}
+                  </span>
                 </div>
               </div>
             </div>
           )}
-          <DialogFooter>
+
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
             <Button
               variant="outline"
               size="sm"
+              onClick={() => {
+                if (selectedCompany) {
+                  const c = selectedCompany
+                  setIsDetailOpen(false)
+                  openEditModal(c)
+                }
+              }}
+              className="text-xs cursor-pointer gap-1.5 text-slate-700 dark:text-slate-300"
+            >
+              <Edit className="h-3.5 w-3.5" /> Chỉnh Sửa
+            </Button>
+            <Button
+              size="sm"
               onClick={() => setIsDetailOpen(false)}
-              className="text-xs cursor-pointer"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs cursor-pointer"
             >
               Đóng
             </Button>
@@ -672,73 +798,23 @@ export function CompaniesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL THÊM CÔNG TY MỚI */}
+      {/* ===================================================================== */}
+      {/* MODAL THÊM MỚI CÔNG TY */}
+      {/* ===================================================================== */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <DialogHeader>
+        <DialogContent className="max-w-lg sm:max-w-xl p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
-              <Building className="h-5 w-5 text-blue-600" />
-              Thêm Công Ty Mới
+              <Plus className="h-5 w-5 text-blue-600" />
+              Thêm Công Ty / Doanh Nghiệp Mới
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Mã công ty / Mã định danh
-              </label>
-              <Input
-                placeholder="VD: CT-001"
-                value={formCode}
-                onChange={(e) => setFormCode(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Tên công ty / Doanh nghiệp *
-              </label>
-              <Input
-                placeholder="VD: Công Ty Cổ Phần Công Nghệ HP"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Số điện thoại liên hệ
-              </label>
-              <Input
-                placeholder="VD: 0243123456"
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Email liên hệ
-              </label>
-              <Input
-                placeholder="VD: contact@hptech.vn"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Ghi chú
-              </label>
-              <Input
-                placeholder="VD: Doanh nghiệp thuê tại Tòa A"
-                value={formNote}
-                onChange={(e) => setFormNote(e.target.value)}
-                className="text-xs"
-              />
-            </div>
+
+          <div className="flex-1 overflow-y-auto p-5">
+            {renderFormFields()}
           </div>
-          <DialogFooter className="gap-2">
+
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
             <Button
               variant="outline"
               size="sm"
@@ -759,68 +835,23 @@ export function CompaniesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ===================================================================== */}
       {/* MODAL CHỈNH SỬA CÔNG TY */}
+      {/* ===================================================================== */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <DialogHeader>
+        <DialogContent className="max-w-lg sm:max-w-xl p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
               <Edit className="h-5 w-5 text-blue-600" />
-              Chỉnh Sửa Thông Tin Công Ty
+              Chỉnh Sửa Doanh Nghiệp
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Mã công ty
-              </label>
-              <Input
-                value={formCode}
-                onChange={(e) => setFormCode(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Tên công ty *
-              </label>
-              <Input
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Số điện thoại liên hệ
-              </label>
-              <Input
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Email liên hệ
-              </label>
-              <Input
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Ghi chú
-              </label>
-              <Input
-                value={formNote}
-                onChange={(e) => setFormNote(e.target.value)}
-                className="text-xs"
-              />
-            </div>
+
+          <div className="flex-1 overflow-y-auto p-5">
+            {renderFormFields()}
           </div>
-          <DialogFooter className="gap-2">
+
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
             <Button
               variant="outline"
               size="sm"
@@ -840,6 +871,84 @@ export function CompaniesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ===================================================================== */}
+      {/* FLOATING BULK ACTION BAR — HIỆN/ẨN PHÍA DƯỚI BÊN PHẢI KHI CHỌN DÒNG */}
+      {/* ===================================================================== */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-40 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl px-4 py-2.5 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+            <span>Đã chọn <strong className="text-blue-600 dark:text-blue-400 font-mono text-sm">{selectedIds.length}</strong> công ty</span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+            className="h-8 px-2.5 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+          >
+            Hủy chọn
+          </Button>
+
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              setDeleteConfirm({
+                isOpen: true,
+                isBatch: true,
+              })
+            }}
+            disabled={batchDeleteMutation.isPending}
+            className="h-8 gap-1.5 text-xs font-bold shadow-md cursor-pointer bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa {selectedIds.length} Đã Chọn
+          </Button>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE DIALOG HIỆN ĐẠI CHUYÊN NGHIỆP */}
+      <ConfirmDialog
+        open={deleteConfirm.isOpen}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, isOpen: open }))}
+        title={deleteConfirm.isBatch ? 'Xác Nhận Xóa Nhiều Công Ty' : 'Xác Nhận Xóa Công Ty'}
+        description={
+          deleteConfirm.isBatch ? (
+            <span>
+              Bạn có chắc chắn muốn xóa{' '}
+              <strong className="text-red-600 dark:text-red-400 font-semibold">
+                {selectedIds.length} công ty / doanh nghiệp
+              </strong>{' '}
+              đã chọn? Dữ liệu sẽ được lưu trữ trong thùng rác hệ thống.
+            </span>
+          ) : (
+            <span>
+              Bạn có chắc chắn muốn xóa công ty{' '}
+              <strong className="text-slate-900 dark:text-slate-100 font-semibold">
+                [{deleteConfirm.name}]
+              </strong>
+              ? Dữ liệu sẽ được chuyển vào thùng rác.
+            </span>
+          )
+        }
+        confirmText={deleteConfirm.isBatch ? `Xóa ${selectedIds.length} Công Ty` : 'Xác Nhận Xóa'}
+        isLoading={deleteMutation.isPending || batchDeleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteConfirm.isBatch) {
+            batchDeleteMutation.mutate(selectedIds, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          } else if (deleteConfirm.id) {
+            deleteMutation.mutate(deleteConfirm.id, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          }
+        }}
+      />
     </div>
   )
 }

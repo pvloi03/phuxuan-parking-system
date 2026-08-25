@@ -9,6 +9,7 @@ import {
   Building,
   Handshake,
   Cpu,
+  Route,
   Trash2,
   ShieldCheck,
   LogOut,
@@ -94,6 +95,15 @@ const menuConfig: MenuItem[] = [
       title: 'Quản Lý Phương Tiện',
       href: '/vehicles',
       icon: Car,
+      roles: ['Admin', 'Manager', '1', '2'],
+    },
+  },
+  {
+    type: 'single',
+    item: {
+      title: 'Làn Kiểm Soát',
+      href: '/lanes',
+      icon: Route,
       roles: ['Admin', 'Manager', '1', '2'],
     },
   },

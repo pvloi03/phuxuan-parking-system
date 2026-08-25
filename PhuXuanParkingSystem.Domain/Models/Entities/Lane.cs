@@ -24,14 +24,14 @@ namespace PhuXuanParkingSystem.Models.Entities
 
         // --- CẤU HÌNH THIẾT BỊ GẮN VỚI LÀN (THEO ID THAM CHIẾU BẢNG DEVICES) ---
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? OverviewCameraDeviceId { get; set; }           // [LƯU DB] ID Camera chụp ảnh toàn cảnh (Hikvision / ONVIF)
+        public string? OverviewCameraDeviceId { get; set; }           // [LƯU DB] ID Camera chụp ảnh toàn cảnh
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? PlateCameraDeviceId { get; set; }              // [LƯU DB] ID Camera chụp ảnh nhận diện biển số (NST / ONVIF)
+        public string? PlateCameraDeviceId { get; set; }              // [LƯU DB] ID Camera chụp ảnh nhận diện biển số
 
-        // --- CẤU HÌNH BỘ ĐIỀU KHIỂN & CẢM BIẾN RADAR (DÙNG CHUNG CONTROLLER) ---
+        // --- CẤU HÌNH BỘ ĐIỀU KHIỂN & CẢM BIẾN RADAR ---
         [BsonRepresentation(BsonType.ObjectId)]
-        public string? ControllerDeviceId { get; set; }               // [LƯU DB] ID Bộ điều khiển ZKTeco C3-200 (dùng chung cho cả 2 làn)
-        public int TriggerAuxPort { get; set; } = 1;                  // [LƯU DB] Cổng tín hiệu Aux In nhận tín hiệu Radar (1 = Làn Vào, 2 = Làn Ra)
+        public string? ControllerDeviceId { get; set; }               // [LƯU DB] ID Bộ điều khiển Barrier
+        public int TriggerAuxPort { get; set; } = 1;                  // [LƯU DB] Cổng tín hiệu Aux In nhận tín hiệu cảm biến / Radar (1 = Làn Vào, 2 = Làn Ra)
 
         // =========================================================================
         // --- 2. CÁC ĐỐI TƯỢNG KHÔNG LƯU DATABASE (NAVIGATION RUNTIME OBJECTS) ---
@@ -41,7 +41,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         [BsonIgnore]
         public Device? PlateCamera { get; set; }                      // [KHÔNG LƯU DB] Đối tượng Camera biển số nạp lúc runtime
         [BsonIgnore]
-        public Device? Controller { get; set; }                       // [KHÔNG LƯU DB] Đối tượng Controller C3-200 nạp lúc runtime
+        public Device? Controller { get; set; }                       // [KHÔNG LƯU DB] Đối tượng Controller nạp lúc runtime
 
         public Lane() { }
 

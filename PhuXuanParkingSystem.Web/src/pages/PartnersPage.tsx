@@ -6,7 +6,7 @@ import {
   Plus,
   Trash2,
   Edit,
-  Eye,
+  FileText,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/excelHelper'
 
 export function PartnersPage() {
@@ -41,6 +42,12 @@ export function PartnersPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [selectedPartner, setSelectedPartner] = useState<Contractor | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean
+    id?: string
+    name?: string
+    isBatch?: boolean
+  }>({ isOpen: false })
 
   // Form State
   const [formCode, setFormCode] = useState('')
@@ -253,14 +260,9 @@ export function PartnersPage() {
         isActive: true,
       })).filter((p) => p.name)
 
-      if (formattedData.length === 0) {
-        alert('Không tìm thấy bản ghi đối tác hợp lệ (Cần có cột Tên Đối Tác).')
-        return
-      }
+      if (!formattedData.length) { alert('Không tìm thấy bản ghi đối tác hợp lệ trong file Excel.'); return }
 
-      if (confirm(`Đã đọc ${formattedData.length} đối tác từ file Excel. Bạn có muốn lưu vào hệ thống?`)) {
-        batchImportMutation.mutate(formattedData)
-      }
+      batchImportMutation.mutate(formattedData as Contractor[])
     } catch (err: any) {
       alert('Lỗi đọc file Excel: ' + err.message)
     } finally {
@@ -268,38 +270,87 @@ export function PartnersPage() {
     }
   }
 
+  const renderFormFields = () => (
+    <div className="space-y-3.5 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="font-semibold text-slate-700 dark:text-slate-300">Mã đối tác</label>
+          <Input
+            placeholder="Ví dụ: DT-001"
+            value={formCode}
+            onChange={(e) => setFormCode(e.target.value)}
+            className="text-xs"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="font-semibold text-slate-700 dark:text-slate-300">Tên đối tác / Nhà thầu *</label>
+          <Input
+            placeholder="Ví dụ: Công Ty Cơ Điện Hoàng Hà"
+            value={formName}
+            onChange={(e) => setFormName(e.target.value)}
+            className="text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="font-semibold text-slate-700 dark:text-slate-300">Người đại diện liên hệ</label>
+          <Input
+            placeholder="Ví dụ: Nguyễn Văn Minh"
+            value={formContactPerson}
+            onChange={(e) => setFormContactPerson(e.target.value)}
+            className="text-xs"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="font-semibold text-slate-700 dark:text-slate-300">Số điện thoại</label>
+          <Input
+            placeholder="Ví dụ: 0988776655"
+            value={formPhone}
+            onChange={(e) => setFormPhone(e.target.value)}
+            className="text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="font-semibold text-slate-700 dark:text-slate-300">Email liên hệ</label>
+        <Input
+          placeholder="Ví dụ: minh.nguyen@hoanghapt.com"
+          value={formEmail}
+          onChange={(e) => setFormEmail(e.target.value)}
+          className="text-xs"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="font-semibold text-slate-700 dark:text-slate-300">Ghi chú</label>
+        <Input
+          placeholder="Ví dụ: Đơn vị bảo trì hệ thống thang máy và PCCC"
+          value={formNote}
+          onChange={(e) => setFormNote(e.target.value)}
+          className="text-xs"
+        />
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="max-w-2xl min-w-0">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Quản Lý Đối Tác & Nhà Thầu
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Danh sách đơn vị thi công, nhà thầu bảo trì và đối tác liên kết
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedIds.length > 0 && (
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => {
-                if (confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} đối tác đã chọn?`)) {
-                  batchDeleteMutation.mutate(selectedIds)
-                }
-              }}
-              disabled={batchDeleteMutation.isPending}
-              className="gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
-            >
-              <Trash2 className="h-4 w-4" />
-              Xóa {selectedIds.length} Đã Chọn
-            </Button>
-          )}
-
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           {/* Import Excel */}
           <input
             type="file"
@@ -312,7 +363,7 @@ export function PartnersPage() {
             variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Upload className="h-3.5 w-3.5 text-emerald-600" />
             Nhập Excel
@@ -323,7 +374,7 @@ export function PartnersPage() {
             variant="outline"
             size="sm"
             onClick={handleDownloadTemplate}
-            className="gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+            className="gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
             title="Tải file Excel mẫu để nhập liệu"
           >
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" />
@@ -335,7 +386,7 @@ export function PartnersPage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
-            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs"
+            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Download className="h-3.5 w-3.5 text-blue-600" />
             Xuất Excel
@@ -348,7 +399,7 @@ export function PartnersPage() {
               setIsCreateOpen(true)
             }}
             size="sm"
-            className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs"
+            className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Plus className="h-4 w-4" />
             Thêm Đối Tác Mới
@@ -473,10 +524,10 @@ export function PartnersPage() {
                               setSelectedPartner(partner)
                               setIsDetailOpen(true)
                             }}
-                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/40 cursor-pointer"
-                            title="Xem chi tiết"
+                            className="h-7 px-2.5 text-blue-600 hover:text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/60 dark:hover:bg-blue-950/50 text-[11px] font-semibold cursor-pointer shadow-2xs"
+                            title="Xem Chi Tiết Đối Tác"
                           >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
+                            <FileText className="h-3.5 w-3.5 mr-1 text-blue-500" />
                             Chi tiết
                           </Button>
 
@@ -494,9 +545,12 @@ export function PartnersPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              if (confirm(`Bạn có chắc muốn xóa đối tác [${partner.name}]?`)) {
-                                deleteMutation.mutate(partner.id)
-                              }
+                              setDeleteConfirm({
+                                isOpen: true,
+                                id: partner.id,
+                                name: partner.name,
+                                isBatch: false,
+                              })
                             }}
                             className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer"
                             title="Xóa đối tác"
@@ -793,78 +847,52 @@ export function PartnersPage() {
         </DialogContent>
       </Dialog>
 
+      {/* MODAL THÊM MỚI ĐỐI TÁC */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-lg sm:max-w-xl p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+              <Plus className="h-5 w-5 text-blue-600" />
+              Thêm Đối Tác / Nhà Thầu Mới
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-5">
+            {renderFormFields()}
+          </div>
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCreateOpen(false)}
+              className="text-xs cursor-pointer"
+            >
+              Hủy
+            </Button>
+            <Button
+              size="sm"
+              disabled={!formName.trim() || createMutation.isPending}
+              onClick={() => createMutation.mutate()}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs cursor-pointer"
+            >
+              {createMutation.isPending ? 'Đang lưu...' : 'Lưu Đối Tác'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* MODAL CHỈNH SỬA ĐỐI TÁC */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <DialogHeader>
+        <DialogContent className="max-w-lg sm:max-w-xl p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl max-h-[90vh]">
+          <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800">
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
               <Edit className="h-5 w-5 text-blue-600" />
               Chỉnh Sửa Đối Tác
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2 text-xs">
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Mã đối tác
-              </label>
-              <Input
-                value={formCode}
-                onChange={(e) => setFormCode(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Tên đối tác *
-              </label>
-              <Input
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Người đại diện liên hệ
-              </label>
-              <Input
-                value={formContactPerson}
-                onChange={(e) => setFormContactPerson(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Số điện thoại
-              </label>
-              <Input
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Email liên hệ
-              </label>
-              <Input
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-                className="text-xs"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Ghi chú
-              </label>
-              <Input
-                value={formNote}
-                onChange={(e) => setFormNote(e.target.value)}
-                className="text-xs"
-              />
-            </div>
+          <div className="flex-1 overflow-y-auto p-5">
+            {renderFormFields()}
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="p-4 pt-3 border-t border-slate-200 dark:border-slate-800 gap-2 bg-slate-50/50 dark:bg-slate-900/50">
             <Button
               variant="outline"
               size="sm"
@@ -884,6 +912,84 @@ export function PartnersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ===================================================================== */}
+      {/* FLOATING BULK ACTION BAR — HIỆN/ẨN PHÍA DƯỚI BÊN PHẢI KHI CHỌN DÒNG */}
+      {/* ===================================================================== */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-40 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-2xl px-4 py-2.5 flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
+            <span>Đã chọn <strong className="text-blue-600 dark:text-blue-400 font-mono text-sm">{selectedIds.length}</strong> đối tác</span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-800" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds([])}
+            className="h-8 px-2.5 text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+          >
+            Hủy chọn
+          </Button>
+
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              setDeleteConfirm({
+                isOpen: true,
+                isBatch: true,
+              })
+            }}
+            disabled={batchDeleteMutation.isPending}
+            className="h-8 gap-1.5 text-xs font-bold shadow-md cursor-pointer bg-red-600 hover:bg-red-700 text-white"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa {selectedIds.length} Đã Chọn
+          </Button>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE DIALOG HIỆN ĐẠI CHUYÊN NGHIỆP */}
+      <ConfirmDialog
+        open={deleteConfirm.isOpen}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, isOpen: open }))}
+        title={deleteConfirm.isBatch ? 'Xác Nhận Xóa Nhiều Đối Tác' : 'Xác Nhận Xóa Đối Tác'}
+        description={
+          deleteConfirm.isBatch ? (
+            <span>
+              Bạn có chắc chắn muốn xóa{' '}
+              <strong className="text-red-600 dark:text-red-400 font-semibold">
+                {selectedIds.length} đối tác
+              </strong>{' '}
+              đã chọn? Dữ liệu sẽ được lưu trữ trong thùng rác hệ thống.
+            </span>
+          ) : (
+            <span>
+              Bạn có chắc chắn muốn xóa đối tác{' '}
+              <strong className="text-slate-900 dark:text-slate-100 font-semibold">
+                [{deleteConfirm.name}]
+              </strong>
+              ? Dữ liệu sẽ được chuyển vào thùng rác.
+            </span>
+          )
+        }
+        confirmText={deleteConfirm.isBatch ? `Xóa ${selectedIds.length} Đối Tác` : 'Xác Nhận Xóa'}
+        isLoading={deleteMutation.isPending || batchDeleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteConfirm.isBatch) {
+            batchDeleteMutation.mutate(selectedIds, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          } else if (deleteConfirm.id) {
+            deleteMutation.mutate(deleteConfirm.id, {
+              onSettled: () => setDeleteConfirm({ isOpen: false }),
+            })
+          }
+        }}
+      />
     </div>
   )
 }

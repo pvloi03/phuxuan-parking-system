@@ -11,7 +11,7 @@ export type ParkingSessionStatus = 'Active' | 'Completed' | 'UnmatchedOut'
 export type UserRole = 'Admin' | 'Manager' | 'Operator' | 'Security' | 'Viewer'
 export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'VIP' | 'Other'
 
-export type DeviceType = 'Camera' | 'Controller'
+export type DeviceType = 'PlateCamera' | 'OverviewCamera' | 'Controller'
 export type DeviceStatus = 'Connected' | 'Disconnected' | 'Error' | 'Maintenance'
 
 export interface ImageStoragePathDto {
@@ -63,8 +63,11 @@ export interface Person {
   email?: string
   type: PersonType
   departmentId?: string
+  departmentName?: string
   companyId?: string
+  companyName?: string
   contractorId?: string
+  contractorName?: string
   isActive: boolean
   isDeleted?: boolean
   deletedAt?: string
@@ -122,7 +125,6 @@ export interface Device {
   port: number
   userName?: string
   password?: string
-  laneId?: string
   status: DeviceStatus
   lastHeartbeat?: string
   errorMessage?: string
@@ -130,6 +132,21 @@ export interface Device {
   isActive: boolean
   isDeleted?: boolean
   deletedAt?: string
+  createdAt?: string
+}
+
+export interface Lane {
+  id: string
+  code: string
+  name: string
+  direction: 'In' | 'Out' | 1 | 2
+  description?: string
+  isActive: boolean
+  overviewCameraDeviceId?: string
+  plateCameraDeviceId?: string
+  controllerDeviceId?: string
+  triggerAuxPort?: number
+  isDeleted?: boolean
   createdAt?: string
 }
 
