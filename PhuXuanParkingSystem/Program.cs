@@ -113,8 +113,12 @@ namespace PhuXuanParkingSystem
             // Business Coordinator Service (Điều phối nghiệp vụ làn xe vào/ra)
             services.AddScoped<Services.Parking.IParkingLaneService, Services.Parking.ParkingLaneService>();
 
+            // Device Health Monitor Service (Giám sát thiết bị & đồng bộ Web Admin)
+            services.AddSingleton<Services.DeviceHealth.IDeviceHealthMonitorService, Services.DeviceHealth.DeviceHealthMonitorService>();
+
             // Forms
             services.AddTransient<FrmMain>();
+            services.AddTransient<FrmDeviceMonitor>();
         }
     }
 }

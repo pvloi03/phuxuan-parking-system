@@ -30,6 +30,7 @@ namespace PhuXuanParkingSystem.Forms
         {
             this.components = new System.ComponentModel.Container();
             this.pnlHeader = new System.Windows.Forms.Panel();
+            this.btnDeviceMonitor = new System.Windows.Forms.Button();
             this.lblClock = new System.Windows.Forms.Label();
             this.lblSystemStatus = new System.Windows.Forms.Label();
             this.lblAppTitle = new System.Windows.Forms.Label();
@@ -97,6 +98,7 @@ namespace PhuXuanParkingSystem.Forms
             // pnlHeader
             // 
             this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
+            this.pnlHeader.Controls.Add(this.btnDeviceMonitor);
             this.pnlHeader.Controls.Add(this.lblClock);
             this.pnlHeader.Controls.Add(this.lblSystemStatus);
             this.pnlHeader.Controls.Add(this.lblAppTitle);
@@ -105,6 +107,22 @@ namespace PhuXuanParkingSystem.Forms
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Size = new System.Drawing.Size(1400, 48);
             this.pnlHeader.TabIndex = 0;
+            // 
+            // btnDeviceMonitor
+            // 
+            this.btnDeviceMonitor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnDeviceMonitor.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
+            this.btnDeviceMonitor.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnDeviceMonitor.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDeviceMonitor.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnDeviceMonitor.ForeColor = System.Drawing.Color.White;
+            this.btnDeviceMonitor.Location = new System.Drawing.Point(970, 8);
+            this.btnDeviceMonitor.Name = "btnDeviceMonitor";
+            this.btnDeviceMonitor.Size = new System.Drawing.Size(170, 32);
+            this.btnDeviceMonitor.TabIndex = 3;
+            this.btnDeviceMonitor.Text = "📡 Giám Sát Thiết Bị (F9)";
+            this.btnDeviceMonitor.UseVisualStyleBackColor = false;
+            this.btnDeviceMonitor.Click += new System.EventHandler(this.BtnDeviceMonitor_Click);
             // 
             // lblClock
             // 
@@ -808,5 +826,6 @@ namespace PhuXuanParkingSystem.Forms
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterStatus;
         private System.Windows.Forms.Timer timerClock;
+        private System.Windows.Forms.Button btnDeviceMonitor;
     }
 }
