@@ -16,8 +16,6 @@ import {
   Download,
   Upload,
   FileSpreadsheet,
-  Wifi,
-  WifiOff,
   Network,
   Info,
   Shield,
@@ -26,7 +24,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
-import type { PagedResult, Device, DeviceType } from '@/types'
+import type { PagedResult, Device, DeviceType, DeviceStatus } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'

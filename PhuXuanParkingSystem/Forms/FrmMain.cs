@@ -30,6 +30,7 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IParkingLaneService _parkingLaneService;
         private readonly IPlateRecognitionService _anprService;
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IRepository<Lane> _laneRepo;
         private readonly IDeviceHealthMonitorService _deviceHealthService;
 
         private string _captureDir = "";
@@ -54,6 +55,7 @@ namespace PhuXuanParkingSystem.Forms
                         new MongoRepository<Contractor>());
                 _anprService = Program.ServiceProvider.GetService<IPlateRecognitionService>() ?? new SimpleLprAnprService();
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
+                _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
                 _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo);
             }
             else
@@ -67,6 +69,7 @@ namespace PhuXuanParkingSystem.Forms
                     new MongoRepository<Contractor>());
                 _anprService = new SimpleLprAnprService();
                 _deviceRepo = new MongoRepository<Device>();
+                _laneRepo = new MongoRepository<Lane>();
                 _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo);
             }
 
@@ -82,6 +85,7 @@ namespace PhuXuanParkingSystem.Forms
             IParkingLaneService parkingLaneService,
             IPlateRecognitionService anprService,
             IRepository<Device> deviceRepo,
+            IRepository<Lane>? laneRepo = null,
             IDeviceHealthMonitorService? deviceHealthService = null)
         {
             InitializeComponent();
@@ -89,6 +93,7 @@ namespace PhuXuanParkingSystem.Forms
             _parkingLaneService = parkingLaneService ?? throw new ArgumentNullException(nameof(parkingLaneService));
             _anprService = anprService ?? new SimpleLprAnprService();
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
+            _laneRepo = laneRepo ?? new MongoRepository<Lane>();
             _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo);
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;

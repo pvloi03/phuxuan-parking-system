@@ -88,52 +88,122 @@ namespace PhuXuanParkingSystem.Forms
         {
             try
             {
+                var lanes = await _laneRepo.FindAsync(l => !l.IsDeleted && l.IsActive);
                 var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted);
-                if (devices != null && devices.Count > 0)
+
+                if (devices == null || devices.Count == 0)
                 {
-                    foreach (var dev in devices)
+                    AppLogger.Warning("Không tìm thấy thiết bị nào trong CSDL MongoDB (sử dụng cấu hình mặc định).");
+                    return;
+                }
+
+                var devDict = new System.Collections.Generic.Dictionary<string, Device>(StringComparer.OrdinalIgnoreCase);
+                foreach (var d in devices)
+                {
+                    if (!string.IsNullOrEmpty(d.Id))
                     {
-                        if (dev.Code == "CAM-IN-PLT" || dev.Code == "CAM_IN_PLATE" || (dev.Type == DeviceType.PlateCamera && dev.Name.Contains("Vào")))
+                        devDict[d.Id] = d;
+                    }
+                }
+
+                bool inPltMapped = false;
+                bool inOvwMapped = false;
+                bool outPltMapped = false;
+                bool outOvwMapped = false;
+                bool ctrlMapped = false;
+
+                // 1. Ưu tiên nạp cấu hình theo liên kết trong LÀN KIỂM SOÁT (LANES)
+                if (lanes != null && lanes.Count > 0)
+                {
+                    var inLane = System.Linq.Enumerable.FirstOrDefault(lanes, l => l.Direction == LaneDirection.In);
+                    if (inLane != null)
+                    {
+                        if (!string.IsNullOrEmpty(inLane.PlateCameraDeviceId) && devDict.TryGetValue(inLane.PlateCameraDeviceId!, out var plDev))
                         {
-                            _inPlateCam.Config.Ip = dev.IpAddress;
-                            _inPlateCam.Config.Port = (ushort)dev.Port;
-                            if (!string.IsNullOrEmpty(dev.UserName)) _inPlateCam.Config.UserName = dev.UserName!;
-                            if (!string.IsNullOrEmpty(dev.Password)) _inPlateCam.Config.Password = dev.Password!;
+                            ApplyDeviceToConfig(_inPlateCam.Config, plDev);
+                            inPltMapped = true;
                         }
-                        else if (dev.Code == "CAM-IN-OVW" || dev.Code == "CAM_IN_OVW" || (dev.Type == DeviceType.OverviewCamera && dev.Name.Contains("Vào")))
+                        if (!string.IsNullOrEmpty(inLane.OverviewCameraDeviceId) && devDict.TryGetValue(inLane.OverviewCameraDeviceId!, out var ovDev))
                         {
-                            _inOverviewCam.Config.Ip = dev.IpAddress;
-                            _inOverviewCam.Config.Port = (ushort)dev.Port;
-                            if (!string.IsNullOrEmpty(dev.UserName)) _inOverviewCam.Config.UserName = dev.UserName!;
-                            if (!string.IsNullOrEmpty(dev.Password)) _inOverviewCam.Config.Password = dev.Password!;
+                            ApplyDeviceToConfig(_inOverviewCam.Config, ovDev);
+                            inOvwMapped = true;
                         }
-                        else if (dev.Code == "CAM-OUT-PLT" || dev.Code == "CAM_OUT_PLATE" || (dev.Type == DeviceType.PlateCamera && dev.Name.Contains("Ra")))
+                        if (!string.IsNullOrEmpty(inLane.ControllerDeviceId) && devDict.TryGetValue(inLane.ControllerDeviceId!, out var cDev))
                         {
-                            _outPlateCam.Config.Ip = dev.IpAddress;
-                            _outPlateCam.Config.Port = (ushort)dev.Port;
-                            if (!string.IsNullOrEmpty(dev.UserName)) _outPlateCam.Config.UserName = dev.UserName!;
-                            if (!string.IsNullOrEmpty(dev.Password)) _outPlateCam.Config.Password = dev.Password!;
-                        }
-                        else if (dev.Code == "CAM-OUT-OVW" || dev.Code == "CAM_OUT_OVW" || (dev.Type == DeviceType.OverviewCamera && dev.Name.Contains("Ra")))
-                        {
-                            _outOverviewCam.Config.Ip = dev.IpAddress;
-                            _outOverviewCam.Config.Port = (ushort)dev.Port;
-                            if (!string.IsNullOrEmpty(dev.UserName)) _outOverviewCam.Config.UserName = dev.UserName!;
-                            if (!string.IsNullOrEmpty(dev.Password)) _outOverviewCam.Config.Password = dev.Password!;
-                        }
-                        else if (dev.Code == "CTRL-C3-200" || dev.Type == DeviceType.Controller)
-                        {
-                            _controllerIp = dev.IpAddress;
-                            _controllerPort = dev.Port;
+                            _controllerIp = cDev.IpAddress;
+                            _controllerPort = cDev.Port;
+                            ctrlMapped = true;
                         }
                     }
-                    AppLogger.Information($"Đã tải cấu hình {devices.Count} thiết bị từ CSDL MongoDB.");
+
+                    var outLane = System.Linq.Enumerable.FirstOrDefault(lanes, l => l.Direction == LaneDirection.Out);
+                    if (outLane != null)
+                    {
+                        if (!string.IsNullOrEmpty(outLane.PlateCameraDeviceId) && devDict.TryGetValue(outLane.PlateCameraDeviceId!, out var plDev))
+                        {
+                            ApplyDeviceToConfig(_outPlateCam.Config, plDev);
+                            outPltMapped = true;
+                        }
+                        if (!string.IsNullOrEmpty(outLane.OverviewCameraDeviceId) && devDict.TryGetValue(outLane.OverviewCameraDeviceId!, out var ovDev))
+                        {
+                            ApplyDeviceToConfig(_outOverviewCam.Config, ovDev);
+                            outOvwMapped = true;
+                        }
+                        if (!string.IsNullOrEmpty(outLane.ControllerDeviceId) && !ctrlMapped && devDict.TryGetValue(outLane.ControllerDeviceId!, out var cDev))
+                        {
+                            _controllerIp = cDev.IpAddress;
+                            _controllerPort = cDev.Port;
+                            ctrlMapped = true;
+                        }
+                    }
                 }
+
+                // 2. Fallback thông minh theo Phân loại thiết bị (DeviceType) và Tên/Mã nếu Làn chưa gán ID
+                foreach (var dev in devices)
+                {
+                    if (!inPltMapped && (dev.Code == "CAM-IN-PLT" || dev.Code == "CAM_IN_PLATE" || (dev.Type == DeviceType.PlateCamera && dev.Name.IndexOf("Vào", StringComparison.OrdinalIgnoreCase) >= 0)))
+                    {
+                        ApplyDeviceToConfig(_inPlateCam.Config, dev);
+                        inPltMapped = true;
+                    }
+                    else if (!inOvwMapped && (dev.Code == "CAM-IN-OVW" || dev.Code == "CAM_IN_OVW" || (dev.Type == DeviceType.OverviewCamera && dev.Name.IndexOf("Vào", StringComparison.OrdinalIgnoreCase) >= 0)))
+                    {
+                        ApplyDeviceToConfig(_inOverviewCam.Config, dev);
+                        inOvwMapped = true;
+                    }
+                    else if (!outPltMapped && (dev.Code == "CAM-OUT-PLT" || dev.Code == "CAM_OUT_PLATE" || (dev.Type == DeviceType.PlateCamera && dev.Name.IndexOf("Ra", StringComparison.OrdinalIgnoreCase) >= 0)))
+                    {
+                        ApplyDeviceToConfig(_outPlateCam.Config, dev);
+                        outPltMapped = true;
+                    }
+                    else if (!outOvwMapped && (dev.Code == "CAM-OUT-OVW" || dev.Code == "CAM_OUT_OVW" || (dev.Type == DeviceType.OverviewCamera && dev.Name.IndexOf("Ra", StringComparison.OrdinalIgnoreCase) >= 0)))
+                    {
+                        ApplyDeviceToConfig(_outOverviewCam.Config, dev);
+                        outOvwMapped = true;
+                    }
+                    else if (!ctrlMapped && (dev.Code == "CTRL-C3-200" || dev.Type == DeviceType.Controller))
+                    {
+                        _controllerIp = dev.IpAddress;
+                        _controllerPort = dev.Port;
+                        ctrlMapped = true;
+                    }
+                }
+
+                AppLogger.Information($"[Hardware Sync] Đã nạp cấu hình phần cứng từ CSDL MongoDB thành công (InPlate: {_inPlateCam.Config.Ip}, InOvw: {_inOverviewCam.Config.Ip}, OutPlt: {_outPlateCam.Config.Ip}, OutOvw: {_outOverviewCam.Config.Ip}, Ctrl: {_controllerIp}:{_controllerPort}).");
             }
             catch (Exception ex)
             {
-                AppLogger.Warning($"Không thể nạp thiết bị từ CSDL (sử dụng cấu hình dự phòng): {ex.Message}");
+                AppLogger.Warning($"Không thể nạp thiết bị từ CSDL (sử dụng cấu hình dự phòng App.config): {ex.Message}");
             }
+        }
+
+        private static void ApplyDeviceToConfig(CameraConfig config, Device dev)
+        {
+            if (config == null || dev == null) return;
+            config.Ip = dev.IpAddress;
+            config.Port = (ushort)dev.Port;
+            if (!string.IsNullOrEmpty(dev.UserName)) config.UserName = dev.UserName!;
+            if (!string.IsNullOrEmpty(dev.Password)) config.Password = dev.Password!;
         }
 
         private async Task AutoConnectAllAsync()
