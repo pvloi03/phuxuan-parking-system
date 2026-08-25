@@ -30,14 +30,14 @@ namespace PhuXuanParkingSystem.Models.Entities
         // --- THÔNG TIN LƯỢT VÀO (CHECK-IN) ---
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime? InTime { get; set; }                                          // [LƯU DB] Thời gian xe vào
-        public string? InLaneId { get; set; }                                          // [LƯU DB] Mã làn vào
+        public string? InLaneName { get; set; }                                        // [LƯU DB] Tên làn vào
         public ImageStoragePath InOverviewImagePath { get; set; } = ImageStoragePath.Empty; // [LƯU DB] Đường dẫn UNC ảnh toàn cảnh lúc vào
         public ImageStoragePath InPlateImagePath { get; set; } = ImageStoragePath.Empty;    // [LƯU DB] Đường dẫn UNC ảnh biển số lúc vào
 
         // --- THÔNG TIN LƯỢT RA (CHECK-OUT) ---
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime? OutTime { get; set; }                                         // [LƯU DB] Thời gian xe ra
-        public string? OutLaneId { get; set; }                                         // [LƯU DB] Mã làn ra
+        public string? OutLaneName { get; set; }                                       // [LƯU DB] Tên làn ra
         public ImageStoragePath OutOverviewImagePath { get; set; } = ImageStoragePath.Empty;// [LƯU DB] Đường dẫn UNC ảnh toàn cảnh lúc ra
         public ImageStoragePath OutPlateImagePath { get; set; } = ImageStoragePath.Empty;   // [LƯU DB] Đường dẫn UNC ảnh biển số lúc ra
 
@@ -68,7 +68,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// Khởi tạo phiên xe vào (Check-in)
         /// </summary>
         public static ParkingSession CheckIn(
-            string inLaneId,
+            string inLaneName,
             string plateNumber,
             ImageStoragePath inOverviewImagePath,
             ImageStoragePath inPlateImagePath,
@@ -78,7 +78,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         {
             return new ParkingSession
             {
-                InLaneId = inLaneId,
+                InLaneName = inLaneName,
                 PlateNumber = PhuXuanParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
                 InOverviewImagePath = inOverviewImagePath ?? ImageStoragePath.Empty,
                 InPlateImagePath = inPlateImagePath ?? ImageStoragePath.Empty,
@@ -94,12 +94,12 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// Hoàn thành phiên khi xe ra (Check-out)
         /// </summary>
         public void CheckOut(
-            string outLaneId,
+            string outLaneName,
             ImageStoragePath outOverviewImagePath,
             ImageStoragePath outPlateImagePath,
             string? note = null)
         {
-            OutLaneId = outLaneId;
+            OutLaneName = outLaneName;
             OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty;
             OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty;
             if (!string.IsNullOrWhiteSpace(note))
@@ -115,7 +115,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// Tạo phiên khi xe ra mà không có bản ghi xe vào tương ứng (Unmatched Out)
         /// </summary>
         public static ParkingSession CreateUnmatchedOut(
-            string outLaneId,
+            string outLaneName,
             string plateNumber,
             ImageStoragePath outOverviewImagePath,
             ImageStoragePath outPlateImagePath,
@@ -125,7 +125,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         {
             return new ParkingSession
             {
-                OutLaneId = outLaneId,
+                OutLaneName = outLaneName,
                 PlateNumber = PhuXuanParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
                 OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty,
                 OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty,

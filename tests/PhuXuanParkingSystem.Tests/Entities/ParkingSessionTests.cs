@@ -13,7 +13,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
         {
             // Arrange & Act
             var session = ParkingSession.CheckIn(
-                inLaneId: "Lane_In_01",
+                inLaneName: "Làn Vào Số 1",
                 plateNumber: "29A-123.45",
                 inOverviewImagePath: @"C:\Captures\2026\08\25\in_ov.jpg",
                 inPlateImagePath: @"C:\Captures\2026\08\25\in_pl.jpg",
@@ -24,13 +24,13 @@ namespace PhuXuanParkingSystem.Tests.Entities
 
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.Active);
-            session.InLaneId.Should().Be("Lane_In_01");
+            session.InLaneName.Should().Be("Làn Vào Số 1");
             session.PlateNumber.Should().Be("29A12345"); // Cleaned
             session.PersonName.Should().Be("Nguyễn Văn A");
             session.InTime.Should().NotBeNull();
             session.InTime.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
             session.OutTime.Should().BeNull();
-            session.OutLaneId.Should().BeNull();
+            session.OutLaneName.Should().BeNull();
             session.IsUnknown.Should().BeFalse();
             session.Duration.Should().BeNull();
             session.IsDeleted.Should().BeFalse();
@@ -41,7 +41,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
         {
             // Arrange
             var session = ParkingSession.CheckIn(
-                inLaneId: "Lane_In_01",
+                inLaneName: "Làn Vào Số 1",
                 plateNumber: "29A-123.45",
                 inOverviewImagePath: "in_ov.jpg",
                 inPlateImagePath: "in_pl.jpg"
@@ -50,7 +50,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
 
             // Act
             session.CheckOut(
-                outLaneId: "Lane_Out_01",
+                outLaneName: "Làn Ra Số 1",
                 outOverviewImagePath: "out_ov.jpg",
                 outPlateImagePath: "out_pl.jpg",
                 note: "Thu phí tiền mặt"
@@ -58,7 +58,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
 
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.Completed);
-            session.OutLaneId.Should().Be("Lane_Out_01");
+            session.OutLaneName.Should().Be("Làn Ra Số 1");
             session.OutOverviewImagePath.Path.Should().Be("out_ov.jpg");
             session.OutPlateImagePath.Path.Should().Be("out_pl.jpg");
             session.OutTime.Should().NotBeNull();
@@ -75,7 +75,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
         {
             // Arrange
             var session = ParkingSession.CheckIn(
-                inLaneId: "Lane_In_01",
+                inLaneName: "Làn Vào Số 1",
                 plateNumber: "29A-123.45",
                 inOverviewImagePath: "in_ov.jpg",
                 inPlateImagePath: "in_pl.jpg",
@@ -84,7 +84,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
 
             // Act
             session.CheckOut(
-                outLaneId: "Lane_Out_01",
+                outLaneName: "Làn Ra Số 1",
                 outOverviewImagePath: "out_ov.jpg",
                 outPlateImagePath: "out_pl.jpg",
                 note: "Ra ca chiều"
@@ -99,7 +99,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
         {
             // Arrange & Act
             var session = ParkingSession.CreateUnmatchedOut(
-                outLaneId: "Lane_Out_01",
+                outLaneName: "Làn Ra Số 1",
                 plateNumber: "30F-999.99",
                 outOverviewImagePath: "out_ov.jpg",
                 outPlateImagePath: "out_pl.jpg",
@@ -112,9 +112,9 @@ namespace PhuXuanParkingSystem.Tests.Entities
             session.Status.Should().Be(ParkingSessionStatus.UnmatchedOut);
             session.PlateNumber.Should().Be("30F99999");
             session.InTime.Should().BeNull();
-            session.InLaneId.Should().BeNull();
+            session.InLaneName.Should().BeNull();
             session.OutTime.Should().NotBeNull();
-            session.OutLaneId.Should().Be("Lane_Out_01");
+            session.OutLaneName.Should().Be("Làn Ra Số 1");
             session.Duration.Should().BeNull();
         }
 
