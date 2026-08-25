@@ -21,7 +21,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string? PhoneNumber { get; set; }                      // [LƯU DB] Số điện thoại
         public string? Email { get; set; }                            // [LƯU DB] Email
         [BsonRepresentation(BsonType.String)]
-        public PersonType Type { get; set; } = PersonType.Employee;   // [LƯU DB] Loại người dùng (Employee, Contractor, Visitor)
+        public PersonType Type { get; set; } = PersonType.Employee;   // [LƯU DB] Loại người dùng (Employee, Contractor, Visitor, VIP, Other)
         [BsonRepresentation(BsonType.ObjectId)]
         public string? CompanyId { get; set; }                        // [LƯU DB] Liên kết công ty / đơn vị thành viên
         [BsonRepresentation(BsonType.ObjectId)]

@@ -6,6 +6,9 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { HistoryPage } from '@/pages/HistoryPage'
 import { VehiclesPage } from '@/pages/VehiclesPage'
 import { PeoplePage } from '@/pages/PeoplePage'
+import { CompaniesPage } from '@/pages/CompaniesPage'
+import { DepartmentsPage } from '@/pages/DepartmentsPage'
+import { PartnersPage } from '@/pages/PartnersPage'
 
 export function AppRoutes() {
   return (
@@ -18,6 +21,9 @@ export function AppRoutes() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/vehicles" element={<VehiclesPage />} />
+          <Route path="/companies" element={<CompaniesPage />} />
+          <Route path="/departments" element={<DepartmentsPage />} />
+          <Route path="/partners" element={<PartnersPage />} />
           <Route path="/people" element={<PeoplePage />} />
         </Route>
       </Route>

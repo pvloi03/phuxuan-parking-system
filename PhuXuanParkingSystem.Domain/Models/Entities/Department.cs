@@ -16,8 +16,10 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string Name { get; set; } = string.Empty;          // [LƯU DB] Tên phòng ban đầy đủ
         [MongoDB.Bson.Serialization.Attributes.BsonRepresentation(MongoDB.Bson.BsonType.ObjectId)]
         public string? CompanyId { get; set; }                    // [LƯU DB] ID Công ty trực thuộc
+        public string? ManagerName { get; set; }                  // [LƯU DB] Tên trưởng phòng / người phụ trách
         public string? PhoneNumber { get; set; }                  // [LƯU DB] Số điện thoại liên hệ
         public string? Email { get; set; }                        // [LƯU DB] Email phòng ban
+        public string? Note { get; set; }                         // [LƯU DB] Ghi chú
         public bool IsActive { get; set; } = true;                // [LƯU DB] Trạng thái hoạt động
 
         public Department() { }

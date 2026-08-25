@@ -24,8 +24,14 @@ namespace PhuXuanParkingSystem.Models.Entities
         [BsonRepresentation(BsonType.String)]
         public ParkingSessionStatus Status { get; set; } = ParkingSessionStatus.Active;// [LƯU DB] Trạng thái (Active, Completed, UnmatchedOut)
 
-        // --- ĐỊNH DANH ĐỐI TƯỢNG (TỐI GIẢN) ---
+        // --- ĐỊNH DANH ĐỐI TƯỢNG (HỒ SƠ ĐẦY ĐỦ) ---
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string? PersonId { get; set; }                                          // [LƯU DB] ID chủ xe nếu đã đăng ký
         public string? PersonName { get; set; }                                        // [LƯU DB] Tên chủ xe / người lái (null nếu là người lạ / xe lạ)
+        public string? CompanyName { get; set; }                                       // [LƯU DB] Tên Công ty / Đơn vị
+        public string? DepartmentName { get; set; }                                    // [LƯU DB] Tên Phòng ban / Bộ phận
+        [BsonRepresentation(BsonType.String)]
+        public PersonType? PersonType { get; set; }                                    // [LƯU DB] Phân loại đối tượng (Employee, Contractor, Visitor, VIP)
 
         // --- THÔNG TIN LƯỢT VÀO (CHECK-IN) ---
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
@@ -74,7 +80,11 @@ namespace PhuXuanParkingSystem.Models.Entities
             ImageStoragePath inPlateImagePath,
             string? personName = null,
             VehicleType vehicleType = VehicleType.Car,
-            string? note = null)
+            string? note = null,
+            string? personId = null,
+            string? companyName = null,
+            string? departmentName = null,
+            PersonType? personType = null)
         {
             return new ParkingSession
             {
@@ -82,7 +92,11 @@ namespace PhuXuanParkingSystem.Models.Entities
                 PlateNumber = PhuXuanParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
                 InOverviewImagePath = inOverviewImagePath ?? ImageStoragePath.Empty,
                 InPlateImagePath = inPlateImagePath ?? ImageStoragePath.Empty,
+                PersonId = personId,
                 PersonName = personName,
+                CompanyName = companyName,
+                DepartmentName = departmentName,
+                PersonType = personType,
                 VehicleType = vehicleType,
                 Note = note,
                 InTime = DateTime.Now,
@@ -121,7 +135,11 @@ namespace PhuXuanParkingSystem.Models.Entities
             ImageStoragePath outPlateImagePath,
             string? personName = null,
             VehicleType vehicleType = VehicleType.Car,
-            string? note = null)
+            string? note = null,
+            string? personId = null,
+            string? companyName = null,
+            string? departmentName = null,
+            PersonType? personType = null)
         {
             return new ParkingSession
             {
@@ -129,7 +147,11 @@ namespace PhuXuanParkingSystem.Models.Entities
                 PlateNumber = PhuXuanParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
                 OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty,
                 OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty,
+                PersonId = personId,
                 PersonName = personName,
+                CompanyName = companyName,
+                DepartmentName = departmentName,
+                PersonType = personType,
                 VehicleType = vehicleType,
                 Note = note,
                 OutTime = DateTime.Now,

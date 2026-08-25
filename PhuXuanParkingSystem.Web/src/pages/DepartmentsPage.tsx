@@ -1,62 +1,83 @@
 import { useState, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Users,
+  Building2,
   Search,
   Plus,
   Trash2,
-  Mail,
-  Phone,
+  Edit,
   Eye,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   RefreshCw,
-  UserCheck,
   Download,
   Upload,
+  Phone,
+  Mail,
   FileSpreadsheet,
+  Building,
+  User,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
-import type { PagedResult, Person, PersonType } from '@/types'
-import { getPersonTypeLabel } from '@/types'
+import type { PagedResult, Department, Company } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/excelHelper'
 
-export function PeoplePage() {
+export function DepartmentsPage() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState<string>('')
+  const [companyIdFilter, setCompanyIdFilter] = useState('')
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [selectedDept, setSelectedDept] = useState<Department | null>(null)
 
   // Form State
-  const [newCode, setNewCode] = useState('')
-  const [newName, setNewName] = useState('')
-  const [newPhone, setNewPhone] = useState('')
-  const [newEmail, setNewEmail] = useState('')
-  const [newType, setNewType] = useState<PersonType>('Employee')
+  const [formCode, setFormCode] = useState('')
+  const [formName, setFormName] = useState('')
+  const [formCompanyId, setFormCompanyId] = useState('')
+  const [formManagerName, setFormManagerName] = useState('')
+  const [formPhone, setFormPhone] = useState('')
+  const [formEmail, setFormEmail] = useState('')
+  const [formNote, setFormNote] = useState('')
 
-  // Query Data with Pagination & Filter
-  const { data, isLoading } = useQuery({
-    queryKey: ['people-list', search, typeFilter, pageNumber, pageSize],
+  // Query Companies for dropdown & mapping
+  const { data: companiesData } = useQuery({
+    queryKey: ['companies-all'],
     queryFn: async () => {
-      const res = await apiClient.get<{ data: PagedResult<Person> }>('/people', {
+      const res = await apiClient.get<{ data: PagedResult<Company> }>('/companies', {
+        params: { pageSize: 100 },
+      })
+      return res.data.data.items || []
+    },
+  })
+
+  const companyMap = useMemo(() => {
+    const map = new Map<string, string>()
+    companiesData?.forEach((c) => map.set(c.id, c.name))
+    return map
+  }, [companiesData])
+
+  // Query Departments
+  const { data, isLoading } = useQuery({
+    queryKey: ['departments-list', search, companyIdFilter, pageNumber, pageSize],
+    queryFn: async () => {
+      const res = await apiClient.get<{ data: PagedResult<Department> }>('/departments', {
         params: {
           search: search || undefined,
+          companyId: companyIdFilter || undefined,
           pageNumber,
           pageSize,
         },
@@ -65,72 +86,111 @@ export function PeoplePage() {
     },
   })
 
-  // Client-side Filter if backend returns unfiltered by type
-  const filteredItems = useMemo(() => {
-    if (!data?.items) return []
-    if (!typeFilter) return data.items
-    return data.items.filter((p) => String(p.type) === typeFilter)
-  }, [data?.items, typeFilter])
-
-  // Total pages calculation
-  const totalItems = data?.totalCount || filteredItems.length
+  const items = data?.items || []
+  const totalItems = data?.totalCount || 0
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
 
-  // Mutations
+  // Create Mutation
   const createMutation = useMutation({
     mutationFn: async () => {
-      await apiClient.post('/people', {
-        code: newCode.trim(),
-        fullName: newName.trim(),
-        phoneNumber: newPhone.trim() || undefined,
-        email: newEmail.trim() || undefined,
-        type: newType,
+      await apiClient.post('/departments', {
+        code: formCode.trim(),
+        name: formName.trim(),
+        companyId: formCompanyId || undefined,
+        managerName: formManagerName.trim() || undefined,
+        phoneNumber: formPhone.trim() || undefined,
+        email: formEmail.trim() || undefined,
+        note: formNote.trim() || undefined,
         isActive: true,
       })
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      queryClient.invalidateQueries({ queryKey: ['departments-list'] })
       setIsCreateOpen(false)
-      setNewCode('')
-      setNewName('')
-      setNewPhone('')
-      setNewEmail('')
-      setNewType('Employee')
+      resetForm()
     },
   })
 
+  // Update Mutation
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedDept) return
+      await apiClient.put(`/departments/${selectedDept.id}`, {
+        code: formCode.trim(),
+        name: formName.trim(),
+        companyId: formCompanyId || undefined,
+        managerName: formManagerName.trim() || undefined,
+        phoneNumber: formPhone.trim() || undefined,
+        email: formEmail.trim() || undefined,
+        note: formNote.trim() || undefined,
+        isActive: selectedDept.isActive,
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments-list'] })
+      setIsEditOpen(false)
+      resetForm()
+    },
+  })
+
+  // Delete Mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.delete(`/people/${id}`)
+      await apiClient.delete(`/departments/${id}`)
     },
     onSuccess: (_data, deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      queryClient.invalidateQueries({ queryKey: ['departments-list'] })
       setSelectedIds((prev) => prev.filter((item) => item !== deletedId))
     },
   })
 
+  // Batch Delete Mutation
   const batchDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      await apiClient.post('/people/delete-batch', ids)
+      await apiClient.post('/departments/delete-batch', ids)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      queryClient.invalidateQueries({ queryKey: ['departments-list'] })
       setSelectedIds([])
     },
   })
 
+  // Batch Import Mutation
   const batchImportMutation = useMutation({
-    mutationFn: async (people: Partial<Person>[]) => {
-      await apiClient.post('/people/batch', people)
+    mutationFn: async (departments: Partial<Department>[]) => {
+      await apiClient.post('/departments/batch', departments)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] })
-      alert('Nhập danh sách nhân sự từ Excel thành công!')
+      queryClient.invalidateQueries({ queryKey: ['departments-list'] })
+      alert('Nhập danh sách phòng ban từ Excel thành công!')
     },
     onError: (err: any) => {
       alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
     },
   })
+
+  const resetForm = () => {
+    setFormCode('')
+    setFormName('')
+    setFormCompanyId('')
+    setFormManagerName('')
+    setFormPhone('')
+    setFormEmail('')
+    setFormNote('')
+    setSelectedDept(null)
+  }
+
+  const openEditModal = (dept: Department) => {
+    setSelectedDept(dept)
+    setFormCode(dept.code || '')
+    setFormName(dept.name || '')
+    setFormCompanyId(dept.companyId || '')
+    setFormManagerName(dept.managerName || '')
+    setFormPhone(dept.phoneNumber || '')
+    setFormEmail(dept.email || '')
+    setFormNote(dept.note || '')
+    setIsEditOpen(true)
+  }
 
   // Selection handlers
   const handleToggleSelect = (id: string) => {
@@ -140,8 +200,8 @@ export function PeoplePage() {
   }
 
   const handleSelectAll = () => {
-    if (!filteredItems.length) return
-    const currentPageIds = filteredItems.map((p) => p.id)
+    if (!items.length) return
+    const currentPageIds = items.map((d) => d.id)
     const allSelected = currentPageIds.every((id) => selectedIds.includes(id))
 
     if (allSelected) {
@@ -152,51 +212,50 @@ export function PeoplePage() {
   }
 
   const isAllSelected =
-    filteredItems.length > 0 &&
-    filteredItems.every((p) => selectedIds.includes(p.id))
+    items.length > 0 && items.every((d) => selectedIds.includes(d.id))
 
   // Excel Handlers
   const handleExportExcel = () => {
-    if (!filteredItems.length) {
+    if (!items.length) {
       alert('Không có dữ liệu để xuất Excel.')
       return
     }
 
-    const exportData = filteredItems.map((p, index) => ({
+    const exportData = items.map((d, index) => ({
       STT: (pageNumber - 1) * pageSize + index + 1,
-      'Mã Định Danh': p.code,
-      'Họ Và Tên': p.fullName,
-      'Phân Loại Đối Tượng': getPersonTypeLabel(p.type),
-      'Số Điện Thoại': p.phoneNumber || '',
-      'Email Liên Hệ': p.email || '',
-      'Trạng Thái': p.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+      'Mã Phòng Ban': d.code,
+      'Tên Phòng Ban': d.name,
+      'Công Ty Trực Thuộc': (d.companyId && companyMap.get(d.companyId)) || d.companyId || 'Chưa gán',
+      'Trưởng Phòng': d.managerName || '',
+      'Số Điện Thoại': d.phoneNumber || '',
+      'Email Liên Hệ': d.email || '',
+      'Ghi Chú': d.note || '',
+      'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
     }))
 
-    exportToExcel(
-      exportData,
-      `Danh_Sach_Nhan_Su_${new Date().toISOString().slice(0, 10)}.xlsx`,
-      'NhanSu'
-    )
+    exportToExcel(exportData, `Danh_Sach_Phong_Ban_${new Date().toISOString().slice(0, 10)}.xlsx`, 'PhongBan')
   }
 
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Định Danh': 'NV-001',
-        'Họ Và Tên': 'Nguyễn Văn An',
-        'Phân Loại (Employee/Contractor/Visitor/VIP)': 'Employee',
+        'Mã Phòng Ban': 'PB-KT',
+        'Tên Phòng Ban': 'Phòng Kỹ Thuật & Công Nghệ',
+        'Trưởng Phòng': 'Nguyễn Văn A',
         'Số Điện Thoại': '0901234567',
-        'Email': 'an.nguyen@hpparking.vn',
+        'Email': 'kythuat@hptech.vn',
+        'Ghi Chú': 'Bộ phận kỹ thuật tòa nhà',
       },
       {
-        'Mã Định Danh': 'DT-001',
-        'Họ Và Tên': 'Vũ Đình Em',
-        'Phân Loại (Employee/Contractor/Visitor/VIP)': 'Contractor',
-        'Số Điện Thoại': '0945678901',
-        'Email': 'em.vu@thaithuy.vn',
+        'Mã Phòng Ban': 'PB-HC',
+        'Tên Phòng Ban': 'Phòng Hành Chính Nhân Sự',
+        'Trưởng Phòng': 'Trần Thị B',
+        'Số Điện Thoại': '0912345678',
+        'Email': 'hr@hptech.vn',
+        'Ghi Chú': 'Quản lý nhân sự',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Nhan_Su.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Phong_Ban.xlsx')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -210,45 +269,22 @@ export function PeoplePage() {
         return
       }
 
-      const formattedData: Partial<Person>[] = rawData
-        .map((row) => {
-          let typeVal: PersonType = 'Employee'
-          const rawType = String(
-            row['Phân Loại (Employee/Contractor/Visitor/VIP)'] ||
-              row['Phân Loại Đối Tượng'] ||
-              row['type'] ||
-              ''
-          ).toLowerCase()
-
-          if (rawType.includes('contractor') || rawType.includes('đối tác') || rawType.includes('nhà thầu')) {
-            typeVal = 'Contractor'
-          } else if (rawType.includes('visitor') || rawType.includes('khách thăm')) {
-            typeVal = 'Visitor'
-          } else if (rawType.includes('vip')) {
-            typeVal = 'VIP'
-          }
-
-          return {
-            code: String(row['Mã Định Danh'] || row['code'] || '').trim(),
-            fullName: String(row['Họ Và Tên'] || row['fullName'] || row['name'] || '').trim(),
-            type: typeVal,
-            phoneNumber: String(row['Số Điện Thoại'] || row['phone'] || '').trim() || undefined,
-            email: String(row['Email'] || row['Email Liên Hệ'] || row['email'] || '').trim() || undefined,
-            isActive: true,
-          }
-        })
-        .filter((p) => p.fullName)
+      const formattedData: Partial<Department>[] = rawData.map((row) => ({
+        code: String(row['Mã Phòng Ban'] || row['code'] || '').trim(),
+        name: String(row['Tên Phòng Ban'] || row['name'] || '').trim(),
+        managerName: String(row['Trưởng Phòng'] || row['manager'] || '').trim() || undefined,
+        phoneNumber: String(row['Số Điện Thoại'] || row['phone'] || '').trim() || undefined,
+        email: String(row['Email'] || row['email'] || '').trim() || undefined,
+        note: String(row['Ghi Chú'] || row['note'] || '').trim() || undefined,
+        isActive: true,
+      })).filter((d) => d.name)
 
       if (formattedData.length === 0) {
-        alert('Không tìm thấy bản ghi nhân sự hợp lệ (Cần có cột Họ Và Tên).')
+        alert('Không tìm thấy bản ghi phòng ban hợp lệ (Cần có cột Tên Phòng Ban).')
         return
       }
 
-      if (
-        confirm(
-          `Đã đọc ${formattedData.length} nhân sự từ file Excel. Bạn có muốn lưu vào hệ thống?`
-        )
-      ) {
+      if (confirm(`Đã đọc ${formattedData.length} phòng ban từ file Excel. Bạn có muốn lưu vào hệ thống?`)) {
         batchImportMutation.mutate(formattedData)
       }
     } catch (err: any) {
@@ -258,61 +294,16 @@ export function PeoplePage() {
     }
   }
 
-  const getPersonTypeBadge = (type?: PersonType | number | string) => {
-    const label = getPersonTypeLabel(type)
-    if (type === 'Employee' || type === 1 || type === '1') {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-[11px] px-2.5 py-0.5 font-medium shadow-2xs"
-        >
-          {label}
-        </Badge>
-      )
-    }
-    if (type === 'Contractor' || type === 2 || type === '2') {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-[11px] px-2.5 py-0.5 font-medium shadow-2xs"
-        >
-          {label}
-        </Badge>
-      )
-    }
-    if (type === 'Visitor' || type === 3 || type === '3') {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-[11px] px-2.5 py-0.5 font-medium shadow-2xs"
-        >
-          {label}
-        </Badge>
-      )
-    }
-    if (type === 'VIP' || type === 4 || type === '4') {
-      return (
-        <Badge
-          variant="outline"
-          className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-[11px] px-2.5 py-0.5 font-medium shadow-2xs"
-        >
-          {label}
-        </Badge>
-      )
-    }
-    return <Badge variant="secondary" className="text-[11px] px-2 py-0.5">{label}</Badge>
-  }
-
   return (
     <div className="space-y-6">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Quản Lý Nhân Sự
+            Quản Lý Phòng Ban Trực Thuộc
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Danh sách nhân viên, đối tác, khách thăm và cư dân trong hệ thống HPParking
+            Cơ cấu tổ chức các phòng ban, trung tâm và bộ phận nghiệp vụ
           </p>
         </div>
 
@@ -323,11 +314,7 @@ export function PeoplePage() {
               size="sm"
               variant="destructive"
               onClick={() => {
-                if (
-                  confirm(
-                    `Bạn có chắc chắn muốn xóa ${selectedIds.length} nhân sự đã chọn?`
-                  )
-                ) {
+                if (confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} phòng ban đã chọn?`)) {
                   batchDeleteMutation.mutate(selectedIds)
                 }
               }}
@@ -382,12 +369,15 @@ export function PeoplePage() {
 
           {/* Create Button */}
           <Button
-            onClick={() => setIsCreateOpen(true)}
+            onClick={() => {
+              resetForm()
+              setIsCreateOpen(true)
+            }}
             size="sm"
             className="gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white cursor-pointer shadow-xs"
           >
             <Plus className="h-4 w-4" />
-            Thêm Nhân Sự Mới
+            Thêm Phòng Ban Mới
           </Button>
         </div>
       </div>
@@ -399,7 +389,7 @@ export function PeoplePage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Tìm theo mã hoặc họ tên..."
+                placeholder="Tìm theo mã hoặc tên phòng ban..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value)
@@ -409,31 +399,33 @@ export function PeoplePage() {
               />
             </div>
 
+            {/* Filter by Company */}
             <div className="w-56">
               <select
-                value={typeFilter}
+                value={companyIdFilter}
                 onChange={(e) => {
-                  setTypeFilter(e.target.value)
+                  setCompanyIdFilter(e.target.value)
                   setPageNumber(1)
                 }}
                 className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
               >
-                <option value="">-- Tất cả phân loại --</option>
-                <option value="Employee">Cán bộ / Nhân viên</option>
-                <option value="Contractor">Đối tác / Nhà thầu</option>
-                <option value="Visitor">Khách thăm</option>
-                <option value="VIP">Khách VIP / Lãnh đạo</option>
+                <option value="">-- Tất cả công ty --</option>
+                {companiesData?.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
 
-          {(search || typeFilter) && (
+          {(search || companyIdFilter) && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
                 setSearch('')
-                setTypeFilter('')
+                setCompanyIdFilter('')
                 setPageNumber(1)
               }}
               className="text-xs text-slate-600 dark:text-slate-400 gap-1.5 cursor-pointer"
@@ -459,10 +451,10 @@ export function PeoplePage() {
                     className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
                 </th>
-                <th className="p-3.5">Mã Định Danh</th>
-                <th className="p-3.5">Họ Và Tên</th>
-                <th className="p-3.5 text-center">Phân Loại Đối Tượng</th>
-                <th className="p-3.5">Liên Hệ</th>
+                <th className="p-3.5">Mã Phòng Ban</th>
+                <th className="p-3.5">Tên Phòng Ban</th>
+                <th className="p-3.5">Công Ty Trực Thuộc</th>
+                <th className="p-3.5">Trưởng Phòng / Liên Hệ</th>
                 <th className="p-3.5 text-right pr-4">Thao Tác</th>
               </tr>
             </thead>
@@ -470,15 +462,17 @@ export function PeoplePage() {
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-400">
-                    Đang tải danh sách nhân sự...
+                    Đang tải danh sách phòng ban...
                   </td>
                 </tr>
-              ) : filteredItems.length > 0 ? (
-                filteredItems.map((person) => {
-                  const isSelected = selectedIds.includes(person.id)
+              ) : items.length > 0 ? (
+                items.map((dept) => {
+                  const isSelected = selectedIds.includes(dept.id)
+                  const companyName = (dept.companyId && companyMap.get(dept.companyId)) || 'Chưa gán'
+
                   return (
                     <tr
-                      key={person.id}
+                      key={dept.id}
                       className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
                         isSelected ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''
                       }`}
@@ -487,31 +481,39 @@ export function PeoplePage() {
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleToggleSelect(person.id)}
+                          onChange={() => handleToggleSelect(dept.id)}
                           className="rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
                         />
                       </td>
                       <td className="p-3.5 font-mono font-semibold text-slate-800 dark:text-slate-200">
-                        {person.code || '--'}
+                        {dept.code || '--'}
                       </td>
                       <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100">
-                        {person.fullName}
+                        {dept.name}
                       </td>
-                      <td className="p-3.5 text-center">
-                        {getPersonTypeBadge(person.type)}
+                      <td className="p-3.5">
+                        <span className="inline-flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                          <Building className="h-3 w-3 text-slate-400" />
+                          {companyName}
+                        </span>
                       </td>
                       <td className="p-3.5 text-slate-500 space-y-0.5">
-                        {person.phoneNumber && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3 text-slate-400" /> {person.phoneNumber}
+                        {dept.managerName && (
+                          <div className="flex items-center gap-1 font-medium text-slate-800 dark:text-slate-200">
+                            <User className="h-3 w-3 text-slate-400" /> {dept.managerName}
                           </div>
                         )}
-                        {person.email && (
+                        {dept.phoneNumber && (
                           <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3 text-slate-400" /> {person.email}
+                            <Phone className="h-3 w-3 text-slate-400" /> {dept.phoneNumber}
                           </div>
                         )}
-                        {!person.phoneNumber && !person.email && <span>--</span>}
+                        {dept.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3 w-3 text-slate-400" /> {dept.email}
+                          </div>
+                        )}
+                        {!dept.managerName && !dept.phoneNumber && !dept.email && <span>--</span>}
                       </td>
                       <td className="p-3.5 text-right pr-4">
                         <div className="flex items-center justify-end gap-1.5">
@@ -519,10 +521,10 @@ export function PeoplePage() {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              setSelectedPerson(person)
+                              setSelectedDept(dept)
                               setIsDetailOpen(true)
                             }}
-                            className="h-7 px-2.5 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/40 cursor-pointer"
+                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/40 cursor-pointer"
                             title="Xem chi tiết"
                           >
                             <Eye className="h-3.5 w-3.5 mr-1" />
@@ -531,18 +533,24 @@ export function PeoplePage() {
 
                           <Button
                             size="sm"
+                            variant="outline"
+                            onClick={() => openEditModal(dept)}
+                            className="h-7 w-7 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 cursor-pointer"
+                            title="Chỉnh sửa"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+
+                          <Button
+                            size="sm"
                             variant="ghost"
                             onClick={() => {
-                              if (
-                                confirm(
-                                  `Bạn có chắc muốn xóa nhân sự [${person.fullName}]?`
-                                )
-                              ) {
-                                deleteMutation.mutate(person.id)
+                              if (confirm(`Bạn có chắc muốn xóa phòng ban [${dept.name}]?`)) {
+                                deleteMutation.mutate(dept.id)
                               }
                             }}
                             className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg cursor-pointer"
-                            title="Xóa nhân sự"
+                            title="Xóa phòng ban"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -554,7 +562,7 @@ export function PeoplePage() {
               ) : (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-400 italic">
-                    Không tìm thấy nhân sự nào phù hợp
+                    Chưa có phòng ban nào trong danh sách
                   </td>
                 </tr>
               )}
@@ -576,7 +584,7 @@ export function PeoplePage() {
               <strong className="font-semibold text-slate-800 dark:text-slate-200">
                 {totalItems}
               </strong>{' '}
-              nhân sự
+              phòng ban
             </span>
 
             <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
@@ -621,7 +629,6 @@ export function PeoplePage() {
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
 
-            {/* Page indicator pills */}
             {Array.from({ length: totalPages }, (_, i) => i + 1)
               .filter((p) => {
                 if (totalPages <= 5) return true
@@ -632,9 +639,7 @@ export function PeoplePage() {
                 const showEllipsis = prev && p - prev > 1
                 return (
                   <div key={p} className="flex items-center">
-                    {showEllipsis && (
-                      <span className="px-1 text-slate-400 select-none">...</span>
-                    )}
+                    {showEllipsis && <span className="px-1 text-slate-400 select-none">...</span>}
                     <Button
                       variant={pageNumber === p ? 'default' : 'outline'}
                       size="sm"
@@ -675,72 +680,59 @@ export function PeoplePage() {
         </div>
       </Card>
 
-      {/* MODAL CHI TIẾT NHÂN SỰ */}
+      {/* MODAL CHI TIẾT PHÒNG BAN */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
-              <UserCheck className="h-5 w-5 text-blue-600" />
-              Chi Tiết Hồ Sơ Nhân Sự
+              <Building2 className="h-5 w-5 text-blue-600" />
+              Chi Tiết Phòng Ban
             </DialogTitle>
           </DialogHeader>
-          {selectedPerson && (
+          {selectedDept && (
             <div className="space-y-3 py-2 text-xs">
               <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Mã định danh:</span>
+                    <span className="text-slate-400 block text-[11px]">Mã phòng ban:</span>
                     <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">
-                      {selectedPerson.code || '--'}
+                      {selectedDept.code || '--'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Họ và tên:</span>
+                    <span className="text-slate-400 block text-[11px]">Tên phòng ban:</span>
                     <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                      {selectedPerson.fullName}
+                      {selectedDept.name}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Phân loại đối tượng:</span>
-                    <div className="mt-1">{getPersonTypeBadge(selectedPerson.type)}</div>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Trạng thái:</span>
-                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 mt-1">
-                      <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
-                      Đang hoạt động
+                    <span className="text-slate-400 block text-[11px]">Công ty trực thuộc:</span>
+                    <span className="font-medium text-blue-600 dark:text-blue-400">
+                      {(selectedDept.companyId && companyMap.get(selectedDept.companyId)) || 'Chưa gán'}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2">
-                <span className="font-bold text-slate-700 dark:text-slate-300 block border-b border-slate-200 dark:border-slate-700/60 pb-1">
-                  Thông Tin Liên Hệ & Tổ Chức
-                </span>
-                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <div>
+                    <span className="text-slate-400 block text-[11px]">Trưởng phòng:</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">
+                      {selectedDept.managerName || 'Chưa bổ nhiệm'}
+                    </span>
+                  </div>
                   <div>
                     <span className="text-slate-400 block text-[11px]">Số điện thoại:</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedPerson.phoneNumber || 'Chưa cập nhật'}
+                      {selectedDept.phoneNumber || 'Chưa cập nhật'}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[11px]">Email liên hệ:</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedPerson.email || 'Chưa cập nhật'}
+                      {selectedDept.email || 'Chưa cập nhật'}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Mã ID phòng ban:</span>
-                    <span className="font-mono text-[10px] text-slate-500">
-                      {selectedPerson.departmentId || '--'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Mã ID công ty/nhà thầu:</span>
-                    <span className="font-mono text-[10px] text-slate-500">
-                      {selectedPerson.companyId || selectedPerson.contractorId || '--'}
+                  <div className="col-span-2">
+                    <span className="text-slate-400 block text-[11px]">Ghi chú:</span>
+                    <span className="text-slate-700 dark:text-slate-300 italic">
+                      {selectedDept.note || 'Không có ghi chú'}
                     </span>
                   </div>
                 </div>
@@ -760,72 +752,96 @@ export function PeoplePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Thêm Nhân Sự */}
+      {/* MODAL THÊM PHÒNG BAN MỚI */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
-              <Users className="h-5 w-5 text-blue-600" />
-              Thêm Nhân Sự Mới
+              <Building2 className="h-5 w-5 text-blue-600" />
+              Thêm Phòng Ban Mới
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2 text-xs">
             <div className="space-y-1">
               <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Mã nhân viên / Định danh
+                Mã phòng ban
               </label>
               <Input
-                placeholder="VD: NV-001 hoặc DT-001"
-                value={newCode}
-                onChange={(e) => setNewCode(e.target.value)}
+                placeholder="VD: PB-KT"
+                value={formCode}
+                onChange={(e) => setFormCode(e.target.value)}
                 className="text-xs"
               />
             </div>
             <div className="space-y-1">
               <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Họ và tên *
+                Tên phòng ban *
               </label>
               <Input
-                placeholder="VD: Nguyễn Văn A"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                placeholder="VD: Phòng Kỹ Thuật & Công Nghệ"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
                 className="text-xs"
               />
             </div>
             <div className="space-y-1">
               <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Phân loại đối tượng
+                Công ty trực thuộc
               </label>
               <select
-                value={newType}
-                onChange={(e) => setNewType(e.target.value as PersonType)}
+                value={formCompanyId}
+                onChange={(e) => setFormCompanyId(e.target.value)}
                 className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
               >
-                <option value="Employee">Cán bộ / Nhân viên</option>
-                <option value="Contractor">Đối tác / Nhà thầu</option>
-                <option value="Visitor">Khách thăm</option>
-                <option value="VIP">Khách VIP / Ban Lãnh Đạo</option>
+                <option value="">-- Chọn công ty trực thuộc --</option>
+                {companiesData?.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="space-y-1">
               <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Số điện thoại
+                Trưởng phòng / Người phụ trách
               </label>
               <Input
-                placeholder="VD: 0912345678"
-                value={newPhone}
-                onChange={(e) => setNewPhone(e.target.value)}
+                placeholder="VD: Nguyễn Văn A"
+                value={formManagerName}
+                onChange={(e) => setFormManagerName(e.target.value)}
                 className="text-xs"
               />
             </div>
             <div className="space-y-1">
               <label className="font-semibold text-slate-700 dark:text-slate-300">
-                Email
+                Số điện thoại liên hệ
               </label>
               <Input
-                placeholder="VD: a.nguyen@hpparking.vn"
-                value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="VD: 0901234567"
+                value={formPhone}
+                onChange={(e) => setFormPhone(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Email phòng ban
+              </label>
+              <Input
+                placeholder="VD: kythuat@hptech.vn"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Ghi chú
+              </label>
+              <Input
+                placeholder="VD: Quản trị hệ thống bãi đỗ xe"
+                value={formNote}
+                onChange={(e) => setFormNote(e.target.value)}
                 className="text-xs"
               />
             </div>
@@ -841,11 +857,120 @@ export function PeoplePage() {
             </Button>
             <Button
               size="sm"
-              disabled={!newName.trim() || createMutation.isPending}
+              disabled={!formName.trim() || createMutation.isPending}
               onClick={() => createMutation.mutate()}
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs cursor-pointer"
             >
-              {createMutation.isPending ? 'Đang lưu...' : 'Lưu Nhân Sự'}
+              {createMutation.isPending ? 'Đang lưu...' : 'Lưu Phòng Ban'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL CHỈNH SỬA PHÒNG BAN */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-100">
+              <Edit className="h-5 w-5 text-blue-600" />
+              Chỉnh Sửa Phòng Ban
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-xs">
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Mã phòng ban
+              </label>
+              <Input
+                value={formCode}
+                onChange={(e) => setFormCode(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Tên phòng ban *
+              </label>
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Công ty trực thuộc
+              </label>
+              <select
+                value={formCompanyId}
+                onChange={(e) => setFormCompanyId(e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+              >
+                <option value="">-- Chọn công ty trực thuộc --</option>
+                {companiesData?.map((comp) => (
+                  <option key={comp.id} value={comp.id}>
+                    {comp.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Trưởng phòng
+              </label>
+              <Input
+                value={formManagerName}
+                onChange={(e) => setFormManagerName(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Số điện thoại liên hệ
+              </label>
+              <Input
+                value={formPhone}
+                onChange={(e) => setFormPhone(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Email phòng ban
+              </label>
+              <Input
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="font-semibold text-slate-700 dark:text-slate-300">
+                Ghi chú
+              </label>
+              <Input
+                value={formNote}
+                onChange={(e) => setFormNote(e.target.value)}
+                className="text-xs"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditOpen(false)}
+              className="text-xs cursor-pointer"
+            >
+              Hủy
+            </Button>
+            <Button
+              size="sm"
+              disabled={!formName.trim() || updateMutation.isPending}
+              onClick={() => updateMutation.mutate()}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs cursor-pointer"
+            >
+              {updateMutation.isPending ? 'Đang cập nhật...' : 'Cập Nhật'}
             </Button>
           </DialogFooter>
         </DialogContent>

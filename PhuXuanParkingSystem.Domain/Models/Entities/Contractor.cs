@@ -14,7 +14,10 @@ namespace PhuXuanParkingSystem.Models.Entities
         // =========================================================================
         public string Code { get; set; } = string.Empty;          // [LƯU DB] Mã nhà thầu
         public string Name { get; set; } = string.Empty;          // [LƯU DB] Tên nhà thầu / đơn vị thi công
+        public string? ContactPerson { get; set; }                // [LƯU DB] Người đại diện liên hệ
         public string? PhoneNumber { get; set; }                  // [LƯU DB] Số điện thoại liên hệ
+        public string? Email { get; set; }                        // [LƯU DB] Email liên hệ
+        public string? Note { get; set; }                         // [LƯU DB] Ghi chú
         public bool IsActive { get; set; } = true;                // [LƯU DB] Trạng thái hoạt động
 
         public Contractor() { }

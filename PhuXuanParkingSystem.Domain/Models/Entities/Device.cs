@@ -26,6 +26,10 @@ namespace PhuXuanParkingSystem.Models.Entities
         public int Port { get; set; } = 8000;                                 // [LƯU DB] Port kết nối chính (Hik: 8000, NST: 3000, ZKTeco: 4370)
         public string? UserName { get; set; }                                 // [LƯU DB] Tên đăng nhập (Camera)
         public string? Password { get; set; }                                 // [LƯU DB] Mật khẩu (Camera hoặc ZKTeco CommPassword)
+        public string? LaneId { get; set; }                                   // [LƯU DB] ID Làn kiểm soát gán thiết bị
+        public string? LaneName { get; set; }                                 // [LƯU DB] Tên Làn kiểm soát (Làn Vào 1, Làn Ra 1...)
+        public string? Note { get; set; }                                     // [LƯU DB] Ghi chú thiết bị
+        public bool IsActive { get; set; } = true;                            // [LƯU DB] Trạng thái hoạt động
 
         // --- TRẠNG THÁI SỨC KHỎE THIẾT BỊ ---
         [BsonRepresentation(BsonType.String)]

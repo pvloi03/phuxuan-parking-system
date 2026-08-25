@@ -85,6 +85,25 @@ namespace PhuXuanParkingSystem.Api.Controllers
             return Ok(ApiResponse<Person>.Ok(existing, "Cập nhật nhân sự thành công."));
         }
 
+        [HttpPost("batch")]
+        public async Task<IActionResult> CreateBatch([FromBody] List<Person> people)
+        {
+            if (people == null || people.Count == 0)
+            {
+                return BadRequest(ApiResponse.Fail("Danh sách nhân sự rỗng."));
+            }
+
+            foreach (var p in people)
+            {
+                if (!string.IsNullOrWhiteSpace(p.FullName))
+                {
+                    await _personRepo.AddAsync(p);
+                }
+            }
+
+            return Ok(ApiResponse.Ok($"Nhập thành công {people.Count} nhân sự từ file."));
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
@@ -93,6 +112,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             await _personRepo.DeleteAsync(id);
             return Ok(ApiResponse.Ok("Đã xóa nhân sự thành công."));
+        }
+
+        [HttpPost("delete-batch")]
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        {
+            if (ids == null || ids.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách ID rỗng."));
+
+            foreach (var id in ids)
+            {
+                await _personRepo.DeleteAsync(id);
+            }
+
+            return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} nhân sự thành công."));
         }
     }
 }

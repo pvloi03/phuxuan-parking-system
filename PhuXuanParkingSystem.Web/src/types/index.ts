@@ -9,7 +9,10 @@ export interface ApiResponse<T = any> {
 export type VehicleType = 'Car' | 'Motorcycle' | 'Truck' | 'Bicycle' | 'Other'
 export type ParkingSessionStatus = 'Active' | 'Completed' | 'UnmatchedOut'
 export type UserRole = 'Admin' | 'Manager' | 'Operator' | 'Security' | 'Viewer'
-export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'Resident'
+export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'VIP' | 'Other'
+
+export type DeviceType = 'Camera' | 'Barrier' | 'CardReader' | 'LedBoard' | 'Controller' | 'Other'
+export type DeviceStatus = 'Connected' | 'Disconnected' | 'Error' | 'Maintenance'
 
 export interface ImageStoragePathDto {
   path: string
@@ -21,7 +24,11 @@ export interface ParkingSession {
   plateNumber: string
   vehicleType: VehicleType
   status: ParkingSessionStatus
+  personId?: string
   personName?: string
+  companyName?: string
+  departmentName?: string
+  personType?: PersonType
   inTime?: string
   inLaneName?: string
   inOverviewImagePath?: string | ImageStoragePathDto
@@ -31,6 +38,8 @@ export interface ParkingSession {
   outOverviewImagePath?: string | ImageStoragePathDto
   outPlateImagePath?: string | ImageStoragePathDto
   note?: string
+  isDeleted?: boolean
+  deletedAt?: string
   createdAt?: string
 }
 
@@ -39,7 +48,10 @@ export interface Vehicle {
   plateNumber: string
   type: VehicleType
   ownerPersonId?: string
+  ownerPersonName?: string
   isActive: boolean
+  isDeleted?: boolean
+  deletedAt?: string
   createdAt?: string
 }
 
@@ -54,6 +66,21 @@ export interface Person {
   companyId?: string
   contractorId?: string
   isActive: boolean
+  isDeleted?: boolean
+  deletedAt?: string
+  createdAt?: string
+}
+
+export interface Company {
+  id: string
+  code: string
+  name: string
+  phoneNumber?: string
+  email?: string
+  note?: string
+  isActive: boolean
+  isDeleted?: boolean
+  deletedAt?: string
   createdAt?: string
 }
 
@@ -61,8 +88,50 @@ export interface Department {
   id: string
   code: string
   name: string
-  description?: string
   companyId?: string
+  managerName?: string
+  phoneNumber?: string
+  email?: string
+  note?: string
+  isActive: boolean
+  isDeleted?: boolean
+  deletedAt?: string
+  createdAt?: string
+}
+
+export interface Contractor {
+  id: string
+  code: string
+  name: string
+  contactPerson?: string
+  phoneNumber?: string
+  email?: string
+  note?: string
+  isActive: boolean
+  isDeleted?: boolean
+  deletedAt?: string
+  createdAt?: string
+}
+
+export interface Device {
+  id: string
+  code: string
+  name: string
+  type: DeviceType
+  ipAddress: string
+  port: number
+  userName?: string
+  password?: string
+  laneId?: string
+  laneName?: string
+  status: DeviceStatus
+  lastHeartbeat?: string
+  errorMessage?: string
+  note?: string
+  isActive: boolean
+  isDeleted?: boolean
+  deletedAt?: string
+  createdAt?: string
 }
 
 export interface UserProfile {
@@ -106,4 +175,38 @@ export interface DashboardMetrics {
   todayOutCount: number
   todayUnmatchedOutCount: number
   hourlyTraffic: HourlyTraffic[]
+}
+
+// --- VIETNAMESE LOCALIZATION HELPERS ---
+export const getPersonTypeLabel = (type?: PersonType | number | string) => {
+  if (type === 'Employee' || type === 1 || type === '1') return 'Cán bộ / Nhân viên'
+  if (type === 'Contractor' || type === 2 || type === '2') return 'Đối tác / Nhà thầu'
+  if (type === 'Visitor' || type === 3 || type === '3') return 'Khách thăm'
+  if (type === 'VIP' || type === 4 || type === '4') return 'Khách VIP'
+  return 'Khách vãng lai'
+}
+
+export const getVehicleTypeLabel = (type?: VehicleType | number | string) => {
+  if (type === 'Car' || type === 1) return 'Ô tô'
+  if (type === 'Motorcycle' || type === 2) return 'Xe máy'
+  if (type === 'Truck' || type === 3) return 'Xe tải'
+  if (type === 'Bicycle' || type === 4) return 'Xe đạp'
+  return 'Khác'
+}
+
+export const getDeviceTypeLabel = (type?: DeviceType | number | string) => {
+  if (type === 'Camera' || type === 1) return 'Camera IP'
+  if (type === 'Barrier' || type === 2) return 'Barrier Tự Động'
+  if (type === 'CardReader' || type === 3) return 'Đầu Đọc Thẻ RFID'
+  if (type === 'LedBoard' || type === 4) return 'Bảng LED Hiển Thị'
+  if (type === 'Controller' || type === 5) return 'Bộ Điều Khiển Trung Tâm'
+  return 'Thiết Bị Khác'
+}
+
+export const getDeviceStatusLabel = (status?: DeviceStatus | number | string) => {
+  if (status === 'Connected' || status === 1) return 'Đang kết nối (Online)'
+  if (status === 'Disconnected' || status === 2) return 'Mất kết nối (Offline)'
+  if (status === 'Error' || status === 3) return 'Lỗi tín hiệu'
+  if (status === 'Maintenance' || status === 4) return 'Đang bảo trì'
+  return 'Chưa xác định'
 }

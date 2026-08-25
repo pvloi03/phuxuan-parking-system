@@ -885,11 +885,32 @@ export function HistoryPage() {
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block text-[11px]">Mã định danh (ID):</span>
-                          <span className="font-mono text-[10px] text-slate-500 truncate block" title={selectedSession.id}>
-                            {selectedSession.id}
+                          <span className="text-slate-400 block text-[11px]">Phân loại đối tượng:</span>
+                          <span className="font-semibold text-blue-600 dark:text-blue-400">
+                            {selectedSession.personType
+                              ? (selectedSession.personType === 'Employee' ? 'Cán bộ / Nhân viên' :
+                                 selectedSession.personType === 'Contractor' ? 'Đối tác / Nhà thầu' :
+                                 selectedSession.personType === 'Visitor' ? 'Khách thăm' :
+                                 selectedSession.personType === 'VIP' ? 'Khách VIP' : 'Khách vãng lai')
+                              : (selectedSession.personName ? 'Xe đăng ký' : 'Khách vãng lai')}
                           </span>
                         </div>
+                        {selectedSession.companyName && (
+                          <div>
+                            <span className="text-slate-400 block text-[11px]">Công ty / Đơn vị:</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                              {selectedSession.companyName}
+                            </span>
+                          </div>
+                        )}
+                        {selectedSession.departmentName && (
+                          <div>
+                            <span className="text-slate-400 block text-[11px]">Phòng ban:</span>
+                            <span className="font-medium text-slate-700 dark:text-slate-300">
+                              {selectedSession.departmentName}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -911,9 +932,9 @@ export function HistoryPage() {
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block text-[11px]">Phân loại lượt xe:</span>
-                          <span className="text-slate-700 dark:text-slate-300 font-medium">
-                            {selectedSession.personName ? 'Xe đăng ký thành viên' : 'Xe khách vãng lai'}
+                          <span className="text-slate-400 block text-[11px]">Mã phiên (ID):</span>
+                          <span className="font-mono text-[10px] text-slate-500 truncate block" title={selectedSession.id}>
+                            {selectedSession.id}
                           </span>
                         </div>
                         <div>
