@@ -82,7 +82,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             // Nạp thông tin thiết bị (OverviewCamera, PlateCamera, Controller) nạp runtime
             await EnrichLaneDevicesAsync(items);
 
-            return Ok(ApiResponse<IReadOnlyList<Lane>>.Ok(items, "Lấy danh sách làn kiểm soát thành công."));
+            return Ok(ApiResponse<IReadOnlyList<Lane>>.Ok(items ?? [], "Lấy danh sách làn kiểm soát thành công."));
         }
 
         // GET api/lanes/{id}
@@ -197,7 +197,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             return Ok(ApiResponse.Ok($"Đã xóa thành công {ids.Count} làn kiểm soát."));
         }
 
-        private async Task EnrichLaneDevicesAsync(IReadOnlyList<Lane> list)
+        private async Task EnrichLaneDevicesAsync(IReadOnlyList<Lane>? list)
         {
             if (list == null || list.Count == 0) return;
 

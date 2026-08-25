@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using PhuXuanParkingSystem.Models.Common;
 using System;
 using Xunit;
@@ -38,9 +38,9 @@ namespace PhuXuanParkingSystem.Tests.Common
             // Assert
             entity.IsDeleted.Should().BeTrue();
             entity.DeletedAt.Should().NotBeNull();
-            entity.DeletedAt.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
+            entity.DeletedAt!.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
             entity.UpdatedAt.Should().NotBeNull();
-            entity.UpdatedAt.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
+            entity.UpdatedAt!.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
         }
 
         [Fact]
