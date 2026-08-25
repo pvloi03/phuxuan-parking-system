@@ -4,6 +4,7 @@ using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Data;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,27 +67,30 @@ namespace PhuXuanParkingSystem.Repositories
             return filter != null ? Builders<T>.Filter.And(notDeleted, filter) : notDeleted;
         }
 
-        public virtual async Task<T?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Tạo bộ lọc ID tương thích cả ObjectId và string
+        /// </summary>
+        protected FilterDefinition<T> BuildIdFilter(string id)
         {
-            if (string.IsNullOrWhiteSpace(id)) return null;
-
-            FilterDefinition<T> idFilter;
             if (MongoDB.Bson.ObjectId.TryParse(id, out var objectId))
             {
-                idFilter = Builders<T>.Filter.Or(
+                return Builders<T>.Filter.Or(
                     Builders<T>.Filter.Eq(x => x.Id, id),
                     Builders<T>.Filter.Eq("_id", objectId),
                     Builders<T>.Filter.Eq("_id", id)
                 );
             }
-            else
-            {
-                idFilter = Builders<T>.Filter.Or(
-                    Builders<T>.Filter.Eq(x => x.Id, id),
-                    Builders<T>.Filter.Eq("_id", id)
-                );
-            }
+            return Builders<T>.Filter.Or(
+                Builders<T>.Filter.Eq(x => x.Id, id),
+                Builders<T>.Filter.Eq("_id", id)
+            );
+        }
 
+        public virtual async Task<T?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return null;
+
+            var idFilter = BuildIdFilter(id);
             var filter = CombineSoftDeleteFilter(idFilter);
             return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         }
@@ -99,7 +103,10 @@ namespace PhuXuanParkingSystem.Repositories
 
         public virtual async Task<IReadOnlyList<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         {
-            var filter = CombineSoftDeleteFilter(Builders<T>.Filter.Where(predicate));
+            if (predicate == null) return await GetAllAsync(cancellationToken);
+            var notDeleted = Builders<T>.Filter.Eq(x => x.IsDeleted, false);
+            var predicateFilter = Builders<T>.Filter.Where(predicate);
+            var filter = Builders<T>.Filter.And(notDeleted, predicateFilter);
             return await _collection.Find(filter).ToListAsync(cancellationToken);
         }
 
@@ -115,7 +122,10 @@ namespace PhuXuanParkingSystem.Repositories
 
         public virtual async Task<T?> FindOneAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
         {
-            var filter = CombineSoftDeleteFilter(Builders<T>.Filter.Where(predicate));
+            if (predicate == null) return null;
+            var notDeleted = Builders<T>.Filter.Eq(x => x.IsDeleted, false);
+            var predicateFilter = Builders<T>.Filter.Where(predicate);
+            var filter = Builders<T>.Filter.And(notDeleted, predicateFilter);
             return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         }
 
@@ -127,11 +137,18 @@ namespace PhuXuanParkingSystem.Repositories
 
         public virtual async Task<long> CountAsync(Expression<Func<T, bool>>? predicate = null, CancellationToken cancellationToken = default)
         {
-            var filter = predicate != null
-                ? CombineSoftDeleteFilter(Builders<T>.Filter.Where(predicate))
-                : CombineSoftDeleteFilter();
-
-            return await _collection.CountDocumentsAsync(filter, null, cancellationToken);
+            if (predicate == null)
+            {
+                var filter = CombineSoftDeleteFilter();
+                return await _collection.CountDocumentsAsync(filter, null, cancellationToken);
+            }
+            else
+            {
+                var notDeleted = Builders<T>.Filter.Eq(x => x.IsDeleted, false);
+                var predicateFilter = Builders<T>.Filter.Where(predicate);
+                var filter = Builders<T>.Filter.And(notDeleted, predicateFilter);
+                return await _collection.CountDocumentsAsync(filter, null, cancellationToken);
+            }
         }
 
         public virtual async Task<long> CountAsync(FilterDefinition<T> filter, CancellationToken cancellationToken = default)
@@ -143,23 +160,24 @@ namespace PhuXuanParkingSystem.Repositories
         public virtual async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
-
-            if (entity.CreatedAt == default) entity.CreatedAt = DateTime.Now;
+            entity.CreatedAt = DateTime.Now;
+            entity.UpdatedAt = DateTime.Now;
             entity.IsDeleted = false;
 
-            await _collection.InsertOneAsync(entity, null, cancellationToken);
+            await _collection.InsertOneAsync(entity, (InsertOneOptions?)null, cancellationToken);
             return entity;
         }
 
         public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default)
         {
             if (entities == null) throw new ArgumentNullException(nameof(entities));
-            var list = new List<T>(entities);
+            var list = entities.ToList();
             if (list.Count == 0) return;
 
             foreach (var item in list)
             {
-                if (item.CreatedAt == default) item.CreatedAt = DateTime.Now;
+                item.CreatedAt = DateTime.Now;
+                item.UpdatedAt = DateTime.Now;
                 item.IsDeleted = false;
             }
 
@@ -171,7 +189,8 @@ namespace PhuXuanParkingSystem.Repositories
             if (entity == null) throw new ArgumentNullException(nameof(entity));
             entity.UpdatedAt = DateTime.Now;
 
-            var filter = CombineSoftDeleteFilter(Builders<T>.Filter.Eq(x => x.Id, entity.Id));
+            var idFilter = BuildIdFilter(entity.Id);
+            var filter = CombineSoftDeleteFilter(idFilter);
             var result = await _collection.ReplaceOneAsync(filter, entity, (ReplaceOptions?)null, cancellationToken);
             return result.MatchedCount > 0;
         }
@@ -180,9 +199,10 @@ namespace PhuXuanParkingSystem.Repositories
         {
             if (string.IsNullOrWhiteSpace(id)) return false;
 
+            var idFilter = BuildIdFilter(id);
             if (softDelete)
             {
-                var filter = CombineSoftDeleteFilter(Builders<T>.Filter.Eq(x => x.Id, id));
+                var filter = CombineSoftDeleteFilter(idFilter);
                 var update = Builders<T>.Update
                     .Set(x => x.IsDeleted, true)
                     .Set(x => x.DeletedAt, DateTime.Now)
@@ -193,8 +213,7 @@ namespace PhuXuanParkingSystem.Repositories
             }
             else
             {
-                var filter = Builders<T>.Filter.Eq(x => x.Id, id);
-                var result = await _collection.DeleteOneAsync(filter, cancellationToken);
+                var result = await _collection.DeleteOneAsync(idFilter, cancellationToken);
                 return result.DeletedCount > 0;
             }
         }
