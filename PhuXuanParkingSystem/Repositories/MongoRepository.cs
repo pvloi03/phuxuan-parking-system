@@ -1,7 +1,7 @@
-﻿using PhuXuanParkingSystem.Models.Common;
-using PhuXuanParkingSystem.Models.Data;
 using Humanizer;
 using MongoDB.Driver;
+using PhuXuanParkingSystem.Models.Common;
+using PhuXuanParkingSystem.Models.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -35,8 +35,8 @@ namespace PhuXuanParkingSystem.Repositories
         public MongoRepository(MongoDbContext context, string collectionName)
         {
             _context = context ?? MongoDbContext.Instance;
-            string colName = string.IsNullOrWhiteSpace(collectionName) 
-                ? typeof(T).Name.Pluralize() 
+            string colName = string.IsNullOrWhiteSpace(collectionName)
+                ? typeof(T).Name.Pluralize()
                 : collectionName;
             _collection = _context.Database.GetCollection<T>(colName);
         }
@@ -70,7 +70,24 @@ namespace PhuXuanParkingSystem.Repositories
         {
             if (string.IsNullOrWhiteSpace(id)) return null;
 
-            var filter = CombineSoftDeleteFilter(Builders<T>.Filter.Eq(x => x.Id, id));
+            FilterDefinition<T> idFilter;
+            if (MongoDB.Bson.ObjectId.TryParse(id, out var objectId))
+            {
+                idFilter = Builders<T>.Filter.Or(
+                    Builders<T>.Filter.Eq(x => x.Id, id),
+                    Builders<T>.Filter.Eq("_id", objectId),
+                    Builders<T>.Filter.Eq("_id", id)
+                );
+            }
+            else
+            {
+                idFilter = Builders<T>.Filter.Or(
+                    Builders<T>.Filter.Eq(x => x.Id, id),
+                    Builders<T>.Filter.Eq("_id", id)
+                );
+            }
+
+            var filter = CombineSoftDeleteFilter(idFilter);
             return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         }
 

@@ -23,10 +23,13 @@ namespace PhuXuanParkingSystem.Models.Entities
         public bool IsActive { get; set; } = true;                    // [LƯU DB] Trạng thái hoạt động
 
         // --- CẤU HÌNH THIẾT BỊ GẮN VỚI LÀN (THEO ID THAM CHIẾU BẢNG DEVICES) ---
+        [BsonRepresentation(BsonType.ObjectId)]
         public string? OverviewCameraDeviceId { get; set; }           // [LƯU DB] ID Camera chụp ảnh toàn cảnh (Hikvision / ONVIF)
+        [BsonRepresentation(BsonType.ObjectId)]
         public string? PlateCameraDeviceId { get; set; }              // [LƯU DB] ID Camera chụp ảnh nhận diện biển số (NST / ONVIF)
 
         // --- CẤU HÌNH BỘ ĐIỀU KHIỂN & CẢM BIẾN RADAR (DÙNG CHUNG CONTROLLER) ---
+        [BsonRepresentation(BsonType.ObjectId)]
         public string? ControllerDeviceId { get; set; }               // [LƯU DB] ID Bộ điều khiển ZKTeco C3-200 (dùng chung cho cả 2 làn)
         public int TriggerAuxPort { get; set; } = 1;                  // [LƯU DB] Cổng tín hiệu Aux In nhận tín hiệu Radar (1 = Làn Vào, 2 = Làn Ra)
 
