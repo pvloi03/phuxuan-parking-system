@@ -109,6 +109,9 @@ namespace PhuXuanParkingSystem
             // ANPR License Plate Recognition Service (SimpleLPR3 x86 Engine)
             services.AddSingleton<Services.Anpr.IPlateRecognitionService, Services.Anpr.SimpleLprAnprService>();
 
+            // Business Coordinator Service (Điều phối nghiệp vụ làn xe vào/ra)
+            services.AddScoped<Services.Parking.IParkingLaneService, Services.Parking.ParkingLaneService>();
+
             // Forms
             services.AddTransient<FrmMain>();
         }
