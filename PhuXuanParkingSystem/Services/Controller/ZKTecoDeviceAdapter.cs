@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.SDK.ZKTeco;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.SDK.ZKTeco;
 using System;
 using System.Text;
 using System.Threading;

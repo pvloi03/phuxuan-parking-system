@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Models.Entities;
 using MongoDB.Driver;
 using System;
 using System.Configuration;
