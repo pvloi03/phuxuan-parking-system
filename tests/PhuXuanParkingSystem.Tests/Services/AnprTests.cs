@@ -97,5 +97,31 @@ namespace PhuXuanParkingSystem.Tests.Services
             result.IsSuccess.Should().BeFalse();
             result.ErrorMessage.Should().Contain("không tồn tại");
         }
+
+        [Fact]
+        public void SimpleLprAnprService_DownscalingConfiguration_ShouldHaveDefaultValues()
+        {
+            // Arrange & Act
+            using var service = new SimpleLprAnprService();
+
+            // Assert
+            service.EnableImageDownscaling.Should().BeTrue();
+            service.MaxAnprWidth.Should().Be(1280);
+        }
+
+        [Fact]
+        public void SimpleLprAnprService_Recognize_WithLargeBitmap_ShouldDownscaleWithoutCrashing()
+        {
+            // Arrange
+            using var service = new SimpleLprAnprService();
+            using var largeBmp = new Bitmap(1920, 1080);
+
+            // Act
+            var result = service.Recognize(largeBmp);
+
+            // Assert
+            result.Should().NotBeNull();
+            result.DurationMs.Should().BeGreaterThanOrEqualTo(0);
+        }
     }
 }
