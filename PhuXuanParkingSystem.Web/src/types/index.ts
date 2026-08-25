@@ -225,10 +225,66 @@ export const getDeviceStatusLabel = (status?: DeviceStatus | number | string) =>
   return 'Chưa xác định'
 }
 
+// --- USER & RBAC TYPES ---
+export interface User {
+  id: string
+  username: string
+  fullName: string
+  email?: string | null
+  phoneNumber?: string | null
+  role: UserRole
+  roleLabel?: string
+  isActive: boolean
+  lastLoginAt?: string | null
+  createdAt: string
+  isDeleted?: boolean
+  deletedAt?: string | null
+}
+
+export interface CreateUserPayload {
+  username: string
+  password: string
+  fullName: string
+  email?: string
+  phoneNumber?: string
+  role: UserRole
+  isActive: boolean
+}
+
+export interface UpdateUserPayload {
+  fullName: string
+  email?: string
+  phoneNumber?: string
+  role: UserRole
+  isActive: boolean
+}
+
+export interface ChangePasswordPayload {
+  oldPassword?: string
+  newPassword: string
+}
+
+export interface UserPagedResult {
+  items: User[]
+  totalCount: number
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+}
+
+export const getUserRoleLabel = (role?: UserRole | number | string) => {
+  if (role === 'Admin' || role === 1 || role === '1') return 'Quản Trị Viên'
+  if (role === 'Manager' || role === 2 || role === '2') return 'Quản Lý'
+  if (role === 'Operator' || role === 3 || role === '3') return 'Nhân Viên Vận Hành'
+  if (role === 'Security' || role === 4 || role === '4') return 'Bảo Vệ Trực Làn'
+  if (role === 'Viewer' || role === 5 || role === '5') return 'Người Xem'
+  return String(role ?? 'Khác')
+}
+
 // --- RECYCLE BIN (THÙNG RÁC) TYPES ---
 export interface RecycleBinItem {
   id: string
-  itemType: 'Vehicle' | 'Person' | 'Contractor' | 'Department' | 'Company' | 'Device' | 'Lane' | 'ParkingSession'
+  itemType: 'Vehicle' | 'Person' | 'Contractor' | 'Department' | 'Company' | 'Device' | 'Lane' | 'ParkingSession' | 'User'
   itemTypeLabel: string
   identifier: string
   title: string
@@ -249,6 +305,7 @@ export interface RecycleBinCounts {
   deviceCount: number
   laneCount: number
   parkingSessionCount: number
+  userCount?: number
 }
 
 export interface RecycleBinPagedResult {

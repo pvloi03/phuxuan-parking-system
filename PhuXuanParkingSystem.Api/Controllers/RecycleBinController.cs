@@ -48,6 +48,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             public int DeviceCount { get; set; }
             public int LaneCount { get; set; }
             public int ParkingSessionCount { get; set; }
+            public int UserCount { get; set; }
         }
 
         public class RestoreItemRequest
@@ -62,7 +63,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
         }
 
         /// <summary>
-        /// Thống kê số lượng mục bị xóa mềm trong thùng rác
+        /// Lấy số lượng mục trong thùng rác theo từng phân hệ
         /// </summary>
         [HttpGet("counts")]
         public async Task<IActionResult> GetCounts()
@@ -75,6 +76,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var deviceFilter = Builders<Device>.Filter.Eq(x => x.IsDeleted, true);
             var laneFilter = Builders<Lane>.Filter.Eq(x => x.IsDeleted, true);
             var sessionFilter = Builders<ParkingSession>.Filter.Eq(x => x.IsDeleted, true);
+            var userFilter = Builders<User>.Filter.Eq(x => x.IsDeleted, true);
 
             var vehicleTask = _context.Vehicles.CountDocumentsAsync(isDeletedFilter);
             var personTask = _context.Persons.CountDocumentsAsync(personFilter);
@@ -84,8 +86,9 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var deviceTask = _context.Devices.CountDocumentsAsync(deviceFilter);
             var laneTask = _context.Lanes.CountDocumentsAsync(laneFilter);
             var sessionTask = _context.ParkingSessions.CountDocumentsAsync(sessionFilter);
+            var userTask = _context.Users.CountDocumentsAsync(userFilter);
 
-            await Task.WhenAll(vehicleTask, personTask, contractorTask, departmentTask, companyTask, deviceTask, laneTask, sessionTask);
+            await Task.WhenAll(vehicleTask, personTask, contractorTask, departmentTask, companyTask, deviceTask, laneTask, sessionTask, userTask);
 
             var counts = new RecycleBinCountsDto
             {
@@ -97,11 +100,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 DeviceCount = (int)deviceTask.Result,
                 LaneCount = (int)laneTask.Result,
                 ParkingSessionCount = (int)sessionTask.Result,
+                UserCount = (int)userTask.Result,
             };
 
             counts.TotalCount = counts.VehicleCount + counts.PersonCount + counts.ContractorCount +
                                 counts.DepartmentCount + counts.CompanyCount + counts.DeviceCount +
-                                counts.LaneCount + counts.ParkingSessionCount;
+                                counts.LaneCount + counts.ParkingSessionCount + counts.UserCount;
 
             return Ok(new { success = true, data = counts });
         }
@@ -349,6 +353,28 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 }
             }
 
+            // 9. USERS
+            if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("User", StringComparison.OrdinalIgnoreCase))
+            {
+                var filter = Builders<User>.Filter.Eq(x => x.IsDeleted, true);
+                var users = await _context.Users.Find(filter).ToListAsync();
+
+                foreach (var u in users)
+                {
+                    allItems.Add(new RecycleBinItemDto
+                    {
+                        Id = u.Id,
+                        ItemType = "User",
+                        ItemTypeLabel = "Tài Khoản",
+                        Identifier = u.Username,
+                        Title = $"{u.FullName} (@{u.Username})",
+                        Description = $"Vai trò: {u.Role} • Email: {u.Email ?? "--"}",
+                        DeletedAt = u.DeletedAt,
+                        CreatedAt = u.CreatedAt
+                    });
+                }
+            }
+
             // Filter search
             if (!string.IsNullOrWhiteSpace(s))
             {
@@ -536,6 +562,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 totalDeleted += (int)res.DeletedCount;
             }
 
+            if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("User", StringComparison.OrdinalIgnoreCase))
+            {
+                var res = await _context.Users.DeleteManyAsync(Builders<User>.Filter.Eq(x => x.IsDeleted, true));
+                totalDeleted += (int)res.DeletedCount;
+            }
+
             return Ok(new { success = true, message = $"Đã dọn sạch thùng rác (xóa {totalDeleted} mục vĩnh viễn).", totalDeleted });
         }
 
@@ -602,6 +634,11 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     var psFilter = BuildIdFilter<ParkingSession>(id);
                     var psRes = await _context.ParkingSessions.UpdateOneAsync(psFilter, Builders<ParkingSession>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return psRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy lượt gửi xe");
+
+                case "user":
+                    var uFilter = BuildIdFilter<User>(id);
+                    var uRes = await _context.Users.UpdateOneAsync(uFilter, Builders<User>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    return uRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy tài khoản người dùng");
 
                 default:
                     return (false, $"Loại thực thể [{itemType}] không được hỗ trợ.");
@@ -703,6 +740,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 case "parkingsession":
                     var psDel = await _context.ParkingSessions.DeleteOneAsync(BuildIdFilter<ParkingSession>(id));
                     return psDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy lượt gửi xe");
+
+                case "user":
+                    var uDel = await _context.Users.DeleteOneAsync(BuildIdFilter<User>(id));
+                    return uDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy tài khoản người dùng");
 
                 default:
                     return (false, $"Loại thực thể [{itemType}] không được hỗ trợ.");

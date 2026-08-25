@@ -11,6 +11,7 @@ import { DepartmentsPage } from '@/pages/DepartmentsPage'
 import { PartnersPage } from '@/pages/PartnersPage'
 import { DevicesPage } from '@/pages/DevicesPage'
 import { LanesPage } from '@/pages/LanesPage'
+import { UsersPage } from '@/pages/UsersPage'
 import { RecycleBinPage } from '@/pages/RecycleBinPage'
 
 export function AppRoutes() {
@@ -18,20 +19,30 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected Routes */}
+      {/* Protected Routes with MainLayout */}
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
+          {/* Public to all authenticated users */}
           <Route path="/" element={<DashboardPage />} />
           <Route path="/history" element={<HistoryPage />} />
-          <Route path="/vehicles" element={<VehiclesPage />} />
-          <Route path="/lanes" element={<LanesPage />} />
-          <Route path="/companies" element={<CompaniesPage />} />
-          <Route path="/departments" element={<DepartmentsPage />} />
-          <Route path="/partners" element={<PartnersPage />} />
-          <Route path="/people" element={<PeoplePage />} />
-          <Route path="/devices" element={<DevicesPage />} />
-          <Route path="/recycle-bin" element={<RecycleBinPage />} />
-          <Route path="/trash" element={<Navigate to="/recycle-bin" replace />} />
+
+          {/* Org & Management Routes (Admin & Manager) */}
+          <Route element={<ProtectedRoute allowedRoles={['Admin', 'Manager', '1', '2']} />}>
+            <Route path="/vehicles" element={<VehiclesPage />} />
+            <Route path="/companies" element={<CompaniesPage />} />
+            <Route path="/departments" element={<DepartmentsPage />} />
+            <Route path="/partners" element={<PartnersPage />} />
+            <Route path="/people" element={<PeoplePage />} />
+            <Route path="/lanes" element={<LanesPage />} />
+            <Route path="/devices" element={<DevicesPage />} />
+            <Route path="/users" element={<UsersPage />} />
+          </Route>
+
+          {/* Super Admin only Routes */}
+          <Route element={<ProtectedRoute allowedRoles={['Admin', '1']} />}>
+            <Route path="/recycle-bin" element={<RecycleBinPage />} />
+            <Route path="/trash" element={<Navigate to="/recycle-bin" replace />} />
+          </Route>
         </Route>
       </Route>
 

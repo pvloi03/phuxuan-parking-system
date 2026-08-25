@@ -121,6 +121,15 @@ const menuConfig: MenuItem[] = [
   {
     type: 'single',
     item: {
+      title: 'Quản Lý Tài Khoản',
+      href: '/users',
+      icon: Users,
+      roles: ['Admin', 'Manager', '1', '2'],
+    },
+  },
+  {
+    type: 'single',
+    item: {
       title: 'Thùng Rác Hệ Thống',
       href: '/recycle-bin',
       icon: Trash2,
