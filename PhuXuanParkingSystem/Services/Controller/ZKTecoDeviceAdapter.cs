@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Services.Logging;
+﻿using PhuXuanParkingSystem.Services.Notification;
+using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.SDK.ZKTeco;
 using System;
 using System.Text;
@@ -51,6 +52,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                     if (_handle != IntPtr.Zero)
                     {
                         StartListening();
+                        AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Bộ Điều Khiển ZKTeco", $"Đã kết nối C3-200 ({ipAddress}:{port}) thành công.", ipAddress);
                         OnStatusChanged?.Invoke(true, $"Đã kết nối C3-200 ({ipAddress}:{port}) thành công.");
                         return true;
                     }
@@ -189,6 +191,21 @@ namespace PhuXuanParkingSystem.Services.Controller
             _ = int.TryParse(parts[4], out var eventType);
 
             bool isActive = eventType == 221;
+
+            if (portIndex == 1)
+            {
+                if (isActive)
+                    AppNotificationService.NotifyInfo(NotificationCategory.LaneIn, "Phát hiện xe vào", "Cảm biến Radar Làn Vào phát hiện có xe đến.", rawLog);
+                else
+                    AppNotificationService.NotifyInfo(NotificationCategory.LaneIn, "Xe đã qua cổng vào", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Vào.", rawLog);
+            }
+            else if (portIndex == 2)
+            {
+                if (isActive)
+                    AppNotificationService.NotifyInfo(NotificationCategory.LaneOut, "Phát hiện xe ra", "Cảm biến Radar Làn Ra phát hiện có xe đến.", rawLog);
+                else
+                    AppNotificationService.NotifyInfo(NotificationCategory.LaneOut, "Xe đã qua cổng ra", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Ra.", rawLog);
+            }
 
             OnAuxInputTriggered?.Invoke(this, new AuxTriggerEventArgs(
                 auxPort: portIndex,

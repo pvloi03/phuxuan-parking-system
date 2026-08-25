@@ -24,3 +24,4 @@
 - **[thiet-ke-kien-truc-he-thong-kiem-soat-xe.md](../thiet-ke-kien-truc-he-thong-kiem-soat-xe.md)**: Bản thiết kế kiến trúc hệ thống tổng thể.
 - **[layout-kien-truc-du-an.md](../layout-kien-truc-du-an.md)**: Bản vẽ kiến trúc phân lớp và luồng dữ liệu.
 - **[layout-giao-dien-winforms.md](../layout-giao-dien-winforms.md)**: Thiết kế bố cục giao diện WinForms LiveMonitor 2 làn Vào/Ra.
+| [Task 008](task-008-application-notification-system.md) | Xây dựng hệ thống sự kiện thông báo toàn cục (AppNotificationService) | Hoàn thành |

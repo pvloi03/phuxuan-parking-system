@@ -1,6 +1,6 @@
-﻿using PhuXuanParkingSystem.Services.Camera;
+﻿using PhuXuanParkingSystem.Services.Notification;
+using PhuXuanParkingSystem.Services.Camera;
 using PhuXuanParkingSystem.Services.Controller;
-using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Configuration;
 using System.Diagnostics;
@@ -144,6 +144,7 @@ namespace PhuXuanParkingSystem
 
             InvalidateCameraPanels();
 
+            AppNotificationService.NotifyInfo(NotificationCategory.System, "Khởi động hệ thống", "Đang tự động kết nối 4 Camera và Controller C3-200...");
             SetHeaderStatus("Đang tự động kết nối 4 Camera và Controller C3-200...");
             SetFooterStatus("Đang khởi chạy luồng kết nối song song...");
 
@@ -303,7 +304,7 @@ namespace PhuXuanParkingSystem
                 if (e.IsActive)
                 {
                     lblInStatusVal.Text = "🟢 Phát hiện xe vào (Radar kích hoạt)";
-                    lblInStatusVal.ForeColor = Color.FromArgb(0, 102, 204);
+                    lblInStatusVal.ForeColor = Color.SeaGreen;
                     lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
 
                     _ = CaptureInLaneAsync("RADAR_LAN_VAO");
@@ -320,7 +321,7 @@ namespace PhuXuanParkingSystem
                 if (e.IsActive)
                 {
                     lblOutStatusVal.Text = "🔴 Phát hiện xe ra (Radar kích hoạt)";
-                    lblOutStatusVal.ForeColor = Color.FromArgb(217, 83, 79);
+                    lblOutStatusVal.ForeColor = Color.SeaGreen;
                     lblOutTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
 
                     _ = CaptureOutLaneAsync("RADAR_LAN_RA");
@@ -374,6 +375,15 @@ namespace PhuXuanParkingSystem
                 if (File.Exists(filePlate)) DisplayCapturedImage(picInPlate, filePlate);
                 if (File.Exists(fileOverview)) DisplayCapturedImage(picInOverview, fileOverview);
 
+                if (tPlate.Result && tOverview.Result)
+                {
+                    AppNotificationService.NotifySuccess(NotificationCategory.LaneIn, "Chụp ảnh Làn Vào", $"Đã chụp và lưu ảnh xe vào thành công ({Path.GetFileName(filePlate)}, {Path.GetFileName(fileOverview)}).", triggerSource);
+                }
+                else
+                {
+                    AppNotificationService.NotifyWarning(NotificationCategory.LaneIn, "Chụp ảnh Làn Vào", "Chụp ảnh từ một trong các camera Làn Vào không thành công.", triggerSource);
+                }
+
                 SetFooterStatus($"📸 Đã chụp và lưu ảnh LÀN VÀO lúc {DateTime.Now:HH:mm:ss.fff}");
             }
             catch (Exception ex)
@@ -405,6 +415,15 @@ namespace PhuXuanParkingSystem
                 // Hiển thị ảnh an toàn lên UI
                 if (File.Exists(filePlate)) DisplayCapturedImage(picOutPlate, filePlate);
                 if (File.Exists(fileOverview)) DisplayCapturedImage(picOutOverview, fileOverview);
+
+                if (tPlate.Result && tOverview.Result)
+                {
+                    AppNotificationService.NotifySuccess(NotificationCategory.LaneOut, "Chụp ảnh Làn Ra", $"Đã chụp và lưu ảnh xe ra thành công ({Path.GetFileName(filePlate)}, {Path.GetFileName(fileOverview)}).", triggerSource);
+                }
+                else
+                {
+                    AppNotificationService.NotifyWarning(NotificationCategory.LaneOut, "Chụp ảnh Làn Ra", "Chụp ảnh từ một trong các camera Làn Ra không thành công.", triggerSource);
+                }
 
                 SetFooterStatus($"📸 Đã chụp và lưu ảnh LÀN RA lúc {DateTime.Now:HH:mm:ss.fff}");
             }

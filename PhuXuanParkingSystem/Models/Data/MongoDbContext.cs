@@ -1,4 +1,5 @@
-﻿using PhuXuanParkingSystem.Services.Logging;
+﻿using PhuXuanParkingSystem.Services.Notification;
+using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Models.Entities;
 using MongoDB.Driver;
 using System;
@@ -68,6 +69,7 @@ namespace PhuXuanParkingSystem.Models.Data
                 // Index cho Persons: Mã nhân viên
                 var personIndexKeys = Builders<Person>.IndexKeys.Ascending(p => p.Code);
                 await Persons.Indexes.CreateOneAsync(new CreateIndexModel<Person>(personIndexKeys));
+                AppNotificationService.NotifySuccess(NotificationCategory.Database, "Cơ Sở Dữ Liệu", "Đã kết nối và cấu hình Index MongoDB thành công.");
             }
             catch
             {
