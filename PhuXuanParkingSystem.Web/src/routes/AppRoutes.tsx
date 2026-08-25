@@ -11,6 +11,7 @@ import { DepartmentsPage } from '@/pages/DepartmentsPage'
 import { PartnersPage } from '@/pages/PartnersPage'
 import { DevicesPage } from '@/pages/DevicesPage'
 import { LanesPage } from '@/pages/LanesPage'
+import { RecycleBinPage } from '@/pages/RecycleBinPage'
 
 export function AppRoutes() {
   return (
@@ -29,6 +30,8 @@ export function AppRoutes() {
           <Route path="/partners" element={<PartnersPage />} />
           <Route path="/people" element={<PeoplePage />} />
           <Route path="/devices" element={<DevicesPage />} />
+          <Route path="/recycle-bin" element={<RecycleBinPage />} />
+          <Route path="/trash" element={<Navigate to="/recycle-bin" replace />} />
         </Route>
       </Route>
 

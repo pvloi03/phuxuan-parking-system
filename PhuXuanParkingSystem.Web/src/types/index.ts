@@ -224,3 +224,37 @@ export const getDeviceStatusLabel = (status?: DeviceStatus | number | string) =>
   if (status === 'Maintenance' || status === 4) return 'Đang bảo trì'
   return 'Chưa xác định'
 }
+
+// --- RECYCLE BIN (THÙNG RÁC) TYPES ---
+export interface RecycleBinItem {
+  id: string
+  itemType: 'Vehicle' | 'Person' | 'Contractor' | 'Department' | 'Company' | 'Device' | 'Lane' | 'ParkingSession'
+  itemTypeLabel: string
+  identifier: string
+  title: string
+  description: string
+  deletedAt?: string
+  createdAt: string
+  canRestore: boolean
+  warningMessage?: string | null
+}
+
+export interface RecycleBinCounts {
+  totalCount: number
+  vehicleCount: number
+  personCount: number
+  contractorCount: number
+  departmentCount: number
+  companyCount: number
+  deviceCount: number
+  laneCount: number
+  parkingSessionCount: number
+}
+
+export interface RecycleBinPagedResult {
+  items: RecycleBinItem[]
+  totalCount: number
+  pageNumber: number
+  pageSize: number
+  totalPages: number
+}

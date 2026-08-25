@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
   History,
@@ -18,6 +19,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { recycleBinService } from '@/services/recycleBinService'
 import { cn } from '@/lib/utils'
 
 interface NavSubItem {
@@ -133,6 +135,12 @@ export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [openGroup, setOpenGroup] = useState<string | null>('Tổ Chức & Đơn Vị')
 
+  const { data: trashCounts } = useQuery({
+    queryKey: ['recycle-bin-counts'],
+    queryFn: () => recycleBinService.getCounts(),
+    refetchInterval: 30000, // Tự động làm mới mỗi 30s
+  })
+
   const getRoleDisplayName = (role: any) => {
     if (role === 'Admin' || role === 1 || role === '1' || role === 'SuperAdmin') return 'Quản Trị Viên'
     if (role === 'Manager' || role === 2 || role === '2') return 'Quản Lý'
@@ -243,8 +251,13 @@ export function Sidebar() {
                   )}
                 />
                 {!isCollapsed && (
-                  <span className="truncate animate-in fade-in duration-150">
+                  <span className="truncate animate-in fade-in duration-150 flex-1">
                     {item.title}
+                  </span>
+                )}
+                {!isCollapsed && item.href === '/recycle-bin' && (trashCounts?.totalCount || 0) > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                    {trashCounts?.totalCount}
                   </span>
                 )}
               </Link>
