@@ -53,7 +53,7 @@ namespace PhuXuanParkingSystem.Tests.Logging
             AppLogger.Initialize("Debug", _testLogDir);
 
             LogMessageEventArgs? receivedArgs = null;
-            EventHandler<LogMessageEventArgs> handler = (s, e) => receivedArgs = e;
+            EventHandler<LogMessageEventArgs> handler = (s, e) => { if (e.Message.Contains("Sensor AUX1 Disconnected") || e.Message.Contains("Failed to connect to Hikvision camera")) receivedArgs = e; };
             AppLogger.OnLogEmitted += handler;
 
             try
@@ -80,7 +80,7 @@ namespace PhuXuanParkingSystem.Tests.Logging
             AppLogger.Initialize("Debug", _testLogDir);
 
             LogMessageEventArgs? receivedArgs = null;
-            EventHandler<LogMessageEventArgs> handler = (s, e) => receivedArgs = e;
+            EventHandler<LogMessageEventArgs> handler = (s, e) => { if (e.Message.Contains("Sensor AUX1 Disconnected") || e.Message.Contains("Failed to connect to Hikvision camera")) receivedArgs = e; };
             AppLogger.OnLogEmitted += handler;
 
             var testException = new InvalidOperationException("Camera IP unreachable at 192.168.1.61");

@@ -11,11 +11,7 @@ using Tesseract;
 namespace PhuXuanParkingSystem.Services.ANPR
 {
     /// <summary>
-    /// Dịch vụ ANPR nhận diện biển số xe thực tế:
-    /// - Hỗ trợ 100% kiến trúc 32-bit (x86) và 64-bit (x64) tương thích với Native Camera/Controller SDKs.
-    /// - Tích hợp VietnamLicensePlateParser (Positional Semantic Correction + Blacklist).
-    /// - Tự động trích xuất biển số 1 dòng và 2 dòng.
-    /// - Mỗi làn xe sở hữu 1 Instance riêng trong RAM (Thread-safe, 0 lock chéo).
+    /// Dịch vụ ANPR nhận diện biển số xe thực tế kèm Logging chi tiết từng bước:
     /// </summary>
     public class RapidOcrAnprService : IAnprService
     {
@@ -39,13 +35,15 @@ namespace PhuXuanParkingSystem.Services.ANPR
                     tessDataPath = Path.Combine(Directory.GetCurrentDirectory(), "tessdata");
                 }
 
+                AppLogger.Information($"[ANPR {LaneId}] Thư mục tessdata: '{tessDataPath}', Tồn tại: {Directory.Exists(tessDataPath)}", "ANPR");
+
                 _engine = new TesseractEngine(tessDataPath, "eng", EngineMode.Default);
                 _engine.SetVariable("tessedit_char_whitelist", "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.- \n\r");
-                AppLogger.Information($"[ANPR {LaneId}] Khởi tạo OCR Engine thành công.", "ANPR");
+                AppLogger.Information($"[ANPR {LaneId}] Khởi tạo OCR Engine (Tesseract x86/x64) thành công.", "ANPR");
             }
             catch (Exception ex)
             {
-                AppLogger.Warning($"[ANPR {LaneId}] Khởi tạo OCR Engine không khả dụng: {ex.Message}", "ANPR");
+                AppLogger.Error(ex, $"[ANPR {LaneId}] Khởi tạo OCR Engine THẤT BẠI: {ex.Message}", "ANPR");
                 _engine = null;
             }
         }
@@ -54,12 +52,14 @@ namespace PhuXuanParkingSystem.Services.ANPR
         {
             if (string.IsNullOrWhiteSpace(imageFilePath) || !File.Exists(imageFilePath))
             {
+                AppLogger.Warning($"[ANPR {LaneId}] File ảnh không tồn tại: '{imageFilePath}'", "ANPR");
                 return Task.FromResult(AnprResult.Failed("File ảnh không tồn tại."));
             }
 
             try
             {
                 byte[] bytes = File.ReadAllBytes(imageFilePath);
+                AppLogger.Information($"[ANPR {LaneId}] Đã đọc file ảnh: {Path.GetFileName(imageFilePath)} ({bytes.Length} bytes)", "ANPR");
                 return RecognizeAsync(bytes, ct);
             }
             catch (Exception ex)
@@ -73,11 +73,13 @@ namespace PhuXuanParkingSystem.Services.ANPR
         {
             if (imageBytes == null || imageBytes.Length == 0)
             {
+                AppLogger.Warning($"[ANPR {LaneId}] Dữ liệu ảnh byte[] rỗng.", "ANPR");
                 return Task.FromResult(AnprResult.Failed("Dữ liệu ảnh rỗng."));
             }
 
             if (_engine == null)
             {
+                AppLogger.Error(null, $"[ANPR {LaneId}] Mô hình AI OCR chưa sẵn sàng (_engine is null).", "ANPR");
                 return Task.FromResult(AnprResult.Failed("Mô hình AI OCR chưa sẵn sàng."));
             }
 
@@ -88,7 +90,7 @@ namespace PhuXuanParkingSystem.Services.ANPR
                 try
                 {
                     string rawText = string.Empty;
-                    float meanConfidence = 0.85f;
+                    float meanConfidence = 0.0f;
 
                     lock (_lockObj)
                     {
@@ -100,31 +102,40 @@ namespace PhuXuanParkingSystem.Services.ANPR
                         }
                     }
 
+                    rawText = rawText.Trim();
+                    AppLogger.Information(
+                        $"[ANPR {LaneId}] OCR quét xong trong {sw.ElapsedMilliseconds}ms | Độ tin cậy: {meanConfidence:P1} | Ký tự thô phát hiện được: '{rawText.Replace("\r", "").Replace("\n", " [NL] ")}'",
+                        "ANPR");
+
                     if (string.IsNullOrWhiteSpace(rawText))
                     {
                         sw.Stop();
+                        AppLogger.Warning($"[ANPR {LaneId}] Không phát hiện thấy bất kỳ ký tự nào trong ảnh.", "ANPR");
                         return AnprResult.Failed("Không tìm thấy ký tự trong khung hình.", sw.ElapsedMilliseconds);
                     }
 
-                    // 2. Phân tích biển số xe Việt Nam kèm Positional Semantic Correction
+                    // Phân tích biển số xe Việt Nam kèm Positional Semantic Correction
                     var parsed = VietnamLicensePlateParser.ParseFromRawText(rawText, meanConfidence);
+
+                    sw.Stop();
 
                     if (!parsed.IsSuccess || string.IsNullOrWhiteSpace(parsed.LicensePlate))
                     {
-                        sw.Stop();
+                        AppLogger.Warning(
+                            $"[ANPR {LaneId}] Ký tự thô không khớp định dạng biển số VN. RawText: '{rawText.Replace("\r", "").Replace("\n", " ")}'",
+                            "ANPR");
+
                         return new AnprResult(
                             string.Empty,
                             0.0,
                             false,
                             null,
-                            $"Phát hiện chữ ({rawText.Trim().Replace("\n", " | ")}) nhưng không khớp biển số VN",
+                            rawText,
                             sw.ElapsedMilliseconds);
                     }
 
-                    sw.Stop();
-
                     AppLogger.Information(
-                        $"[ANPR {LaneId}] Nhận diện biển số: {parsed.LicensePlate} (Confidence: {parsed.Confidence:P0}, Thời gian: {sw.ElapsedMilliseconds}ms)",
+                        $"[ANPR {LaneId}] ĐÃ TRÍCH XUẤT BIỂN SỐ THÀNH CÔNG: '{parsed.LicensePlate}' (Confidence: {parsed.Confidence:P0}, Thời gian: {sw.ElapsedMilliseconds}ms)",
                         "ANPR");
 
                     return new AnprResult(
@@ -132,13 +143,13 @@ namespace PhuXuanParkingSystem.Services.ANPR
                         parsed.Confidence,
                         true,
                         null,
-                        rawText.Trim(),
+                        rawText,
                         sw.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {
                     sw.Stop();
-                    AppLogger.Error(ex, $"[ANPR {LaneId}] Lỗi trong quá trình nhận diện OCR", "ANPR");
+                    AppLogger.Error(ex, $"[ANPR {LaneId}] Lỗi trong quá trình nhận diện OCR: {ex.Message}", "ANPR");
                     return AnprResult.Failed($"Lỗi OCR: {ex.Message}", sw.ElapsedMilliseconds);
                 }
             }, ct);
