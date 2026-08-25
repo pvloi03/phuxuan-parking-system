@@ -2,15 +2,8 @@
 {
     partial class FrmMain
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,10 +15,6 @@
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
@@ -60,11 +49,6 @@
             this.lblInTypeVal = new System.Windows.Forms.Label();
             this.lblInStatusTag = new System.Windows.Forms.Label();
             this.lblInStatusVal = new System.Windows.Forms.Label();
-            this.grpLogConsole = new System.Windows.Forms.GroupBox();
-            this.lstLogConsole = new System.Windows.Forms.ListBox();
-            this.pnlLogToolbar = new System.Windows.Forms.Panel();
-            this.btnOpenLogFolder = new System.Windows.Forms.Button();
-            this.btnClearLogConsole = new System.Windows.Forms.Button();
             this.grpOutInfo = new System.Windows.Forms.GroupBox();
             this.tblOutInfo = new System.Windows.Forms.TableLayoutPanel();
             this.lblOutPlateTag = new System.Windows.Forms.Label();
@@ -79,6 +63,11 @@
             this.lblOutTypeVal = new System.Windows.Forms.Label();
             this.lblOutStatusTag = new System.Windows.Forms.Label();
             this.lblOutStatusVal = new System.Windows.Forms.Label();
+            this.grpLogConsole = new System.Windows.Forms.GroupBox();
+            this.lstLogConsole = new System.Windows.Forms.ListBox();
+            this.pnlLogToolbar = new System.Windows.Forms.Panel();
+            this.btnOpenLogFolder = new System.Windows.Forms.Button();
+            this.btnClearLogConsole = new System.Windows.Forms.Button();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.lblFooterStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerClock = new System.Windows.Forms.Timer(this.components);
@@ -96,12 +85,12 @@
             this.tblInInfo.SuspendLayout();
             this.grpOutInfo.SuspendLayout();
             this.tblOutInfo.SuspendLayout();
+            this.grpLogConsole.SuspendLayout();
+            this.pnlLogToolbar.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.SuspendLayout();
-            // 
             // pnlHeader
-            // 
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
+            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(45, 52, 58);
             this.pnlHeader.Controls.Add(this.lblClock);
             this.pnlHeader.Controls.Add(this.lblSystemStatus);
             this.pnlHeader.Controls.Add(this.lblAppTitle);
@@ -110,45 +99,40 @@
             this.pnlHeader.Name = "pnlHeader";
             this.pnlHeader.Size = new System.Drawing.Size(1400, 48);
             this.pnlHeader.TabIndex = 0;
-            // 
+
             // lblClock
-            // 
             this.lblClock.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblClock.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Bold);
-            this.lblClock.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(235)))), ((int)(((byte)(240)))));
-            this.lblClock.Location = new System.Drawing.Point(1150, 11);
+            this.lblClock.ForeColor = System.Drawing.Color.FromArgb(230, 235, 240);
+            this.lblClock.Location = new System.Drawing.Point(1170, 9);
             this.lblClock.Name = "lblClock";
-            this.lblClock.Size = new System.Drawing.Size(238, 25);
+            this.lblClock.Size = new System.Drawing.Size(220, 28);
             this.lblClock.TabIndex = 2;
-            this.lblClock.Text = "24/08/2026 00:00:00";
+            this.lblClock.Text = "25/08/2026 00:00:00";
             this.lblClock.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
-            // 
+
             // lblSystemStatus
-            // 
-            this.lblSystemStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblSystemStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) | System.Windows.Forms.AnchorStyles.Right)));
             this.lblSystemStatus.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblSystemStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(210)))), ((int)(((byte)(220)))));
-            this.lblSystemStatus.Location = new System.Drawing.Point(460, 15);
+            this.lblSystemStatus.ForeColor = System.Drawing.Color.FromArgb(190, 200, 210);
+            this.lblSystemStatus.Location = new System.Drawing.Point(440, 9);
             this.lblSystemStatus.Name = "lblSystemStatus";
-            this.lblSystemStatus.Size = new System.Drawing.Size(665, 25);
+            this.lblSystemStatus.Size = new System.Drawing.Size(720, 28);
             this.lblSystemStatus.TabIndex = 1;
             this.lblSystemStatus.Text = "Đang khởi tạo hệ thống...";
-            this.lblSystemStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            // 
+            this.lblSystemStatus.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+
             // lblAppTitle
-            // 
             this.lblAppTitle.AutoSize = true;
-            this.lblAppTitle.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Bold);
+            this.lblAppTitle.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.lblAppTitle.ForeColor = System.Drawing.Color.White;
-            this.lblAppTitle.Location = new System.Drawing.Point(12, 10);
+            this.lblAppTitle.Location = new System.Drawing.Point(12, 9);
             this.lblAppTitle.Name = "lblAppTitle";
             this.lblAppTitle.Size = new System.Drawing.Size(418, 31);
             this.lblAppTitle.TabIndex = 0;
             this.lblAppTitle.Text = "HỆ THỐNG KIỂM SOÁT XE THÁI THỤY";
-            // 
+
             // tblMainLayout
-            // 
             this.tblMainLayout.ColumnCount = 2;
             this.tblMainLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblMainLayout.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
@@ -161,27 +145,24 @@
             this.tblMainLayout.Name = "tblMainLayout";
             this.tblMainLayout.Padding = new System.Windows.Forms.Padding(4);
             this.tblMainLayout.RowCount = 2;
-            this.tblMainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 70F));
-            this.tblMainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 30F));
-            this.tblMainLayout.Size = new System.Drawing.Size(1400, 781);
+            this.tblMainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 68F));
+            this.tblMainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 32F));
+            this.tblMainLayout.Size = new System.Drawing.Size(1400, 661);
             this.tblMainLayout.TabIndex = 1;
-            // 
             // grpInLane
-            // 
             this.grpInLane.Controls.Add(this.tblInCameras);
             this.grpInLane.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.grpInLane.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.grpInLane.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
+            this.grpInLane.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.grpInLane.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
             this.grpInLane.Location = new System.Drawing.Point(7, 7);
             this.grpInLane.Name = "grpInLane";
             this.grpInLane.Padding = new System.Windows.Forms.Padding(6);
-            this.grpInLane.Size = new System.Drawing.Size(690, 535);
+            this.grpInLane.Size = new System.Drawing.Size(690, 437);
             this.grpInLane.TabIndex = 0;
             this.grpInLane.TabStop = false;
             this.grpInLane.Text = "LÀN VÀO (IN-LANE)";
-            // 
+
             // tblInCameras
-            // 
             this.tblInCameras.ColumnCount = 2;
             this.tblInCameras.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblInCameras.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
@@ -190,74 +171,68 @@
             this.tblInCameras.Controls.Add(this.picInPlate, 0, 1);
             this.tblInCameras.Controls.Add(this.picInOverview, 1, 1);
             this.tblInCameras.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblInCameras.Location = new System.Drawing.Point(6, 32);
+            this.tblInCameras.Location = new System.Drawing.Point(6, 33);
             this.tblInCameras.Name = "tblInCameras";
             this.tblInCameras.RowCount = 2;
-            this.tblInCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 58F));
-            this.tblInCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 42F));
-            this.tblInCameras.Size = new System.Drawing.Size(678, 497);
+            this.tblInCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblInCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblInCameras.Size = new System.Drawing.Size(678, 398);
             this.tblInCameras.TabIndex = 0;
-            // 
+
             // pnlInPlateVideo
-            // 
-            this.pnlInPlateVideo.BackColor = System.Drawing.Color.Black;
+            this.pnlInPlateVideo.BackColor = System.Drawing.Color.FromArgb(20, 22, 25);
+            this.pnlInPlateVideo.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlInPlateVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlInPlateVideo.Location = new System.Drawing.Point(3, 3);
             this.pnlInPlateVideo.Name = "pnlInPlateVideo";
-            this.pnlInPlateVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlInPlateVideo.Size = new System.Drawing.Size(333, 193);
             this.pnlInPlateVideo.TabIndex = 0;
-            this.pnlInPlateVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlInPlateVideo_Paint);
-            // 
+
             // pnlInOverviewVideo
-            // 
-            this.pnlInOverviewVideo.BackColor = System.Drawing.Color.Black;
+            this.pnlInOverviewVideo.BackColor = System.Drawing.Color.FromArgb(20, 22, 25);
+            this.pnlInOverviewVideo.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlInOverviewVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlInOverviewVideo.Location = new System.Drawing.Point(342, 3);
             this.pnlInOverviewVideo.Name = "pnlInOverviewVideo";
-            this.pnlInOverviewVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlInOverviewVideo.Size = new System.Drawing.Size(333, 193);
             this.pnlInOverviewVideo.TabIndex = 1;
-            this.pnlInOverviewVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlInOverviewVideo_Paint);
-            // 
+
             // picInPlate
-            // 
-            this.picInPlate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
+            this.picInPlate.BackColor = System.Drawing.Color.FromArgb(235, 238, 242);
             this.picInPlate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picInPlate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picInPlate.Location = new System.Drawing.Point(3, 291);
+            this.picInPlate.Location = new System.Drawing.Point(3, 202);
             this.picInPlate.Name = "picInPlate";
-            this.picInPlate.Size = new System.Drawing.Size(333, 203);
+            this.picInPlate.Size = new System.Drawing.Size(333, 193);
             this.picInPlate.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picInPlate.TabIndex = 2;
             this.picInPlate.TabStop = false;
-            // 
+
             // picInOverview
-            // 
-            this.picInOverview.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
+            this.picInOverview.BackColor = System.Drawing.Color.FromArgb(235, 238, 242);
             this.picInOverview.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picInOverview.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picInOverview.Location = new System.Drawing.Point(342, 291);
+            this.picInOverview.Location = new System.Drawing.Point(342, 202);
             this.picInOverview.Name = "picInOverview";
-            this.picInOverview.Size = new System.Drawing.Size(333, 203);
+            this.picInOverview.Size = new System.Drawing.Size(333, 193);
             this.picInOverview.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picInOverview.TabIndex = 3;
             this.picInOverview.TabStop = false;
-            // 
+
             // grpOutLane
-            // 
             this.grpOutLane.Controls.Add(this.tblOutCameras);
             this.grpOutLane.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.grpOutLane.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.grpOutLane.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
+            this.grpOutLane.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.grpOutLane.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
             this.grpOutLane.Location = new System.Drawing.Point(703, 7);
             this.grpOutLane.Name = "grpOutLane";
             this.grpOutLane.Padding = new System.Windows.Forms.Padding(6);
-            this.grpOutLane.Size = new System.Drawing.Size(690, 535);
+            this.grpOutLane.Size = new System.Drawing.Size(690, 437);
             this.grpOutLane.TabIndex = 1;
             this.grpOutLane.TabStop = false;
             this.grpOutLane.Text = "LÀN RA (OUT-LANE)";
-            // 
+
             // tblOutCameras
-            // 
             this.tblOutCameras.ColumnCount = 2;
             this.tblOutCameras.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblOutCameras.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
@@ -266,78 +241,71 @@
             this.tblOutCameras.Controls.Add(this.picOutPlate, 0, 1);
             this.tblOutCameras.Controls.Add(this.picOutOverview, 1, 1);
             this.tblOutCameras.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblOutCameras.Location = new System.Drawing.Point(6, 32);
+            this.tblOutCameras.Location = new System.Drawing.Point(6, 33);
             this.tblOutCameras.Name = "tblOutCameras";
             this.tblOutCameras.RowCount = 2;
-            this.tblOutCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 58F));
-            this.tblOutCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 42F));
-            this.tblOutCameras.Size = new System.Drawing.Size(678, 497);
+            this.tblOutCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblOutCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
+            this.tblOutCameras.Size = new System.Drawing.Size(678, 398);
             this.tblOutCameras.TabIndex = 0;
-            // 
+
             // pnlOutPlateVideo
-            // 
-            this.pnlOutPlateVideo.BackColor = System.Drawing.Color.Black;
+            this.pnlOutPlateVideo.BackColor = System.Drawing.Color.FromArgb(20, 22, 25);
+            this.pnlOutPlateVideo.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlOutPlateVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlOutPlateVideo.Location = new System.Drawing.Point(3, 3);
             this.pnlOutPlateVideo.Name = "pnlOutPlateVideo";
-            this.pnlOutPlateVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlOutPlateVideo.Size = new System.Drawing.Size(333, 193);
             this.pnlOutPlateVideo.TabIndex = 0;
-            this.pnlOutPlateVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlOutPlateVideo_Paint);
-            // 
+
             // pnlOutOverviewVideo
-            // 
-            this.pnlOutOverviewVideo.BackColor = System.Drawing.Color.Black;
+            this.pnlOutOverviewVideo.BackColor = System.Drawing.Color.FromArgb(20, 22, 25);
+            this.pnlOutOverviewVideo.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.pnlOutOverviewVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlOutOverviewVideo.Location = new System.Drawing.Point(342, 3);
             this.pnlOutOverviewVideo.Name = "pnlOutOverviewVideo";
-            this.pnlOutOverviewVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlOutOverviewVideo.Size = new System.Drawing.Size(333, 193);
             this.pnlOutOverviewVideo.TabIndex = 1;
-            this.pnlOutOverviewVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlOutOverviewVideo_Paint);
-            // 
+
             // picOutPlate
-            // 
-            this.picOutPlate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
+            this.picOutPlate.BackColor = System.Drawing.Color.FromArgb(235, 238, 242);
             this.picOutPlate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picOutPlate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picOutPlate.Location = new System.Drawing.Point(3, 291);
+            this.picOutPlate.Location = new System.Drawing.Point(3, 202);
             this.picOutPlate.Name = "picOutPlate";
-            this.picOutPlate.Size = new System.Drawing.Size(333, 203);
+            this.picOutPlate.Size = new System.Drawing.Size(333, 193);
             this.picOutPlate.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picOutPlate.TabIndex = 2;
             this.picOutPlate.TabStop = false;
-            // 
+
             // picOutOverview
-            // 
-            this.picOutOverview.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
+            this.picOutOverview.BackColor = System.Drawing.Color.FromArgb(235, 238, 242);
             this.picOutOverview.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picOutOverview.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picOutOverview.Location = new System.Drawing.Point(342, 291);
+            this.picOutOverview.Location = new System.Drawing.Point(342, 202);
             this.picOutOverview.Name = "picOutOverview";
-            this.picOutOverview.Size = new System.Drawing.Size(333, 203);
+            this.picOutOverview.Size = new System.Drawing.Size(333, 193);
             this.picOutOverview.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picOutOverview.TabIndex = 3;
             this.picOutOverview.TabStop = false;
-            // 
             // grpInInfo
-            // 
             this.grpInInfo.Controls.Add(this.tblInInfo);
             this.grpInInfo.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.grpInInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.grpInInfo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
-            this.grpInInfo.Location = new System.Drawing.Point(7, 548);
+            this.grpInInfo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.grpInInfo.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.grpInInfo.Location = new System.Drawing.Point(7, 450);
             this.grpInInfo.Name = "grpInInfo";
             this.grpInInfo.Padding = new System.Windows.Forms.Padding(8);
-            this.grpInInfo.Size = new System.Drawing.Size(690, 226);
+            this.grpInInfo.Size = new System.Drawing.Size(690, 204);
             this.grpInInfo.TabIndex = 2;
             this.grpInInfo.TabStop = false;
             this.grpInInfo.Text = "THÔNG TIN XE VÀO";
-            // 
+
             // tblInInfo
-            // 
             this.tblInInfo.ColumnCount = 4;
-            this.tblInInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 105F));
+            this.tblInInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.tblInInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblInInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 105F));
+            this.tblInInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.tblInInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblInInfo.Controls.Add(this.lblInPlateTag, 0, 0);
             this.tblInInfo.Controls.Add(this.txtInPlate, 1, 0);
@@ -352,181 +320,166 @@
             this.tblInInfo.Controls.Add(this.lblInStatusTag, 2, 2);
             this.tblInInfo.Controls.Add(this.lblInStatusVal, 3, 2);
             this.tblInInfo.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblInInfo.Location = new System.Drawing.Point(8, 34);
+            this.tblInInfo.Location = new System.Drawing.Point(8, 35);
             this.tblInInfo.Name = "tblInInfo";
             this.tblInInfo.RowCount = 3;
-            this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 35F));
-            this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 32F));
-            this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33F));
-            this.tblInInfo.Size = new System.Drawing.Size(674, 184);
+            this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.33F));
+            this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.33F));
+            this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.34F));
+            this.tblInInfo.Size = new System.Drawing.Size(674, 161);
             this.tblInInfo.TabIndex = 0;
-            // 
+
             // lblInPlateTag
-            // 
             this.lblInPlateTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInPlateTag.AutoSize = true;
             this.lblInPlateTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblInPlateTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInPlateTag.Location = new System.Drawing.Point(3, 7);
+            this.lblInPlateTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblInPlateTag.Location = new System.Drawing.Point(3, 14);
             this.lblInPlateTag.Name = "lblInPlateTag";
-            this.lblInPlateTag.Size = new System.Drawing.Size(78, 50);
+            this.lblInPlateTag.Size = new System.Drawing.Size(76, 25);
             this.lblInPlateTag.TabIndex = 0;
-            this.lblInPlateTag.Text = "Biển số xe:";
-            // 
+            this.lblInPlateTag.Text = "Biển số:";
+
             // txtInPlate
-            // 
             this.txtInPlate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.txtInPlate.BackColor = System.Drawing.Color.White;
             this.txtInPlate.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.txtInPlate.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(80)))), ((int)(((byte)(160)))));
-            this.txtInPlate.Location = new System.Drawing.Point(108, 12);
+            this.txtInPlate.ForeColor = System.Drawing.Color.FromArgb(0, 102, 204);
+            this.txtInPlate.Location = new System.Drawing.Point(103, 7);
             this.txtInPlate.Name = "txtInPlate";
-            this.txtInPlate.ReadOnly = true;
-            this.txtInPlate.Size = new System.Drawing.Size(226, 39);
+            this.txtInPlate.Size = new System.Drawing.Size(231, 39);
             this.txtInPlate.TabIndex = 1;
             this.txtInPlate.Text = "---";
             this.txtInPlate.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            // 
+
             // lblInTimeTag
-            // 
             this.lblInTimeTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInTimeTag.AutoSize = true;
             this.lblInTimeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblInTimeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInTimeTag.Location = new System.Drawing.Point(340, 19);
+            this.lblInTimeTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblInTimeTag.Location = new System.Drawing.Point(340, 14);
             this.lblInTimeTag.Name = "lblInTimeTag";
-            this.lblInTimeTag.Size = new System.Drawing.Size(93, 25);
+            this.lblInTimeTag.Size = new System.Drawing.Size(91, 25);
             this.lblInTimeTag.TabIndex = 2;
             this.lblInTimeTag.Text = "Thời gian:";
-            // 
+
             // lblInTimeVal
-            // 
             this.lblInTimeVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInTimeVal.AutoSize = true;
-            this.lblInTimeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblInTimeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInTimeVal.Location = new System.Drawing.Point(445, 19);
+            this.lblInTimeVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblInTimeVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblInTimeVal.Location = new System.Drawing.Point(440, 14);
             this.lblInTimeVal.Name = "lblInTimeVal";
-            this.lblInTimeVal.Size = new System.Drawing.Size(36, 25);
+            this.lblInTimeVal.Size = new System.Drawing.Size(33, 25);
             this.lblInTimeVal.TabIndex = 3;
             this.lblInTimeVal.Text = "---";
-            // 
+
             // lblInOwnerTag
-            // 
             this.lblInOwnerTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInOwnerTag.AutoSize = true;
             this.lblInOwnerTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblInOwnerTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInOwnerTag.Location = new System.Drawing.Point(3, 80);
+            this.lblInOwnerTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblInOwnerTag.Location = new System.Drawing.Point(3, 67);
             this.lblInOwnerTag.Name = "lblInOwnerTag";
-            this.lblInOwnerTag.Size = new System.Drawing.Size(72, 25);
+            this.lblInOwnerTag.Size = new System.Drawing.Size(74, 25);
             this.lblInOwnerTag.TabIndex = 4;
             this.lblInOwnerTag.Text = "Chủ xe:";
-            // 
+
             // lblInOwnerVal
-            // 
             this.lblInOwnerVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInOwnerVal.AutoSize = true;
-            this.lblInOwnerVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblInOwnerVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInOwnerVal.Location = new System.Drawing.Point(108, 80);
+            this.lblInOwnerVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblInOwnerVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblInOwnerVal.Location = new System.Drawing.Point(103, 67);
             this.lblInOwnerVal.Name = "lblInOwnerVal";
-            this.lblInOwnerVal.Size = new System.Drawing.Size(36, 25);
+            this.lblInOwnerVal.Size = new System.Drawing.Size(33, 25);
             this.lblInOwnerVal.TabIndex = 5;
             this.lblInOwnerVal.Text = "---";
-            // 
+
             // lblInDeptTag
-            // 
             this.lblInDeptTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInDeptTag.AutoSize = true;
             this.lblInDeptTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblInDeptTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInDeptTag.Location = new System.Drawing.Point(340, 80);
+            this.lblInDeptTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblInDeptTag.Location = new System.Drawing.Point(340, 67);
             this.lblInDeptTag.Name = "lblInDeptTag";
-            this.lblInDeptTag.Size = new System.Drawing.Size(70, 25);
+            this.lblInDeptTag.Size = new System.Drawing.Size(69, 25);
             this.lblInDeptTag.TabIndex = 6;
             this.lblInDeptTag.Text = "Đơn vị:";
-            // 
+
             // lblInDeptVal
-            // 
             this.lblInDeptVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInDeptVal.AutoSize = true;
-            this.lblInDeptVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblInDeptVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInDeptVal.Location = new System.Drawing.Point(445, 80);
+            this.lblInDeptVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblInDeptVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblInDeptVal.Location = new System.Drawing.Point(440, 67);
             this.lblInDeptVal.Name = "lblInDeptVal";
-            this.lblInDeptVal.Size = new System.Drawing.Size(36, 25);
+            this.lblInDeptVal.Size = new System.Drawing.Size(33, 25);
             this.lblInDeptVal.TabIndex = 7;
             this.lblInDeptVal.Text = "---";
-            // 
+
             // lblInTypeTag
-            // 
             this.lblInTypeTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInTypeTag.AutoSize = true;
             this.lblInTypeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblInTypeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInTypeTag.Location = new System.Drawing.Point(3, 140);
+            this.lblInTypeTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblInTypeTag.Location = new System.Drawing.Point(3, 122);
             this.lblInTypeTag.Name = "lblInTypeTag";
-            this.lblInTypeTag.Size = new System.Drawing.Size(74, 25);
+            this.lblInTypeTag.Size = new System.Drawing.Size(75, 25);
             this.lblInTypeTag.TabIndex = 8;
             this.lblInTypeTag.Text = "Loại xe:";
-            // 
+
             // lblInTypeVal
-            // 
             this.lblInTypeVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInTypeVal.AutoSize = true;
-            this.lblInTypeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblInTypeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInTypeVal.Location = new System.Drawing.Point(108, 140);
+            this.lblInTypeVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblInTypeVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblInTypeVal.Location = new System.Drawing.Point(103, 122);
             this.lblInTypeVal.Name = "lblInTypeVal";
-            this.lblInTypeVal.Size = new System.Drawing.Size(36, 25);
+            this.lblInTypeVal.Size = new System.Drawing.Size(33, 25);
             this.lblInTypeVal.TabIndex = 9;
             this.lblInTypeVal.Text = "---";
-            // 
+
             // lblInStatusTag
-            // 
             this.lblInStatusTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInStatusTag.AutoSize = true;
             this.lblInStatusTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblInStatusTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInStatusTag.Location = new System.Drawing.Point(340, 140);
+            this.lblInStatusTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblInStatusTag.Location = new System.Drawing.Point(340, 122);
             this.lblInStatusTag.Name = "lblInStatusTag";
-            this.lblInStatusTag.Size = new System.Drawing.Size(99, 25);
+            this.lblInStatusTag.Size = new System.Drawing.Size(95, 25);
             this.lblInStatusTag.TabIndex = 10;
             this.lblInStatusTag.Text = "Trạng thái:";
-            // 
+
             // lblInStatusVal
-            // 
             this.lblInStatusVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblInStatusVal.AutoSize = true;
             this.lblInStatusVal.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblInStatusVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(140)))), ((int)(((byte)(70)))));
-            this.lblInStatusVal.Location = new System.Drawing.Point(445, 140);
+            this.lblInStatusVal.ForeColor = System.Drawing.Color.FromArgb(40, 140, 70);
+            this.lblInStatusVal.Location = new System.Drawing.Point(440, 121);
             this.lblInStatusVal.Name = "lblInStatusVal";
             this.lblInStatusVal.Size = new System.Drawing.Size(159, 25);
             this.lblInStatusVal.TabIndex = 11;
             this.lblInStatusVal.Text = "Sẵn sàng đón xe";
-            // 
+
             // grpOutInfo
-            // 
             this.grpOutInfo.Controls.Add(this.tblOutInfo);
             this.grpOutInfo.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.grpOutInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.grpOutInfo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
-            this.grpOutInfo.Location = new System.Drawing.Point(703, 548);
+            this.grpOutInfo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.grpOutInfo.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.grpOutInfo.Location = new System.Drawing.Point(703, 450);
             this.grpOutInfo.Name = "grpOutInfo";
             this.grpOutInfo.Padding = new System.Windows.Forms.Padding(8);
-            this.grpOutInfo.Size = new System.Drawing.Size(690, 226);
+            this.grpOutInfo.Size = new System.Drawing.Size(690, 204);
             this.grpOutInfo.TabIndex = 3;
             this.grpOutInfo.TabStop = false;
             this.grpOutInfo.Text = "THÔNG TIN XE RA";
-            // 
+
             // tblOutInfo
-            // 
             this.tblOutInfo.ColumnCount = 4;
-            this.tblOutInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 105F));
+            this.tblOutInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.tblOutInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
-            this.tblOutInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 105F));
+            this.tblOutInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 100F));
             this.tblOutInfo.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
             this.tblOutInfo.Controls.Add(this.lblOutPlateTag, 0, 0);
             this.tblOutInfo.Controls.Add(this.txtOutPlate, 1, 0);
@@ -541,163 +494,210 @@
             this.tblOutInfo.Controls.Add(this.lblOutStatusTag, 2, 2);
             this.tblOutInfo.Controls.Add(this.lblOutStatusVal, 3, 2);
             this.tblOutInfo.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblOutInfo.Location = new System.Drawing.Point(8, 34);
+            this.tblOutInfo.Location = new System.Drawing.Point(8, 35);
             this.tblOutInfo.Name = "tblOutInfo";
             this.tblOutInfo.RowCount = 3;
-            this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 35F));
-            this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 32F));
-            this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33F));
-            this.tblOutInfo.Size = new System.Drawing.Size(674, 184);
-            this.tblOutInfo.TabIndex = 1;
-            // 
+            this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.33F));
+            this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.33F));
+            this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33.34F));
+            this.tblOutInfo.Size = new System.Drawing.Size(674, 161);
+            this.tblOutInfo.TabIndex = 0;
+
             // lblOutPlateTag
-            // 
             this.lblOutPlateTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutPlateTag.AutoSize = true;
             this.lblOutPlateTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblOutPlateTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutPlateTag.Location = new System.Drawing.Point(3, 7);
+            this.lblOutPlateTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblOutPlateTag.Location = new System.Drawing.Point(3, 14);
             this.lblOutPlateTag.Name = "lblOutPlateTag";
-            this.lblOutPlateTag.Size = new System.Drawing.Size(78, 50);
+            this.lblOutPlateTag.Size = new System.Drawing.Size(76, 25);
             this.lblOutPlateTag.TabIndex = 0;
-            this.lblOutPlateTag.Text = "Biển số xe:";
-            // 
+            this.lblOutPlateTag.Text = "Biển số:";
+
             // txtOutPlate
-            // 
             this.txtOutPlate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.txtOutPlate.BackColor = System.Drawing.Color.White;
             this.txtOutPlate.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.txtOutPlate.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
-            this.txtOutPlate.Location = new System.Drawing.Point(108, 12);
+            this.txtOutPlate.ForeColor = System.Drawing.Color.FromArgb(180, 40, 40);
+            this.txtOutPlate.Location = new System.Drawing.Point(103, 7);
             this.txtOutPlate.Name = "txtOutPlate";
-            this.txtOutPlate.ReadOnly = true;
-            this.txtOutPlate.Size = new System.Drawing.Size(226, 39);
+            this.txtOutPlate.Size = new System.Drawing.Size(231, 39);
             this.txtOutPlate.TabIndex = 1;
             this.txtOutPlate.Text = "---";
             this.txtOutPlate.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            // 
+
             // lblOutTimeTag
-            // 
             this.lblOutTimeTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutTimeTag.AutoSize = true;
             this.lblOutTimeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblOutTimeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutTimeTag.Location = new System.Drawing.Point(340, 19);
+            this.lblOutTimeTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblOutTimeTag.Location = new System.Drawing.Point(340, 14);
             this.lblOutTimeTag.Name = "lblOutTimeTag";
-            this.lblOutTimeTag.Size = new System.Drawing.Size(93, 25);
+            this.lblOutTimeTag.Size = new System.Drawing.Size(91, 25);
             this.lblOutTimeTag.TabIndex = 2;
             this.lblOutTimeTag.Text = "Thời gian:";
-            // 
+
             // lblOutTimeVal
-            // 
             this.lblOutTimeVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutTimeVal.AutoSize = true;
-            this.lblOutTimeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblOutTimeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutTimeVal.Location = new System.Drawing.Point(445, 19);
+            this.lblOutTimeVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblOutTimeVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblOutTimeVal.Location = new System.Drawing.Point(440, 14);
             this.lblOutTimeVal.Name = "lblOutTimeVal";
-            this.lblOutTimeVal.Size = new System.Drawing.Size(36, 25);
+            this.lblOutTimeVal.Size = new System.Drawing.Size(33, 25);
             this.lblOutTimeVal.TabIndex = 3;
             this.lblOutTimeVal.Text = "---";
-            // 
+
             // lblOutOwnerTag
-            // 
             this.lblOutOwnerTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutOwnerTag.AutoSize = true;
             this.lblOutOwnerTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblOutOwnerTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutOwnerTag.Location = new System.Drawing.Point(3, 80);
+            this.lblOutOwnerTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblOutOwnerTag.Location = new System.Drawing.Point(3, 67);
             this.lblOutOwnerTag.Name = "lblOutOwnerTag";
-            this.lblOutOwnerTag.Size = new System.Drawing.Size(72, 25);
+            this.lblOutOwnerTag.Size = new System.Drawing.Size(74, 25);
             this.lblOutOwnerTag.TabIndex = 4;
             this.lblOutOwnerTag.Text = "Chủ xe:";
-            // 
+
             // lblOutOwnerVal
-            // 
             this.lblOutOwnerVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutOwnerVal.AutoSize = true;
-            this.lblOutOwnerVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblOutOwnerVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutOwnerVal.Location = new System.Drawing.Point(108, 80);
+            this.lblOutOwnerVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblOutOwnerVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblOutOwnerVal.Location = new System.Drawing.Point(103, 67);
             this.lblOutOwnerVal.Name = "lblOutOwnerVal";
-            this.lblOutOwnerVal.Size = new System.Drawing.Size(36, 25);
+            this.lblOutOwnerVal.Size = new System.Drawing.Size(33, 25);
             this.lblOutOwnerVal.TabIndex = 5;
             this.lblOutOwnerVal.Text = "---";
-            // 
+
             // lblOutDeptTag
-            // 
             this.lblOutDeptTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutDeptTag.AutoSize = true;
             this.lblOutDeptTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblOutDeptTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutDeptTag.Location = new System.Drawing.Point(340, 80);
+            this.lblOutDeptTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblOutDeptTag.Location = new System.Drawing.Point(340, 67);
             this.lblOutDeptTag.Name = "lblOutDeptTag";
-            this.lblOutDeptTag.Size = new System.Drawing.Size(70, 25);
+            this.lblOutDeptTag.Size = new System.Drawing.Size(69, 25);
             this.lblOutDeptTag.TabIndex = 6;
             this.lblOutDeptTag.Text = "Đơn vị:";
-            // 
+
             // lblOutDeptVal
-            // 
             this.lblOutDeptVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutDeptVal.AutoSize = true;
-            this.lblOutDeptVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblOutDeptVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutDeptVal.Location = new System.Drawing.Point(445, 80);
+            this.lblOutDeptVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblOutDeptVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblOutDeptVal.Location = new System.Drawing.Point(440, 67);
             this.lblOutDeptVal.Name = "lblOutDeptVal";
-            this.lblOutDeptVal.Size = new System.Drawing.Size(36, 25);
+            this.lblOutDeptVal.Size = new System.Drawing.Size(33, 25);
             this.lblOutDeptVal.TabIndex = 7;
             this.lblOutDeptVal.Text = "---";
-            // 
+
             // lblOutTypeTag
-            // 
             this.lblOutTypeTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutTypeTag.AutoSize = true;
             this.lblOutTypeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblOutTypeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutTypeTag.Location = new System.Drawing.Point(3, 140);
+            this.lblOutTypeTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblOutTypeTag.Location = new System.Drawing.Point(3, 122);
             this.lblOutTypeTag.Name = "lblOutTypeTag";
-            this.lblOutTypeTag.Size = new System.Drawing.Size(74, 25);
+            this.lblOutTypeTag.Size = new System.Drawing.Size(75, 25);
             this.lblOutTypeTag.TabIndex = 8;
             this.lblOutTypeTag.Text = "Loại xe:";
-            // 
+
             // lblOutTypeVal
-            // 
             this.lblOutTypeVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutTypeVal.AutoSize = true;
-            this.lblOutTypeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblOutTypeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutTypeVal.Location = new System.Drawing.Point(108, 140);
+            this.lblOutTypeVal.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblOutTypeVal.ForeColor = System.Drawing.Color.FromArgb(40, 45, 50);
+            this.lblOutTypeVal.Location = new System.Drawing.Point(103, 122);
             this.lblOutTypeVal.Name = "lblOutTypeVal";
-            this.lblOutTypeVal.Size = new System.Drawing.Size(36, 25);
+            this.lblOutTypeVal.Size = new System.Drawing.Size(33, 25);
             this.lblOutTypeVal.TabIndex = 9;
             this.lblOutTypeVal.Text = "---";
-            // 
+
             // lblOutStatusTag
-            // 
             this.lblOutStatusTag.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutStatusTag.AutoSize = true;
             this.lblOutStatusTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
-            this.lblOutStatusTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutStatusTag.Location = new System.Drawing.Point(340, 140);
+            this.lblOutStatusTag.ForeColor = System.Drawing.Color.FromArgb(80, 90, 100);
+            this.lblOutStatusTag.Location = new System.Drawing.Point(340, 122);
             this.lblOutStatusTag.Name = "lblOutStatusTag";
-            this.lblOutStatusTag.Size = new System.Drawing.Size(99, 25);
+            this.lblOutStatusTag.Size = new System.Drawing.Size(95, 25);
             this.lblOutStatusTag.TabIndex = 10;
             this.lblOutStatusTag.Text = "Trạng thái:";
-            // 
+
             // lblOutStatusVal
-            // 
             this.lblOutStatusVal.Anchor = System.Windows.Forms.AnchorStyles.Left;
             this.lblOutStatusVal.AutoSize = true;
             this.lblOutStatusVal.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblOutStatusVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(140)))), ((int)(((byte)(70)))));
-            this.lblOutStatusVal.Location = new System.Drawing.Point(445, 140);
+            this.lblOutStatusVal.ForeColor = System.Drawing.Color.FromArgb(40, 140, 70);
+            this.lblOutStatusVal.Location = new System.Drawing.Point(440, 121);
             this.lblOutStatusVal.Name = "lblOutStatusVal";
             this.lblOutStatusVal.Size = new System.Drawing.Size(159, 25);
             this.lblOutStatusVal.TabIndex = 11;
             this.lblOutStatusVal.Text = "Sẵn sàng đón xe";
-            // 
+            // grpLogConsole
+            this.grpLogConsole.Controls.Add(this.lstLogConsole);
+            this.grpLogConsole.Controls.Add(this.pnlLogToolbar);
+            this.grpLogConsole.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.grpLogConsole.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold);
+            this.grpLogConsole.ForeColor = System.Drawing.Color.FromArgb(45, 52, 58);
+            this.grpLogConsole.Location = new System.Drawing.Point(0, 709);
+            this.grpLogConsole.Name = "grpLogConsole";
+            this.grpLogConsole.Padding = new System.Windows.Forms.Padding(6, 4, 6, 6);
+            this.grpLogConsole.Size = new System.Drawing.Size(1400, 120);
+            this.grpLogConsole.TabIndex = 3;
+            this.grpLogConsole.TabStop = false;
+            this.grpLogConsole.Text = "📋 NHẬT KÝ SỰ KIỆN HỆ THỐNG (LIVE LOG CONSOLE)";
+
+            // pnlLogToolbar
+            this.pnlLogToolbar.Controls.Add(this.btnClearLogConsole);
+            this.pnlLogToolbar.Controls.Add(this.btnOpenLogFolder);
+            this.pnlLogToolbar.Dock = System.Windows.Forms.DockStyle.Right;
+            this.pnlLogToolbar.Location = new System.Drawing.Point(1234, 28);
+            this.pnlLogToolbar.Name = "pnlLogToolbar";
+            this.pnlLogToolbar.Size = new System.Drawing.Size(160, 86);
+            this.pnlLogToolbar.TabIndex = 1;
+
+            // btnOpenLogFolder
+            this.btnOpenLogFolder.BackColor = System.Drawing.Color.FromArgb(235, 240, 245);
+            this.btnOpenLogFolder.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnOpenLogFolder.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnOpenLogFolder.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.btnOpenLogFolder.ForeColor = System.Drawing.Color.FromArgb(40, 50, 60);
+            this.btnOpenLogFolder.Location = new System.Drawing.Point(6, 4);
+            this.btnOpenLogFolder.Name = "btnOpenLogFolder";
+            this.btnOpenLogFolder.Size = new System.Drawing.Size(148, 36);
+            this.btnOpenLogFolder.TabIndex = 0;
+            this.btnOpenLogFolder.Text = "📂 Mở File Log (Ctrl+L)";
+            this.btnOpenLogFolder.UseVisualStyleBackColor = false;
+
+            // btnClearLogConsole
+            this.btnClearLogConsole.BackColor = System.Drawing.Color.FromArgb(235, 240, 245);
+            this.btnClearLogConsole.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnClearLogConsole.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnClearLogConsole.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            this.btnClearLogConsole.ForeColor = System.Drawing.Color.FromArgb(40, 50, 60);
+            this.btnClearLogConsole.Location = new System.Drawing.Point(6, 44);
+            this.btnClearLogConsole.Name = "btnClearLogConsole";
+            this.btnClearLogConsole.Size = new System.Drawing.Size(148, 36);
+            this.btnClearLogConsole.TabIndex = 1;
+            this.btnClearLogConsole.Text = "🗑️ Xóa Màn Hình";
+            this.btnClearLogConsole.UseVisualStyleBackColor = false;
+
+            // lstLogConsole
+            this.lstLogConsole.BackColor = System.Drawing.Color.FromArgb(24, 28, 34);
+            this.lstLogConsole.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.lstLogConsole.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.lstLogConsole.DrawMode = System.Windows.Forms.DrawMode.OwnerDrawFixed;
+            this.lstLogConsole.Font = new System.Drawing.Font("Consolas", 9.5F);
+            this.lstLogConsole.ForeColor = System.Drawing.Color.FromArgb(230, 235, 240);
+            this.lstLogConsole.ItemHeight = 22;
+            this.lstLogConsole.Location = new System.Drawing.Point(6, 28);
+            this.lstLogConsole.Name = "lstLogConsole";
+            this.lstLogConsole.Size = new System.Drawing.Size(1228, 86);
+            this.lstLogConsole.TabIndex = 0;
+
             // statusStrip
-            // 
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.lblFooterStatus});
@@ -706,28 +706,26 @@
             this.statusStrip.Size = new System.Drawing.Size(1400, 32);
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
-            // 
+
             // lblFooterStatus
-            // 
             this.lblFooterStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblFooterStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(80)))), ((int)(((byte)(90)))));
+            this.lblFooterStatus.ForeColor = System.Drawing.Color.FromArgb(70, 80, 90);
             this.lblFooterStatus.Name = "lblFooterStatus";
             this.lblFooterStatus.Size = new System.Drawing.Size(157, 25);
             this.lblFooterStatus.Text = "Sẵn sàng làm việc.";
-            // 
+
             // timerClock
-            // 
             this.timerClock.Enabled = true;
             this.timerClock.Interval = 1000;
             this.timerClock.Tick += new System.EventHandler(this.TimerClock_Tick);
-            // 
+
             // FrmMain
-            // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(247)))), ((int)(((byte)(249)))));
+            this.BackColor = System.Drawing.Color.FromArgb(245, 247, 249);
             this.ClientSize = new System.Drawing.Size(1400, 861);
             this.Controls.Add(this.tblMainLayout);
+            this.Controls.Add(this.grpLogConsole);
             this.Controls.Add(this.statusStrip);
             this.Controls.Add(this.pnlHeader);
             this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -756,11 +754,12 @@
             this.grpOutInfo.ResumeLayout(false);
             this.tblOutInfo.ResumeLayout(false);
             this.tblOutInfo.PerformLayout();
+            this.grpLogConsole.ResumeLayout(false);
+            this.pnlLogToolbar.ResumeLayout(false);
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
-
         }
 
         #endregion
@@ -810,13 +809,13 @@
         private System.Windows.Forms.Label lblOutTypeVal;
         private System.Windows.Forms.Label lblOutStatusTag;
         private System.Windows.Forms.Label lblOutStatusVal;
-        private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel lblFooterStatus;
-        private System.Windows.Forms.Timer timerClock;
         private System.Windows.Forms.GroupBox grpLogConsole;
         private System.Windows.Forms.ListBox lstLogConsole;
         private System.Windows.Forms.Panel pnlLogToolbar;
         private System.Windows.Forms.Button btnOpenLogFolder;
         private System.Windows.Forms.Button btnClearLogConsole;
+        private System.Windows.Forms.StatusStrip statusStrip;
+        private System.Windows.Forms.ToolStripStatusLabel lblFooterStatus;
+        private System.Windows.Forms.Timer timerClock;
     }
 }

@@ -1,6 +1,6 @@
-﻿using PhuXuanParkingSystem.Services.Logging;
-using PhuXuanParkingSystem.Services.Camera;
+﻿using PhuXuanParkingSystem.Services.Camera;
 using PhuXuanParkingSystem.Services.Controller;
+using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Configuration;
 using System.Diagnostics;
