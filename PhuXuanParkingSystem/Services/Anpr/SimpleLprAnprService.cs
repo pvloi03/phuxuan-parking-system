@@ -258,6 +258,18 @@ namespace PhuXuanParkingSystem.Services.Anpr
 
             lock (_lock)
             {
+                try
+                {
+                    _processor?.Dispose();
+                }
+                catch { }
+
+                try
+                {
+                    _lpr?.Dispose();
+                }
+                catch { }
+
                 _processor = null;
                 _lpr = null;
                 _isInitialized = false;

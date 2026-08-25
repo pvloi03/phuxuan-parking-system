@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using System;
@@ -17,9 +17,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
                 plateNumber: "29A-123.45",
                 inOverviewImagePath: @"C:\Captures\2026\08\25\in_ov.jpg",
                 inPlateImagePath: @"C:\Captures\2026\08\25\in_pl.jpg",
-                personId: "P001",
                 personName: "Nguyễn Văn A",
-                departmentName: "Kỹ Thuật",
                 vehicleType: VehicleType.Car,
                 note: "Khách VIP"
             );
@@ -27,9 +25,8 @@ namespace PhuXuanParkingSystem.Tests.Entities
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.Active);
             session.InLaneId.Should().Be("Lane_In_01");
-            session.PlateNumber.Should().Be("29A12345"); // Cleaned
+            session.PlateNumber.Value.Should().Be("29A12345"); // Cleaned
             session.PersonName.Should().Be("Nguyễn Văn A");
-            session.DepartmentName.Should().Be("Kỹ Thuật");
             session.InTime.Should().NotBeNull();
             session.InTime.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
             session.OutTime.Should().BeNull();
@@ -62,8 +59,8 @@ namespace PhuXuanParkingSystem.Tests.Entities
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.Completed);
             session.OutLaneId.Should().Be("Lane_Out_01");
-            session.OutOverviewImagePath.Should().Be("out_ov.jpg");
-            session.OutPlateImagePath.Should().Be("out_pl.jpg");
+            session.OutOverviewImagePath.Path.Should().Be("out_ov.jpg");
+            session.OutPlateImagePath.Path.Should().Be("out_pl.jpg");
             session.OutTime.Should().NotBeNull();
             session.OutTime.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
             session.UpdatedAt.Should().NotBeNull();
@@ -113,7 +110,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
 
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.UnmatchedOut);
-            session.PlateNumber.Should().Be("30F99999");
+            session.PlateNumber.Value.Should().Be("30F99999");
             session.InTime.Should().BeNull();
             session.InLaneId.Should().BeNull();
             session.OutTime.Should().NotBeNull();

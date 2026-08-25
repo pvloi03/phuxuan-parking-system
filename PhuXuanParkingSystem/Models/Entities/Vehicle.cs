@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Common;
+using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Models.ValueObjects;
 using MongoDB.Bson.Serialization.Attributes;
@@ -6,27 +6,26 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace PhuXuanParkingSystem.Models.Entities
 {
     /// <summary>
-    /// Entity đại diện cho phương tiện giao thông đăng ký trong hệ thống
+    /// Entity đại diện cho phương tiện giao thông đăng ký trong hệ thống (Tối giản)
     /// </summary>
     [BsonIgnoreExtraElements]
     public class Vehicle : BaseEntity
     {
-        public string PlateNumber { get; set; } = string.Empty;
-        public VehicleType Type { get; set; } = VehicleType.Car;
-        public string? OwnerPersonId { get; set; }
-        public string? OwnerName { get; set; }
-        public string? Brand { get; set; }
-        public string? Color { get; set; }
-        public bool IsActive { get; set; } = true;
+        // =========================================================================
+        // --- CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
+        // =========================================================================
+        public PlateNumber PlateNumber { get; set; } = PlateNumber.Create(string.Empty); // [LƯU DB] Biển số xe
+        public VehicleType Type { get; set; } = VehicleType.Car;                         // [LƯU DB] Loại xe (Ô tô, Xe máy...)
+        public string? OwnerPersonId { get; set; }                                       // [LƯU DB] Khóa ngoại liên kết chủ xe (Person)
+        public bool IsActive { get; set; } = true;                                       // [LƯU DB] Trạng thái hoạt động
 
         public Vehicle() { }
 
-        public Vehicle(string plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null, string? ownerName = null)
+        public Vehicle(PlateNumber plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null)
         {
-            PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber);
+            PlateNumber = plateNumber ?? PlateNumber.Create(string.Empty);
             Type = type;
             OwnerPersonId = ownerPersonId;
-            OwnerName = ownerName;
         }
     }
 }

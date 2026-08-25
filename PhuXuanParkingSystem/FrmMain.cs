@@ -482,7 +482,7 @@ namespace PhuXuanParkingSystem
                     AppLogger.Warning($"Lỗi truy vấn CSDL xe vào: {ex.Message}");
                 }
 
-                string ownerName = person?.FullName ?? vehicle?.OwnerName ?? "Xe vãng lai";
+                string ownerName = person?.FullName ?? "Xe vãng lai";
                 string deptName = department?.Name ?? "Khách";
                 VehicleType vType = vehicle?.Type ?? VehicleType.Car;
 
@@ -499,9 +499,7 @@ namespace PhuXuanParkingSystem
                         cleanPlate,
                         fileOverview,
                         filePlate,
-                        person?.Id,
                         ownerName,
-                        deptName,
                         vType,
                         $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms");
 
@@ -617,7 +615,7 @@ namespace PhuXuanParkingSystem
                     }
 
                     lblOutOwnerVal.Text = activeSession.PersonName ?? "---";
-                    lblOutDeptVal.Text = activeSession.DepartmentName ?? "---";
+                    lblOutDeptVal.Text = "---";
                     lblOutTypeVal.Text = activeSession.VehicleType == VehicleType.Car ? "Ô tô" : "Xe máy";
 
                     string durationText = activeSession.Duration.HasValue
@@ -636,13 +634,18 @@ namespace PhuXuanParkingSystem
                 else
                 {
                     Vehicle? vehicle = null;
+                    Person? outPerson = null;
                     try
                     {
                         vehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && !v.IsDeleted);
+                        if (vehicle != null && !string.IsNullOrEmpty(vehicle.OwnerPersonId))
+                        {
+                            outPerson = await _personRepo.GetByIdAsync(vehicle.OwnerPersonId!);
+                        }
                     }
                     catch { }
 
-                    lblOutOwnerVal.Text = vehicle?.OwnerName ?? "Không có dữ liệu vào";
+                    lblOutOwnerVal.Text = outPerson?.FullName ?? "Không có dữ liệu vào";
                     lblOutDeptVal.Text = "---";
                     lblOutTypeVal.Text = vehicle?.Type == VehicleType.Car ? "Ô tô" : "---";
                     lblOutStatusVal.Text = "Cảnh báo: Không có lượt vào!";

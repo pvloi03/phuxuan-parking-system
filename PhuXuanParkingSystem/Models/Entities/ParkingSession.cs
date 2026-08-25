@@ -1,49 +1,59 @@
-﻿using PhuXuanParkingSystem.Models.Common;
-using PhuXuanParkingSystem.Models.Enums;
-using MongoDB.Bson.Serialization.Attributes;
 using System;
+using PhuXuanParkingSystem.Models.Common;
+using PhuXuanParkingSystem.Models.Enums;
+using PhuXuanParkingSystem.Models.ValueObjects;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
 {
     /// <summary>
-    /// Entity đại diện cho một Phiên gửi xe / Lượt vào-ra trọn vẹn
-    /// Lưu trữ đầy đủ thông tin thời gian, biển số, hình ảnh và phân luồng làn
+    /// Aggregate Root đại diện cho một Phiên gửi xe / Lượt vào-ra trọn vẹn (Tối giản)
     /// </summary>
     [BsonIgnoreExtraElements]
     public class ParkingSession : BaseEntity
     {
-        // --- THÔNG TIN PHƯƠNG TIỆN ---
-        public string PlateNumber { get; set; } = string.Empty;
-        public VehicleType VehicleType { get; set; } = VehicleType.Car;
-        public ParkingSessionStatus Status { get; set; } = ParkingSessionStatus.Active;
+        // =========================================================================
+        // --- 1. CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
+        // =========================================================================
 
-        // --- THÔNG TIN CHỦ XE & ĐƠN VỊ ---
-        public string? PersonId { get; set; }
-        public string? PersonName { get; set; }
-        public string? DepartmentName { get; set; }
-        public string? PhoneNumber { get; set; }
+        // --- THÔNG TIN PHƯƠNG TIỆN ---
+        public PlateNumber PlateNumber { get; set; } = PlateNumber.Create(string.Empty); // [LƯU DB] Biển số xe
+        public VehicleType VehicleType { get; set; } = VehicleType.Car;                 // [LƯU DB] Loại xe (Ô tô, Xe máy...)
+        public ParkingSessionStatus Status { get; set; } = ParkingSessionStatus.Active;// [LƯU DB] Trạng thái (Active, Completed, UnmatchedOut)
+
+        // --- ĐỊNH DANH ĐỐI TƯỢNG (TỐI GIẢN) ---
+        public string? PersonName { get; set; }                                        // [LƯU DB] Tên chủ xe / người lái (null nếu là người lạ / xe lạ)
 
         // --- THÔNG TIN LƯỢT VÀO (CHECK-IN) ---
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
-        public DateTime? InTime { get; set; }
-        public string? InLaneId { get; set; }
-        public string? InOverviewImagePath { get; set; }
-        public string? InPlateImagePath { get; set; }
+        public DateTime? InTime { get; set; }                                          // [LƯU DB] Thời gian xe vào
+        public string? InLaneId { get; set; }                                          // [LƯU DB] Mã làn vào
+        public ImageStoragePath InOverviewImagePath { get; set; } = ImageStoragePath.Empty; // [LƯU DB] Đường dẫn UNC ảnh toàn cảnh lúc vào
+        public ImageStoragePath InPlateImagePath { get; set; } = ImageStoragePath.Empty;    // [LƯU DB] Đường dẫn UNC ảnh biển số lúc vào
 
         // --- THÔNG TIN LƯỢT RA (CHECK-OUT) ---
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
-        public DateTime? OutTime { get; set; }
-        public string? OutLaneId { get; set; }
-        public string? OutOverviewImagePath { get; set; }
-        public string? OutPlateImagePath { get; set; }
+        public DateTime? OutTime { get; set; }                                         // [LƯU DB] Thời gian xe ra
+        public string? OutLaneId { get; set; }                                         // [LƯU DB] Mã làn ra
+        public ImageStoragePath OutOverviewImagePath { get; set; } = ImageStoragePath.Empty;// [LƯU DB] Đường dẫn UNC ảnh toàn cảnh lúc ra
+        public ImageStoragePath OutPlateImagePath { get; set; } = ImageStoragePath.Empty;   // [LƯU DB] Đường dẫn UNC ảnh biển số lúc ra
 
         // --- GHI CHÚ PHIÊN ---
-        public string? Note { get; set; }
+        public string? Note { get; set; }                                              // [LƯU DB] Ghi chú chung của phiên
 
-        // --- COMPUTED PROPERTIES (KHÔNG LƯU DB) ---
+        // =========================================================================
+        // --- 2. CÁC THUỘC TÍNH KHÔNG LƯU DATABASE (COMPUTED GETTERS TRONG RAM) ---
+        // =========================================================================
+        
+        /// <summary>
+        /// [KHÔNG LƯU DB] Phân biệt xe lạ / người lạ (khi không có tên chủ xe)
+        /// </summary>
         [BsonIgnore]
         public bool IsUnknown => string.IsNullOrWhiteSpace(PersonName);
 
+        /// <summary>
+        /// [KHÔNG LƯU DB] Thời gian lưu bãi (tự động tính từ InTime đến OutTime)
+        /// </summary>
         [BsonIgnore]
         public TimeSpan? Duration => (InTime.HasValue && OutTime.HasValue && OutTime >= InTime)
             ? OutTime.Value - InTime.Value
@@ -56,29 +66,24 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// </summary>
         public static ParkingSession CheckIn(
             string inLaneId,
-            string plateNumber,
-            string inOverviewImagePath,
-            string inPlateImagePath,
-            string? personId = null,
+            PlateNumber plateNumber,
+            ImageStoragePath inOverviewImagePath,
+            ImageStoragePath inPlateImagePath,
             string? personName = null,
-            string? departmentName = null,
             VehicleType vehicleType = VehicleType.Car,
             string? note = null)
         {
             return new ParkingSession
             {
                 InLaneId = inLaneId,
-                PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber),
-                InOverviewImagePath = inOverviewImagePath,
-                InPlateImagePath = inPlateImagePath,
-                PersonId = personId,
+                PlateNumber = plateNumber ?? PlateNumber.Create(string.Empty),
+                InOverviewImagePath = inOverviewImagePath ?? ImageStoragePath.Empty,
+                InPlateImagePath = inPlateImagePath ?? ImageStoragePath.Empty,
                 PersonName = personName,
-                DepartmentName = departmentName,
                 VehicleType = vehicleType,
                 Note = note,
                 InTime = DateTime.Now,
-                Status = ParkingSessionStatus.Active,
-                CreatedAt = DateTime.Now
+                Status = ParkingSessionStatus.Active
             };
         }
 
@@ -87,13 +92,13 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// </summary>
         public void CheckOut(
             string outLaneId,
-            string outOverviewImagePath,
-            string outPlateImagePath,
+            ImageStoragePath outOverviewImagePath,
+            ImageStoragePath outPlateImagePath,
             string? note = null)
         {
             OutLaneId = outLaneId;
-            OutOverviewImagePath = outOverviewImagePath;
-            OutPlateImagePath = outPlateImagePath;
+            OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty;
+            OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty;
             if (!string.IsNullOrWhiteSpace(note))
             {
                 Note = string.IsNullOrWhiteSpace(Note) ? note : $"{Note}; {note}";
@@ -104,13 +109,13 @@ namespace PhuXuanParkingSystem.Models.Entities
         }
 
         /// <summary>
-        /// Tạo phiên khi xe ra mà không tìm thấy bản ghi xe vào tương ứng (Unmatched Out)
+        /// Tạo phiên khi xe ra mà không có bản ghi xe vào tương ứng (Unmatched Out)
         /// </summary>
         public static ParkingSession CreateUnmatchedOut(
             string outLaneId,
-            string plateNumber,
-            string outOverviewImagePath,
-            string outPlateImagePath,
+            PlateNumber plateNumber,
+            ImageStoragePath outOverviewImagePath,
+            ImageStoragePath outPlateImagePath,
             string? personName = null,
             VehicleType vehicleType = VehicleType.Car,
             string? note = null)
@@ -118,15 +123,14 @@ namespace PhuXuanParkingSystem.Models.Entities
             return new ParkingSession
             {
                 OutLaneId = outLaneId,
-                PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber),
-                OutOverviewImagePath = outOverviewImagePath,
-                OutPlateImagePath = outPlateImagePath,
+                PlateNumber = plateNumber ?? PlateNumber.Create(string.Empty),
+                OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty,
+                OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty,
                 PersonName = personName,
                 VehicleType = vehicleType,
                 Note = note,
                 OutTime = DateTime.Now,
-                Status = ParkingSessionStatus.UnmatchedOut,
-                CreatedAt = DateTime.Now
+                Status = ParkingSessionStatus.UnmatchedOut
             };
         }
     }

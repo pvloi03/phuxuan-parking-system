@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Common;
+using PhuXuanParkingSystem.Models.Common;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
@@ -9,12 +9,15 @@ namespace PhuXuanParkingSystem.Models.Entities
     [BsonIgnoreExtraElements]
     public class Department : BaseEntity
     {
-        public string Code { get; set; } = string.Empty;          // Mã phòng ban (PB-KT, PB-HC...)
-        public string Name { get; set; } = string.Empty;          // Tên phòng ban đầy đủ
-        public string? CompanyId { get; set; }                    // ID Công ty trực thuộc
-        public string? PhoneNumber { get; set; }                  // Số điện thoại liên hệ
-        public string? Email { get; set; }                        // Email phòng ban
-        public bool IsActive { get; set; } = true;                // Trạng thái hoạt động
+        // =========================================================================
+        // --- CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
+        // =========================================================================
+        public string Code { get; set; } = string.Empty;          // [LƯU DB] Mã phòng ban (PB-KT, PB-HC...)
+        public string Name { get; set; } = string.Empty;          // [LƯU DB] Tên phòng ban đầy đủ
+        public string? CompanyId { get; set; }                    // [LƯU DB] ID Công ty trực thuộc
+        public string? PhoneNumber { get; set; }                  // [LƯU DB] Số điện thoại liên hệ
+        public string? Email { get; set; }                        // [LƯU DB] Email phòng ban
+        public bool IsActive { get; set; } = true;                // [LƯU DB] Trạng thái hoạt động
 
         public Department() { }
 

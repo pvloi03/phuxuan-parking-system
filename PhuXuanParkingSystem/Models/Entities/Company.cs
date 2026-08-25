@@ -9,22 +9,23 @@ namespace PhuXuanParkingSystem.Models.Entities
     [BsonIgnoreExtraElements]
     public class Company : BaseEntity
     {
-        public string Code { get; set; } = string.Empty;          // Mã công ty (HP, TT...)
-        public string Name { get; set; } = string.Empty;          // Tên đầy đủ
-        public string? TaxCode { get; set; }                      // Mã số thuế
-        public string? Address { get; set; }                      // Địa chỉ
-        public string? PhoneNumber { get; set; }                  // Số điện thoại
-        public string? Email { get; set; }                        // Email
-        public bool IsActive { get; set; } = true;
+        // =========================================================================
+        // --- CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
+        // =========================================================================
+        public string Code { get; set; } = string.Empty;          // [LƯU DB] Mã công ty / đơn vị thành viên
+        public string Name { get; set; } = string.Empty;          // [LƯU DB] Tên công ty đầy đủ
+        public string? PhoneNumber { get; set; }                  // [LƯU DB] Số điện thoại liên hệ
+        public string? Email { get; set; }                        // [LƯU DB] Email liên hệ
+        public bool IsActive { get; set; } = true;                // [LƯU DB] Trạng thái hoạt động
 
         public Company() { }
 
-        public Company(string code, string name, string? taxCode = null, string? address = null)
+        public Company(string code, string name, string? phoneNumber = null, string? email = null)
         {
             Code = code;
             Name = name;
-            TaxCode = taxCode;
-            Address = address;
+            PhoneNumber = phoneNumber;
+            Email = email;
         }
     }
 }

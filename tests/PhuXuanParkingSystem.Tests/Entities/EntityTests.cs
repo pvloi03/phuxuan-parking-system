@@ -1,6 +1,8 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
+using PhuXuanParkingSystem.Models.ValueObjects;
+using System;
 using Xunit;
 
 namespace PhuXuanParkingSystem.Tests.Entities
@@ -11,13 +13,12 @@ namespace PhuXuanParkingSystem.Tests.Entities
         public void Vehicle_Constructor_ShouldNormalizePlateNumber()
         {
             // Act
-            var vehicle = new Vehicle(" 29A - 888.99 ", VehicleType.Car, "P01", "Trần Văn C");
+            var vehicle = new Vehicle(" 29A - 888.99 ", VehicleType.Car, "P01");
 
             // Assert
-            vehicle.PlateNumber.Should().Be("29A88899");
+            vehicle.PlateNumber.Value.Should().Be("29A88899");
             vehicle.Type.Should().Be(VehicleType.Car);
             vehicle.OwnerPersonId.Should().Be("P01");
-            vehicle.OwnerName.Should().Be("Trần Văn C");
             vehicle.IsActive.Should().BeTrue();
         }
 
@@ -86,16 +87,16 @@ namespace PhuXuanParkingSystem.Tests.Entities
         public void OrganizationEntities_ShouldInitializeProperties()
         {
             // Act
-            var company = new Company("CP_HP", "Công ty Hải Phòng", "0123456789", "Hải Phòng");
-            var contractor = new Contractor("NT_TT", "Nhà thầu Thái Thụy", "Mr. Hùng", "0988776655");
+            var company = new Company("CP_HP", "Công ty Hải Phòng", "0901112233", "hp@example.com");
+            var contractor = new Contractor("NT_TT", "Nhà thầu Thái Thụy", "0988776655");
 
             // Assert
             company.Code.Should().Be("CP_HP");
-            company.TaxCode.Should().Be("0123456789");
+            company.PhoneNumber.Should().Be("0901112233");
+            company.Email.Should().Be("hp@example.com");
             company.IsActive.Should().BeTrue();
 
             contractor.Code.Should().Be("NT_TT");
-            contractor.ContactPerson.Should().Be("Mr. Hùng");
             contractor.PhoneNumber.Should().Be("0988776655");
             contractor.IsActive.Should().BeTrue();
         }
@@ -104,13 +105,29 @@ namespace PhuXuanParkingSystem.Tests.Entities
         public void User_Constructor_ShouldInitializeProperties()
         {
             // Act
-            var user = new User("admin", "Quản Trị Viên", UserRole.Admin);
+            var user = new User("admin", "hash123", "Quản Trị Viên", UserRole.Admin);
 
             // Assert
             user.Username.Should().Be("admin");
+            user.PasswordHash.Should().Be("hash123");
             user.FullName.Should().Be("Quản Trị Viên");
             user.Role.Should().Be(UserRole.Admin);
             user.IsActive.Should().BeTrue();
+        }
+
+        [Fact]
+        public void LicenseInfo_Constructor_ShouldInitializeProperties()
+        {
+            // Act
+            var license = new LicenseInfo("Khách Hàng A", "MACH-001", DateTime.Now.AddDays(30), "LIC-KEY-999");
+
+            // Assert
+            license.CustomerName.Should().Be("Khách Hàng A");
+            license.MachineCode.Should().Be("MACH-001");
+            license.LicenseKey.Should().Be("LIC-KEY-999");
+            license.IsExpired.Should().BeFalse();
+            license.IsValid.Should().BeTrue();
+            license.DaysRemaining.Should().BeGreaterThan(0);
         }
     }
 }
