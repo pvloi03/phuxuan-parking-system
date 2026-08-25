@@ -16,7 +16,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
             var vehicle = new Vehicle(" 29A - 888.99 ", VehicleType.Car, "P01");
 
             // Assert
-            vehicle.PlateNumber.Value.Should().Be("29A88899");
+            vehicle.PlateNumber.Should().Be("29A88899");
             vehicle.Type.Should().Be(VehicleType.Car);
             vehicle.OwnerPersonId.Should().Be("P01");
             vehicle.IsActive.Should().BeTrue();

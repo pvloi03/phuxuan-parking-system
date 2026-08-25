@@ -1,6 +1,7 @@
 using System;
 using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Enums;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
@@ -19,6 +20,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string FullName { get; set; } = string.Empty;       // [LƯU DB] Họ và tên hiển thị
         public string? Email { get; set; }                         // [LƯU DB] Email
         public string? PhoneNumber { get; set; }                   // [LƯU DB] Số điện thoại
+        [BsonRepresentation(BsonType.String)]
         public UserRole Role { get; set; } = UserRole.Operator;    // [LƯU DB] Vai trò phân quyền (Admin, Operator, Security, Viewer)
         public bool IsActive { get; set; } = true;                 // [LƯU DB] Trạng thái hoạt động
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]

@@ -1,53 +1,47 @@
-# HƯỚNG DẪN IMPORT DỮ LIỆU VÀO MONGODB COMPASS
-**Cơ sở dữ liệu:** `PhuXuanParkingSystemDb`
+# HƯỚNG DẪN IMPORT TOÀN BỘ CƠ SỞ DỮ LIỆU VÀO MONGODB
+**Tên Database:** `PhuXuanParkingSystemDb`
 
 ---
 
-## 📁 Danh Sách File Dữ Liệu Mẫu (Collection Seed Files)
+## 🚀 Cách 1: Nạp Toàn Bộ CSDL Cùng Lúc (Khuyến Nghị - Nhanh Nhất)
 
-Toàn bộ các file dữ liệu được lưu trong thư mục `database_seed/` theo chuẩn **Extended JSON** (được MongoDB Compass hỗ trợ nhận diện tự động `ObjectId`, `DateTime`, `Number`...):
+### Lựa chọn A: Dùng MongoDB Shell (1 Lệnh duy nhất)
+Mở Terminal / PowerShell tại thư mục `database_seed/` và chạy:
+```bash
+mongosh "mongodb://localhost:27017/PhuXuanParkingSystemDb" init_database.js
+```
+*Hoặc nhấp đúp chạy file [`import_database.bat`](file:///c:/Users/ADMIN/source/repos/PhuXuanParkingSystem/database_seed/import_database.bat).*
 
-| STT | File JSON Seed | Tên Collection trong MongoDB | Ý Nghĩa / Nội Dung Dữ Liệu |
-| :---: | :--- | :--- | :--- |
-| 1 | [`Companies.json`](Companies.json) | `Companies` | Danh sách Công ty / Đơn vị thành viên |
-| 2 | [`Departments.json`](Departments.json) | `Departments` | Danh sách Phòng ban (Ban Giám Đốc, Kỹ thuật, Kế toán, An ninh...) |
-| 3 | [`Contractors.json`](Contractors.json) | `Contractors` | Danh sách Nhà thầu / Đơn vị đối tác |
-| 4 | [`People.json`](People.json) | `People` | Danh sách Nhân viên, Cán bộ, Nhà thầu |
-| 5 | [`Vehicles.json`](Vehicles.json) | `Vehicles` | Danh sách Xe đã đăng ký (Biển số: `29A12345`, `30F99988`, `17A08866`, `17B167890`, `88LD00122`...) |
-| 6 | [`Lanes.json`](Lanes.json) | `Lanes` | Cấu hình Làn Vào (`LANE-IN-01`) & Làn Ra (`LANE-OUT-01`) |
-| 7 | [`Devices.json`](Devices.json) | `Devices` | Cấu hình 4 Camera (NST, Hikvision) & Controller ZKTeco C3-200 |
-| 8 | [`Users.json`](Users.json) | `Users` | Tài khoản đăng nhập hệ thống (`admin`, `baove1`, `baove2`) |
-| 9 | [`ParkingSessions.json`](ParkingSessions.json) | `ParkingSessions` | Dữ liệu mẫu các lượt xe đang gửi (Active) và đã hoàn tất (Completed) |
+### Lựa chọn B: Dùng MongoDB Compass (MongoSH Console)
+1. Mở **MongoDB Compass** $\rightarrow$ Kết nối tới `mongodb://localhost:27017`
+2. Mở tab **>_ MongoSH** ở thanh công cụ dưới đáy màn hình Compass.
+3. Mở file [`init_database.js`](file:///c:/Users/ADMIN/source/repos/PhuXuanParkingSystem/database_seed/init_database.js), copy toàn bộ nội dung và dán vào tab MongoSH rồi nhấn **Enter**.
 
 ---
 
-## 🛠️ Các Bước Import Bằng MongoDB Compass
+## 📁 Cách 2: File JSON Trọn Bộ CSDL & Từng Collection
 
-### Bước 1: Kết Nối MongoDB
-1. Mở ứng dụng **MongoDB Compass**.
-2. Nhập Connection String: `mongodb://localhost:27017` (hoặc IP Server của bạn) $\rightarrow$ bấm **Connect**.
+### 1. File trọn bộ dữ liệu CSDL:
+- [`PhuXuanParkingSystemDb.json`](file:///c:/Users/ADMIN/source/repos/PhuXuanParkingSystem/database_seed/PhuXuanParkingSystemDb.json) (Bao gồm toàn bộ 10 bảng dữ liệu).
 
-### Bước 2: Tạo Cơ Sở Dữ Liệu (Nếu chưa có)
-1. Ở thanh menu bên trái, bấm nút **`+`** (Create database).
-2. Nhập:
-   - **Database Name:** `PhuXuanParkingSystemDb`
-   - **Collection Name:** `Companies`
-3. Bấm **Create Database**.
-
-### Bước 3: Import Từng Collection
-Đối với từng file `.json` trong thư mục `database_seed/`:
-
-1. Bấm vào Database `PhuXuanParkingSystemDb`.
-2. Tạo Collection tương ứng nếu chưa có (bấm nút `Create Collection` và nhập đúng tên Collection ở bảng trên).
-3. Bấm vào Collection cần import $\rightarrow$ chọn tab **`Documents`** $\rightarrow$ bấm nút **`Add Data`** $\rightarrow$ chọn **`Import JSON or CSV file`**.
-4. Chọn file `.json` tương ứng trong thư mục `database_seed/`.
-5. Đảm bảo chọn định dạng **JSON** $\rightarrow$ bấm **`Import`**.
-6. Compass sẽ thông báo `Import completed successfully`.
+### 2. Danh sách file từng Collection (Extended JSON):
+| STT | File JSON Seed | Tên Collection MongoDB | Mô Tả & Quy Chuẩn Lưu Trữ |
+|:---:|:---|:---|:---|
+| 1 | `Companies.json` | `Companies` | Công ty / đơn vị thành viên |
+| 2 | `Contractors.json` | `Contractors` | Danh sách nhà thầu phụ |
+| 3 | `Departments.json` | `Departments` | Phòng ban / bộ phận |
+| 4 | `Devices.json` | `Devices` | Camera biển số, Camera toàn cảnh, Controller ZKTeco C3-200 (`Type`, `Status` dạng chuỗi) |
+| 5 | `Lanes.json` | `Lanes` | Cấu hình làn vào/ra (`Direction` dạng chuỗi: `"In"`, `"Out"`) |
+| 6 | `LicenseInfo.json` | `LicenseInfo` | Bản quyền phần mềm |
+| 7 | `People.json` | `People` | Cán bộ / nhân viên / nhà thầu (`Type` dạng chuỗi: `"Employee"`, `"Contractor"`, `"Visitor"`) |
+| 8 | `Users.json` | `Users` | Tài khoản đăng nhập (`Role` dạng chuỗi: `"Admin"`, `"Operator"`, `"Security"`) |
+| 9 | `Vehicles.json` | `Vehicles` | Phương tiện giao thông (`PlateNumber` dạng chuỗi, `Type`: `"Car"`, `"Motorcycle"`) |
+| 10 | `ParkingSessions.json` | `ParkingSessions` | Phiên xe vào / ra (`PlateNumber` chuỗi, `VehicleType`, `Status` dạng chuỗi) |
 
 ---
 
-## 💡 Lưu Ý Quan Trọng
-- Hệ thống `PhuXuanParkingSystem` sử dụng quy tắc đặt tên Collection tự động số nhiều (**Humanizer.Pluralize**):
-  - Ví dụ thực thể `Person` $\rightarrow$ Collection tên là `People` (không phải `Persons`).
-  - Thực thể `Company` $\rightarrow$ Collection tên là `Companies`.
-- Các biển số xe trong bảng `Vehicles` đã được chuẩn hóa không dấu cách/chấm (VD: `29A12345`, `30F99988`), khi camera chụp xe vào ứng dụng sẽ tự động nhận diện và khớp chính xác với CSDL.
+## ⚙️ Quy Chuẩn Lưu Trữ CSDL Mới
+- **PlateNumber**: Toàn bộ biển số xe được lưu trữ trực tiếp dưới dạng chuỗi (`string`) đã chuẩn hóa (ví dụ: `"29A12345"`).
+- **Enum Fields**: Toàn bộ các giá trị Enum được lưu trữ dưới dạng chuỗi (`string`), không lưu số int.
+- **Thiết bị (Devices)**: Đã lược bỏ trường `RtspUrl`.
+- **Hình ảnh hiển thị UI**: Giao diện hiển thị ảnh toàn cảnh và ảnh vùng biển số đã cắt (`CroppedPlateImage`), đồng thời lưu ảnh chụp gốc chưa cắt vào thư mục lưu trữ trên máy tính.

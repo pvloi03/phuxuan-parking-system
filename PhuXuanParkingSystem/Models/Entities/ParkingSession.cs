@@ -2,6 +2,7 @@ using System;
 using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Models.ValueObjects;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
@@ -17,8 +18,10 @@ namespace PhuXuanParkingSystem.Models.Entities
         // =========================================================================
 
         // --- THÔNG TIN PHƯƠNG TIỆN ---
-        public PlateNumber PlateNumber { get; set; } = PlateNumber.Create(string.Empty); // [LƯU DB] Biển số xe
+        public string PlateNumber { get; set; } = string.Empty;                        // [LƯU DB] Biển số xe (chuỗi chuẩn hóa)
+        [BsonRepresentation(BsonType.String)]
         public VehicleType VehicleType { get; set; } = VehicleType.Car;                 // [LƯU DB] Loại xe (Ô tô, Xe máy...)
+        [BsonRepresentation(BsonType.String)]
         public ParkingSessionStatus Status { get; set; } = ParkingSessionStatus.Active;// [LƯU DB] Trạng thái (Active, Completed, UnmatchedOut)
 
         // --- ĐỊNH DANH ĐỐI TƯỢNG (TỐI GIẢN) ---
@@ -66,7 +69,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// </summary>
         public static ParkingSession CheckIn(
             string inLaneId,
-            PlateNumber plateNumber,
+            string plateNumber,
             ImageStoragePath inOverviewImagePath,
             ImageStoragePath inPlateImagePath,
             string? personName = null,
@@ -76,7 +79,7 @@ namespace PhuXuanParkingSystem.Models.Entities
             return new ParkingSession
             {
                 InLaneId = inLaneId,
-                PlateNumber = plateNumber ?? PlateNumber.Create(string.Empty),
+                PlateNumber = PhuXuanParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
                 InOverviewImagePath = inOverviewImagePath ?? ImageStoragePath.Empty,
                 InPlateImagePath = inPlateImagePath ?? ImageStoragePath.Empty,
                 PersonName = personName,
@@ -113,7 +116,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         /// </summary>
         public static ParkingSession CreateUnmatchedOut(
             string outLaneId,
-            PlateNumber plateNumber,
+            string plateNumber,
             ImageStoragePath outOverviewImagePath,
             ImageStoragePath outPlateImagePath,
             string? personName = null,
@@ -123,7 +126,7 @@ namespace PhuXuanParkingSystem.Models.Entities
             return new ParkingSession
             {
                 OutLaneId = outLaneId,
-                PlateNumber = plateNumber ?? PlateNumber.Create(string.Empty),
+                PlateNumber = PhuXuanParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
                 OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty,
                 OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty,
                 PersonName = personName,

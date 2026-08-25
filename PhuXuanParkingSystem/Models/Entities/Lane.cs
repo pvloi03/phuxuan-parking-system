@@ -1,5 +1,6 @@
 using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Enums;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
@@ -16,6 +17,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         // =========================================================================
         public string Code { get; set; } = string.Empty;              // [LƯU DB] Mã làn (L01, L02...)
         public string Name { get; set; } = string.Empty;              // [LƯU DB] Tên làn (Làn Vào, Làn Ra...)
+        [BsonRepresentation(BsonType.String)]
         public LaneDirection Direction { get; set; } = LaneDirection.In; // [LƯU DB] Chiều làn (In / Out)
         public string? Description { get; set; }                      // [LƯU DB] Mô tả làn
         public bool IsActive { get; set; } = true;                    // [LƯU DB] Trạng thái hoạt động

@@ -1,5 +1,6 @@
 using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Enums;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
@@ -18,6 +19,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string? DepartmentId { get; set; }                     // [LƯU DB] ID Phòng ban / Bộ phận
         public string? PhoneNumber { get; set; }                      // [LƯU DB] Số điện thoại
         public string? Email { get; set; }                            // [LƯU DB] Email
+        [BsonRepresentation(BsonType.String)]
         public PersonType Type { get; set; } = PersonType.Employee;   // [LƯU DB] Loại người dùng (Employee, Contractor, Visitor)
         public string? CompanyId { get; set; }                        // [LƯU DB] Liên kết công ty / đơn vị thành viên
         public string? ContractorId { get; set; }                     // [LƯU DB] Liên kết đơn vị nhà thầu nếu là nhân sự nhà thầu

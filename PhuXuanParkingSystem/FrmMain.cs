@@ -492,14 +492,13 @@ namespace PhuXuanParkingSystem
                 string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_plate.jpg");
                 string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_panoramic.jpg");
 
-                // Chụp song song trực tiếp ra file bằng Native SDK tốc độ cao
+                // Chụp song song trực tiếp ra file bằng Native SDK tốc độ cao (Ảnh gốc chưa cắt lưu vào ổ cứng)
                 var tPlate = _inPlateCam.CaptureToFileAsync(filePlate);
                 var tOverview = _inOverviewCam.CaptureToFileAsync(fileOverview);
 
                 await Task.WhenAll(tPlate, tOverview);
 
-                // Hiển thị ảnh an toàn lên UI
-                if (File.Exists(filePlate)) DisplayCapturedImage(picInPlate, filePlate);
+                // Hiển thị ảnh toàn cảnh lên UI
                 if (File.Exists(fileOverview)) DisplayCapturedImage(picInOverview, fileOverview);
 
                 // Nhận diện biển số xe bằng SimpleLPR3 Engine
@@ -507,6 +506,16 @@ namespace PhuXuanParkingSystem
                 if (File.Exists(filePlate))
                 {
                     anprResult = await _anprService.RecognizeAsync(filePlate);
+                }
+
+                // Hiển thị ảnh biển số đã cắt lên UI (nếu có), nếu không có thì hiển thị ảnh chụp gốc
+                if (anprResult?.CroppedPlateImage != null)
+                {
+                    DisplayCapturedBitmap(picInPlate, anprResult.CroppedPlateImage);
+                }
+                else if (File.Exists(filePlate))
+                {
+                    DisplayCapturedImage(picInPlate, filePlate);
                 }
 
                 // Cập nhật thông tin giao diện và lưu trữ CSDL
@@ -666,14 +675,13 @@ namespace PhuXuanParkingSystem
                 string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_plate.jpg");
                 string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_panoramic.jpg");
 
-                // Chụp song song trực tiếp ra file bằng Native SDK tốc độ cao
+                // Chụp song song trực tiếp ra file bằng Native SDK tốc độ cao (Ảnh gốc chưa cắt lưu vào ổ cứng)
                 var tPlate = _outPlateCam.CaptureToFileAsync(filePlate);
                 var tOverview = _outOverviewCam.CaptureToFileAsync(fileOverview);
 
                 await Task.WhenAll(tPlate, tOverview);
 
-                // Hiển thị ảnh an toàn lên UI
-                if (File.Exists(filePlate)) DisplayCapturedImage(picOutPlate, filePlate);
+                // Hiển thị ảnh toàn cảnh lên UI
                 if (File.Exists(fileOverview)) DisplayCapturedImage(picOutOverview, fileOverview);
 
                 // Nhận diện biển số xe bằng SimpleLPR3 Engine
@@ -681,6 +689,16 @@ namespace PhuXuanParkingSystem
                 if (File.Exists(filePlate))
                 {
                     anprResult = await _anprService.RecognizeAsync(filePlate);
+                }
+
+                // Hiển thị ảnh biển số đã cắt lên UI (nếu có), nếu không có thì hiển thị ảnh chụp gốc
+                if (anprResult?.CroppedPlateImage != null)
+                {
+                    DisplayCapturedBitmap(picOutPlate, anprResult.CroppedPlateImage);
+                }
+                else if (File.Exists(filePlate))
+                {
+                    DisplayCapturedImage(picOutPlate, filePlate);
                 }
 
                 // Cập nhật thông tin giao diện và kiểm tra lượt ra
@@ -875,6 +893,34 @@ namespace PhuXuanParkingSystem
             catch
             {
                 // Bỏ qua lỗi render nếu file chưa sẵn sàng
+            }
+        }
+
+        private void DisplayCapturedBitmap(PictureBox picBox, Bitmap bitmap)
+        {
+            if (bitmap == null) return;
+            try
+            {
+                var cloned = (Bitmap)bitmap.Clone();
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        var oldImg = picBox.Image;
+                        picBox.Image = cloned;
+                        oldImg?.Dispose();
+                    }));
+                }
+                else
+                {
+                    var oldImg = picBox.Image;
+                    picBox.Image = cloned;
+                    oldImg?.Dispose();
+                }
+            }
+            catch
+            {
+                // Xử lý an toàn
             }
         }
 

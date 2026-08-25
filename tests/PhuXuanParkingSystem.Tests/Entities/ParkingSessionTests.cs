@@ -25,7 +25,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.Active);
             session.InLaneId.Should().Be("Lane_In_01");
-            session.PlateNumber.Value.Should().Be("29A12345"); // Cleaned
+            session.PlateNumber.Should().Be("29A12345"); // Cleaned
             session.PersonName.Should().Be("Nguyễn Văn A");
             session.InTime.Should().NotBeNull();
             session.InTime.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
@@ -110,7 +110,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
 
             // Assert
             session.Status.Should().Be(ParkingSessionStatus.UnmatchedOut);
-            session.PlateNumber.Value.Should().Be("30F99999");
+            session.PlateNumber.Should().Be("30F99999");
             session.InTime.Should().BeNull();
             session.InLaneId.Should().BeNull();
             session.OutTime.Should().NotBeNull();

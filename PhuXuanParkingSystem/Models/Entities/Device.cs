@@ -1,6 +1,7 @@
 using System;
 using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Enums;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace PhuXuanParkingSystem.Models.Entities
@@ -17,6 +18,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         // =========================================================================
         public string Code { get; set; } = string.Empty;                      // [LƯU DB] Mã thiết bị (CAM-01, C3-01...)
         public string Name { get; set; } = string.Empty;                      // [LƯU DB] Tên mô tả thiết bị
+        [BsonRepresentation(BsonType.String)]
         public DeviceType Type { get; set; }                                  // [LƯU DB] Phân loại thiết bị
 
         // --- CẤU HÌNH MẠNG & XÁC THỰC ---
@@ -25,13 +27,13 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string? UserName { get; set; }                                 // [LƯU DB] Tên đăng nhập (Camera)
         public string? Password { get; set; }                                 // [LƯU DB] Mật khẩu (Camera hoặc ZKTeco CommPassword)
 
-        // --- THÔNG SỐ CAMERA (SDK / ONVIF / RTSP) ---
+        // --- THÔNG SỐ CAMERA (SDK / ONVIF) ---
         public int? CameraChannel { get; set; } = 1;                          // [LƯU DB] Kênh video camera / NVR (mặc định 1)
-        public string? RtspUrl { get; set; }                                  // [LƯU DB] URL luồng RTSP (cho Liveview trên UI)
         public int? OnvifPort { get; set; }                                   // [LƯU DB] Port dịch vụ ONVIF (80, 8080...)
         public string? SnapshotUrl { get; set; }                              // [LƯU DB] URL HTTP tải ảnh snapshot trực tiếp
 
         // --- TRẠNG THÁI SỨC KHỎE THIẾT BỊ ---
+        [BsonRepresentation(BsonType.String)]
         public DeviceStatus Status { get; set; } = DeviceStatus.Disconnected;// [LƯU DB] Trạng thái kết nối
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime? LastHeartbeat { get; set; }                          // [LƯU DB] Thời điểm heartbeat / ping thành công gần nhất
