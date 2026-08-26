@@ -45,7 +45,7 @@ namespace PhuXuanParkingSystem.Forms
                         _lastInRadarTriggerTime = DateTime.Now;
                     }
 
-                    lblInStatusVal.Text = "🟢 Phát hiện xe vào (Radar kích hoạt)";
+                    lblInStatusVal.Text = "🟢Xe đang đi qua";
                     lblInStatusVal.ForeColor = Color.SeaGreen;
                     lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
 
@@ -53,7 +53,7 @@ namespace PhuXuanParkingSystem.Forms
                 }
                 else
                 {
-                    lblInStatusVal.Text = "⚪ Xe đã qua làn vào";
+                    lblInStatusVal.Text = "⚪ Xe đã đi qua";
                     lblInStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
                 }
             }
@@ -174,19 +174,21 @@ namespace PhuXuanParkingSystem.Forms
         private void BindInLaneResultToUi(Services.Parking.LaneProcessResult res)
         {
             lblInTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+            if (!string.IsNullOrEmpty(res.DisplayPlate))
+            {
+                txtInPlate.Text = res.DisplayPlate;
+            }
+            lblInStatusVal.Text = res.StatusText;
+            lblInStatusVal.ForeColor = res.StatusColor;
+
             if (res.IsIgnored)
             {
-                lblInStatusVal.Text = res.StatusText;
-                lblInStatusVal.ForeColor = res.StatusColor;
                 return;
             }
 
-            txtInPlate.Text = res.DisplayPlate;
             lblInOwnerVal.Text = res.OwnerName;
             lblInDeptVal.Text = res.DepartmentName;
             lblInTypeVal.Text = res.VehicleType == Models.Enums.VehicleType.Car ? "Ô tô" : "Xe máy";
-            lblInStatusVal.Text = res.StatusText;
-            lblInStatusVal.ForeColor = res.StatusColor;
         }
 
         private async Task CaptureOutLaneAsync(string triggerSource)
@@ -259,19 +261,21 @@ namespace PhuXuanParkingSystem.Forms
         private void BindOutLaneResultToUi(Services.Parking.LaneProcessResult res)
         {
             lblOutTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+            if (!string.IsNullOrEmpty(res.DisplayPlate))
+            {
+                txtOutPlate.Text = res.DisplayPlate;
+            }
+            lblOutStatusVal.Text = res.StatusText;
+            lblOutStatusVal.ForeColor = res.StatusColor;
+
             if (res.IsIgnored)
             {
-                lblOutStatusVal.Text = res.StatusText;
-                lblOutStatusVal.ForeColor = res.StatusColor;
                 return;
             }
 
-            txtOutPlate.Text = res.DisplayPlate;
             lblOutOwnerVal.Text = res.OwnerName;
             lblOutDeptVal.Text = res.DepartmentName;
             lblOutTypeVal.Text = res.VehicleType == Models.Enums.VehicleType.Car ? "Ô tô" : "Xe máy";
-            lblOutStatusVal.Text = res.StatusText;
-            lblOutStatusVal.ForeColor = res.StatusColor;
         }
 
         private void DisplayCapturedImage(PictureBox picBox, string filePath)
@@ -318,9 +322,9 @@ namespace PhuXuanParkingSystem.Forms
                     oldImg?.Dispose();
                 }
             }
-            catch
+            catch (Exception e)
             {
-                // Xử lý an toàn
+                AppLogger.Error(e.Message);
             }
         }
 
@@ -336,9 +340,9 @@ namespace PhuXuanParkingSystem.Forms
                 picBox.Image = newImg;
                 oldImg?.Dispose();
             }
-            catch
+            catch (Exception e)
             {
-                // Xử lý an toàn
+                AppLogger.Error(e.Message);
             }
         }
 

@@ -5,11 +5,8 @@ using PhuXuanParkingSystem.Services.Anpr;
 using PhuXuanParkingSystem.Services.DeviceConfig;
 using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.Logging;
-using PhuXuanParkingSystem.Services.Notification;
 using PhuXuanParkingSystem.Services.Parking;
 using System;
-using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -84,10 +81,6 @@ namespace PhuXuanParkingSystem.Forms
 
             // Đăng ký sự kiện Controller ZKTeco
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
-
-            // Hỗ trợ phím tắt tiện lợi cho vận hành
-            KeyPreview = true;
-            KeyDown += FrmMain_KeyDown;
         }
 
         public FrmMain(
@@ -108,7 +101,6 @@ namespace PhuXuanParkingSystem.Forms
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
             KeyPreview = true;
-            KeyDown += FrmMain_KeyDown;
         }
 
         private void FrmMain_Load(object sender, EventArgs e)
@@ -192,51 +184,9 @@ namespace PhuXuanParkingSystem.Forms
 
             // Hiển thị thông báo cho người vận hành
             SetHeaderStatus("⚠️ Cấu hình thiết bị đã thay đổi từ Web Admin!");
-            AppNotificationService.NotifyWarning(NotificationCategory.System, "Cấu hình thay đổi",
-                $"Các thiết bị sau đã thay đổi: {string.Join(", ", e.ChangedDevices)}. Nhấn Ctrl+R để kết nối lại.");
-
             // Tự động ngắt kết nối cũ và kết nối lại với cấu hình mới
-            await Task.Delay(1000); // Chờ 1s để người dùng nhận biết
+            await Task.Delay(3000); // Chờ 3s để người dùng nhận biết
             await AutoConnectAllAsync();
-        }
-
-        #region Phím Tắt & Status Helpers
-
-        private void FrmMain_KeyDown(object? sender, KeyEventArgs e)
-        {
-            // Phím Space hoặc F5: Chụp thủ công Làn Vào
-            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.F5)
-            {
-                _ = CaptureInLaneAsync("MANUAL_LAN_VAO");
-                e.Handled = true;
-            }
-            // Phím F6: Chụp thủ công Làn Ra
-            else if (e.KeyCode == Keys.F6)
-            {
-                _ = CaptureOutLaneAsync("MANUAL_LAN_RA");
-                e.Handled = true;
-            }
-            // Phím F9: Mở Trung Tâm Giám Sát Thiết Bị
-            else if (e.KeyCode == Keys.F9)
-            {
-                OpenDeviceMonitor();
-                e.Handled = true;
-            }
-            // Phím Ctrl + R: Tự động kết nối lại
-            else if (e.Control && e.KeyCode == Keys.R)
-            {
-                _ = AutoConnectAllAsync();
-                e.Handled = true;
-            }
-            // Phím Ctrl + O: Mở thư mục ảnh
-            else if (e.Control && e.KeyCode == Keys.O)
-            {
-                if (Directory.Exists(_captureDir))
-                {
-                    Process.Start("explorer.exe", _captureDir);
-                }
-                e.Handled = true;
-            }
         }
 
         public void OpenDeviceMonitor()
@@ -244,7 +194,7 @@ namespace PhuXuanParkingSystem.Forms
             try
             {
                 var frm = Program.ServiceProvider != null
-                    ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo))
+                    ? (ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo))
                     : new FrmDeviceMonitor(_deviceHealthService, _deviceRepo);
 
                 frm.ShowDialog(this);
@@ -283,8 +233,6 @@ namespace PhuXuanParkingSystem.Forms
             lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {message}";
         }
 
-        #endregion
-
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             try
@@ -295,7 +243,7 @@ namespace PhuXuanParkingSystem.Forms
                 // Giải phóng dịch vụ ANPR
                 _anprService.Dispose();
 
-                // Dừng và giải phóng Controller C3-200
+                // Dừng và giải phóng Controller
                 _controller.Dispose();
             }
             catch (Exception ex)

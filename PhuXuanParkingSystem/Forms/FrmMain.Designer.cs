@@ -97,7 +97,7 @@ namespace PhuXuanParkingSystem.Forms
             // 
             // pnlHeader
             // 
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
+            this.pnlHeader.BackColor = System.Drawing.Color.Teal;
             this.pnlHeader.Controls.Add(this.btnDeviceMonitor);
             this.pnlHeader.Controls.Add(this.lblClock);
             this.pnlHeader.Controls.Add(this.lblSystemStatus);
@@ -110,55 +110,60 @@ namespace PhuXuanParkingSystem.Forms
             // 
             // btnDeviceMonitor
             // 
-            this.btnDeviceMonitor.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnDeviceMonitor.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(37)))), ((int)(((byte)(99)))), ((int)(((byte)(235)))));
+            this.btnDeviceMonitor.BackColor = System.Drawing.Color.Coral;
             this.btnDeviceMonitor.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnDeviceMonitor.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnDeviceMonitor.FlatAppearance.BorderSize = 0;
             this.btnDeviceMonitor.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDeviceMonitor.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.btnDeviceMonitor.ForeColor = System.Drawing.Color.White;
-            this.btnDeviceMonitor.Location = new System.Drawing.Point(970, 8);
+            this.btnDeviceMonitor.Location = new System.Drawing.Point(933, 0);
             this.btnDeviceMonitor.Name = "btnDeviceMonitor";
-            this.btnDeviceMonitor.Size = new System.Drawing.Size(170, 32);
+            this.btnDeviceMonitor.Size = new System.Drawing.Size(229, 48);
             this.btnDeviceMonitor.TabIndex = 3;
-            this.btnDeviceMonitor.Text = "📡 Giám Sát Thiết Bị (F9)";
+            this.btnDeviceMonitor.Text = "📡 Giám Sát Thiết Bị";
             this.btnDeviceMonitor.UseVisualStyleBackColor = false;
             this.btnDeviceMonitor.Click += new System.EventHandler(this.BtnDeviceMonitor_Click);
             // 
             // lblClock
             // 
-            this.lblClock.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblClock.Dock = System.Windows.Forms.DockStyle.Right;
             this.lblClock.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Bold);
             this.lblClock.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(235)))), ((int)(((byte)(240)))));
-            this.lblClock.Location = new System.Drawing.Point(1150, 11);
+            this.lblClock.Location = new System.Drawing.Point(1162, 0);
             this.lblClock.Name = "lblClock";
-            this.lblClock.Size = new System.Drawing.Size(238, 25);
+            this.lblClock.Padding = new System.Windows.Forms.Padding(0, 0, 10, 0);
+            this.lblClock.Size = new System.Drawing.Size(238, 48);
             this.lblClock.TabIndex = 2;
             this.lblClock.Text = "24/08/2026 00:00:00";
             this.lblClock.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // lblSystemStatus
             // 
-            this.lblSystemStatus.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblSystemStatus.Dock = System.Windows.Forms.DockStyle.Left;
             this.lblSystemStatus.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblSystemStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(210)))), ((int)(((byte)(220)))));
-            this.lblSystemStatus.Location = new System.Drawing.Point(460, 15);
+            this.lblSystemStatus.Location = new System.Drawing.Point(163, 0);
+            this.lblSystemStatus.Margin = new System.Windows.Forms.Padding(0);
             this.lblSystemStatus.Name = "lblSystemStatus";
-            this.lblSystemStatus.Size = new System.Drawing.Size(665, 25);
+            this.lblSystemStatus.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            this.lblSystemStatus.Size = new System.Drawing.Size(752, 48);
             this.lblSystemStatus.TabIndex = 1;
             this.lblSystemStatus.Text = "Đang khởi tạo hệ thống...";
             this.lblSystemStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // lblAppTitle
             // 
-            this.lblAppTitle.AutoSize = true;
+            this.lblAppTitle.Dock = System.Windows.Forms.DockStyle.Left;
             this.lblAppTitle.Font = new System.Drawing.Font("Segoe UI", 11.5F, System.Drawing.FontStyle.Bold);
             this.lblAppTitle.ForeColor = System.Drawing.Color.White;
-            this.lblAppTitle.Location = new System.Drawing.Point(12, 10);
+            this.lblAppTitle.Location = new System.Drawing.Point(0, 0);
             this.lblAppTitle.Name = "lblAppTitle";
-            this.lblAppTitle.Size = new System.Drawing.Size(418, 31);
+            this.lblAppTitle.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
+            this.lblAppTitle.Size = new System.Drawing.Size(163, 48);
             this.lblAppTitle.TabIndex = 0;
-            this.lblAppTitle.Text = "HỆ THỐNG KIỂM SOÁT XE THÁI THỤY";
+            this.lblAppTitle.Text = "HPPARKING";
+            this.lblAppTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // tblMainLayout
             // 
@@ -516,9 +521,9 @@ namespace PhuXuanParkingSystem.Forms
             this.lblInStatusVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(140)))), ((int)(((byte)(70)))));
             this.lblInStatusVal.Location = new System.Drawing.Point(445, 140);
             this.lblInStatusVal.Name = "lblInStatusVal";
-            this.lblInStatusVal.Size = new System.Drawing.Size(159, 25);
+            this.lblInStatusVal.Size = new System.Drawing.Size(36, 25);
             this.lblInStatusVal.TabIndex = 11;
-            this.lblInStatusVal.Text = "Sẵn sàng đón xe";
+            this.lblInStatusVal.Text = "---";
             // 
             // grpOutInfo
             // 
@@ -705,12 +710,14 @@ namespace PhuXuanParkingSystem.Forms
             this.lblOutStatusVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(140)))), ((int)(((byte)(70)))));
             this.lblOutStatusVal.Location = new System.Drawing.Point(445, 140);
             this.lblOutStatusVal.Name = "lblOutStatusVal";
-            this.lblOutStatusVal.Size = new System.Drawing.Size(159, 25);
+            this.lblOutStatusVal.Size = new System.Drawing.Size(36, 25);
             this.lblOutStatusVal.TabIndex = 11;
-            this.lblOutStatusVal.Text = "Sẵn sàng đón xe";
+            this.lblOutStatusVal.Text = "---";
             // 
             // statusStrip
             // 
+            this.statusStrip.BackColor = System.Drawing.Color.Gainsboro;
+            this.statusStrip.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.lblFooterStatus});
@@ -722,10 +729,10 @@ namespace PhuXuanParkingSystem.Forms
             // 
             // lblFooterStatus
             // 
-            this.lblFooterStatus.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblFooterStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(80)))), ((int)(((byte)(90)))));
+            this.lblFooterStatus.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblFooterStatus.ForeColor = System.Drawing.Color.Green;
             this.lblFooterStatus.Name = "lblFooterStatus";
-            this.lblFooterStatus.Size = new System.Drawing.Size(157, 25);
+            this.lblFooterStatus.Size = new System.Drawing.Size(168, 25);
             this.lblFooterStatus.Text = "Sẵn sàng làm việc.";
             // 
             // timerClock
@@ -747,13 +754,12 @@ namespace PhuXuanParkingSystem.Forms
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Name = "FrmMain";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "Hệ thống Quản lý Bãi xe - Thái Thụy";
+            this.Text = "Hệ Thống Kiểm Soát Xe";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FrmMain_FormClosing);
             this.Load += new System.EventHandler(this.FrmMain_Load);
             this.Shown += new System.EventHandler(this.FrmMain_Shown);
             this.pnlHeader.ResumeLayout(false);
-            this.pnlHeader.PerformLayout();
             this.tblMainLayout.ResumeLayout(false);
             this.grpInLane.ResumeLayout(false);
             this.tblInCameras.ResumeLayout(false);

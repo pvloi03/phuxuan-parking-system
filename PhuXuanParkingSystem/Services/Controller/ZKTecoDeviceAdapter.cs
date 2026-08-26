@@ -1,6 +1,6 @@
-using PhuXuanParkingSystem.Services.Notification;
-using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.SDK.ZKTeco;
+using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Notification;
 using System;
 using System.Text;
 using System.Threading;
@@ -20,6 +20,10 @@ namespace PhuXuanParkingSystem.Services.Controller
         private bool _isDisposed;
         private string _lastRawLog = string.Empty;
 
+        private string _lastIp = "192.168.1.202";
+        private int _lastPort = 4370;
+        private string? _lastPassword;
+
         public event EventHandler<AuxTriggerEventArgs>? OnAuxInputTriggered;
 
 
@@ -34,6 +38,10 @@ namespace PhuXuanParkingSystem.Services.Controller
             string? password = null,
             CancellationToken cancellationToken = default)
         {
+            _lastIp = ipAddress;
+            _lastPort = port;
+            _lastPassword = password;
+
             return Task.Run(() =>
             {
                 lock (_lockObj)
@@ -56,6 +64,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                     }
 
                     int errCode = ZKTecoPullSDK.PullLastError();
+                    AppLogger.Warning($"[ZKTeco Controller] Kết nối thất bại ({ipAddress}:{port}), Mã lỗi: {errCode}");
                     return false;
                 }
             }, cancellationToken);
@@ -117,12 +126,13 @@ namespace PhuXuanParkingSystem.Services.Controller
 
         /// <summary>
         /// Vòng lặp ngầm (truly async, không block thread) đọc Real-time Log từ ZKTeco Controller.
-        /// Dùng TaskCompletionSource để chờ delay hoặc cancel ngay lập tức mà không ném Exception.
+        /// Tự động phục hồi kết nối nếu socket bị ngắt ngầm.
         /// </summary>
         private async Task ListenLoopAsync(CancellationToken cancellationToken)
         {
             var buffer = new byte[256];
             const int bufferSize = 256;
+            int consecutiveErrors = 0;
 
             while (!cancellationToken.IsCancellationRequested && IsConnected)
             {
@@ -138,14 +148,13 @@ namespace PhuXuanParkingSystem.Services.Controller
 
                     if (result >= 0)
                     {
+                        consecutiveErrors = 0;
                         var rawString = Encoding.Default.GetString(buffer).Trim('\0');
 
-                        if (!string.IsNullOrWhiteSpace(rawString) && rawString != _lastRawLog)
+                        if (!string.IsNullOrWhiteSpace(rawString))
                         {
-                            _lastRawLog = rawString;
-                            
                             // Tách từng dòng log nếu buffer chứa nhiều sự kiện liên tiếp
-                            var lines = rawString.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
+                            var lines = rawString.Split(["\r\n", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries);
                             foreach (var line in lines)
                             {
                                 var trimmedLine = line.Trim();
@@ -153,6 +162,35 @@ namespace PhuXuanParkingSystem.Services.Controller
                                 {
                                     ParseAndDispatchLog(trimmedLine);
                                 }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        consecutiveErrors++;
+                        if (consecutiveErrors >= 5) // Lỗi liên tiếp 5 chu kỳ (~1s) -> socket bị rớt -> Reconnect
+                        {
+                            AppLogger.Warning($"[ZKTeco Controller] Mất kết nối realtime (GetRTLog code={result}). Đang tự động kết nối lại...");
+                            lock (_lockObj)
+                            {
+                                if (_handle != IntPtr.Zero)
+                                {
+                                    ZKTecoPullSDK.Disconnect(_handle);
+                                    _handle = IntPtr.Zero;
+                                }
+                                var pwd = _lastPassword ?? string.Empty;
+                                var connectParams = $"protocol=TCP,ipaddress={_lastIp.Trim()},port={_lastPort},timeout=4000,passwd={pwd}";
+                                _handle = ZKTecoPullSDK.Connect(connectParams);
+                            }
+
+                            if (_handle != IntPtr.Zero)
+                            {
+                                consecutiveErrors = 0;
+                                AppLogger.Information($"[ZKTeco Controller] Đã tự động phục hồi kết nối C3-200 ({_lastIp}:{_lastPort}) thành công!");
+                            }
+                            else
+                            {
+                                await Task.Delay(2000, cancellationToken);
                             }
                         }
                     }
@@ -165,11 +203,11 @@ namespace PhuXuanParkingSystem.Services.Controller
                 // TaskCompletionSource pattern:
                 // - Không block thread (truly async)
                 // - Không ném TaskCanceledException
-                // - Thoát ngay lập tức khi token bị Cancel mà không phải chờ hết 300ms
+                // - Thoát ngay lập tức khi token bị Cancel mà không phải chờ hết 200ms
                 var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 using (cancellationToken.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), tcs))
                 {
-                    await Task.WhenAny(Task.Delay(300), tcs.Task);
+                    await Task.WhenAny(Task.Delay(200), tcs.Task);
                 }
 
                 if (cancellationToken.IsCancellationRequested) break;
@@ -202,15 +240,15 @@ namespace PhuXuanParkingSystem.Services.Controller
             }
 
             // Cột EventType (index 4):
-            // 221 = Có xe / Đang kích hoạt Radar (Aux In trigger)
-            // 220 = Hết xe / Đã ngắt Radar
-            // 25 = Báo động Aux Input
-            // 1 = Sensor trigger
+            // 221 = CÓ XE / Đang kích hoạt cảm biến Radar / Vòng từ (Aux In Closed)
+            // 220 = HẾT XE / Đã ngắt cảm biến (Aux In Opened / Restored)
+            // 25  = Báo động Aux Input
+            // 1   = Kích hoạt cảm biến
             _ = int.TryParse(parts[4].Trim(), out var eventType);
 
-            // Xác định trạng thái kích hoạt: 221 hoặc 220 hoặc 25 hoặc 1
-            // Theo log thực tế: 221 là sự kiện kích hoạt Aux In
-            bool isActive = eventType == 221 || eventType == 220 || eventType == 25 || eventType == 1;
+            // 221, 25, 1: CÓ XE ĐẾN (Active = true)
+            // 220: HẾT XE / ĐÃ QUA (Active = false)
+            bool isActive = eventType == 221 || eventType == 25 || eventType == 1;
 
             if (portIndex == 1)
             {

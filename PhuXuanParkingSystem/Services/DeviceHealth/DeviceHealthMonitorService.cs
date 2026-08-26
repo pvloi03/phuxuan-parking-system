@@ -41,8 +41,9 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
             var sw = Stopwatch.StartNew();
 
-            // 1. Thử kết nối TCP Socket tới Port của thiết bị (Hikvision 8000, NST 3000, ZKTeco 4370...)
-            if (device.Port > 0)
+            // 1. Thử kết nối TCP Socket tới Port của Camera (Hikvision 8000, NST 3000...)
+            // Lưu ý: Bỏ qua Controller (C3-200) vì thiết bị này chỉ cho phép 1 kết nối duy nhất và sẽ bị ngắt session Pull SDK nếu có TcpClient khác mở vào port 4370
+            if (device.Port > 0 && device.Type != DeviceType.Controller)
             {
                 try
                 {

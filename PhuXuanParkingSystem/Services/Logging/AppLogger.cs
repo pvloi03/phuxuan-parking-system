@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.IO;
 using System.Threading;
@@ -93,6 +93,9 @@ namespace PhuXuanParkingSystem.Services.Logging
                 logEvent.Exception,
                 sourceContext
             );
+
+            // In trực tiếp ra cửa sổ Output (Debug) của Visual Studio
+            System.Diagnostics.Debug.WriteLine(args.FormattedText);
 
             AppLogger.RaiseLogEmitted(args);
         }
