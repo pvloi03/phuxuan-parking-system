@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Vehicle, VehicleType, Person } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -164,9 +165,10 @@ export function VehiclesPage() {
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới phương tiện thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi thêm phương tiện: ' + (err?.response?.data?.message || err.message))
+      notify.error('Thêm mới phương tiện thất bại', err)
     },
   })
 
@@ -184,9 +186,10 @@ export function VehiclesPage() {
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin phương tiện thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi cập nhật: ' + (err?.response?.data?.message || err.message))
+      notify.error('Cập nhật phương tiện thất bại', err)
     },
   })
 
@@ -197,6 +200,10 @@ export function VehiclesPage() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
       setSelectedIds((prev) => prev.filter((item) => item !== id))
+      notify.success('Đã chuyển phương tiện vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa phương tiện thất bại', err)
     },
   })
 
@@ -206,7 +213,11 @@ export function VehiclesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} phương tiện thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều phương tiện thất bại', err)
     },
   })
 
@@ -214,12 +225,12 @@ export function VehiclesPage() {
     mutationFn: async (vehicles: Partial<Vehicle>[]) => {
       await apiClient.post('/vehicles/batch', vehicles)
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
-      alert('Nhập danh sách phương tiện từ Excel thành công!')
+      notify.success(`Nhập thành công ${variables?.length || 0} phương tiện từ file Excel!`)
     },
     onError: (err: any) => {
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
+      notify.error('Nhập file Excel thất bại', err)
     },
   })
 
@@ -262,7 +273,10 @@ export function VehiclesPage() {
 
   // ======================== Excel Handlers ========================
   const handleExportExcel = () => {
-    if (!items.length) { alert('Không có dữ liệu để xuất Excel.'); return }
+    if (!items.length) {
+      notify.warning('Không có dữ liệu phương tiện để xuất Excel.')
+      return
+    }
 
     const exportData = items.map((v, i) => {
       const owner = v.ownerPersonId ? personMap.get(v.ownerPersonId) : null
@@ -286,15 +300,15 @@ export function VehiclesPage() {
       {
         'Biển Số Xe': '30A12345',
         'Loại Xe (Car/Motorcycle/Truck)': 'Car',
-        'Mã Nhân Sự Chủ Xe (Nếu có)': 'NV-001',
+        'Mã Nhân Sự Chủ Xe (Nếu có)': 'NS001',
       },
       {
         'Biển Số Xe': '29B99988',
         'Loại Xe (Car/Motorcycle/Truck)': 'Motorcycle',
-        'Mã Nhân Sự Chủ Xe (Nếu có)': '',
+        'Mã Nhân Sự Chủ Xe (Nếu có)': 'NS002',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Phuong_Tien.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Phuong_Tien.xlsx', 'MauNhapPhuongTien')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -303,7 +317,10 @@ export function VehiclesPage() {
 
     try {
       const rawData = await parseExcelFile<any>(file)
-      if (!rawData?.length) { alert('File Excel không có dữ liệu.'); return }
+      if (!rawData?.length) {
+        notify.warning('File Excel không có dữ liệu.')
+        return
+      }
 
       // Map mã nhân sự sang PersonId
       const codeToIdMap = new Map<string, string>()
@@ -328,11 +345,14 @@ export function VehiclesPage() {
         }
       }).filter((v) => v.plateNumber)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi hợp lệ (Cần có cột Biển Số Xe).'); return }
+      if (!formattedData.length) {
+        notify.warning('Không tìm thấy bản ghi hợp lệ (Cần có cột Biển Số Xe).')
+        return
+      }
 
       batchImportMutation.mutate(formattedData as Vehicle[])
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

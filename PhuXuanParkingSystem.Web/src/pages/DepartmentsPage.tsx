@@ -17,7 +17,6 @@ import {
   Phone,
   Mail,
   FileSpreadsheet,
-  Building,
   Info,
   CheckCircle2,
   XCircle,
@@ -268,23 +267,23 @@ export function DepartmentsPage() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Phòng Ban': 'PB-KT',
-        'Tên Phòng Ban': 'Phòng Kỹ Thuật & Vận Hành',
+        'Mã Phòng Ban': 'PB001',
+        'Tên Phòng Ban': 'Phòng Ban Mẫu A',
         'Trưởng Phòng': 'Nguyễn Văn A',
         'Số Điện Thoại': '0901234567',
-        'Email': 'kythuat@hptech.vn',
-        'Ghi Chú': 'Bộ phận quản trị hệ thống',
+        'Email': 'phongban.a@example.com',
+        'Ghi Chú': 'Mô tả nhiệm vụ phòng ban 1',
       },
       {
-        'Mã Phòng Ban': 'PB-HC',
-        'Tên Phòng Ban': 'Phòng Hành Chính Nhân Sự',
+        'Mã Phòng Ban': 'PB002',
+        'Tên Phòng Ban': 'Phòng Ban Mẫu B',
         'Trưởng Phòng': 'Trần Thị B',
         'Số Điện Thoại': '0912345678',
-        'Email': 'hr@hptech.vn',
-        'Ghi Chú': 'Quản lý nhân sự',
+        'Email': 'phongban.b@example.com',
+        'Ghi Chú': 'Mô tả nhiệm vụ phòng ban 2',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Phong_Ban.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Phong_Ban.xlsx', 'MauNhapPhongBan')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -560,7 +559,6 @@ export function DepartmentsPage() {
                 </th>
                 <th className="p-3.5">Mã PB</th>
                 <th className="p-3.5">Tên Phòng Ban</th>
-                <th className="p-3.5">Công Ty Trực Thuộc</th>
                 <th className="p-3.5">Liên Hệ</th>
                 <th className="p-3.5 text-center">Trạng Thái</th>
                 <th className="p-3.5 text-right pr-4">Thao Tác</th>
@@ -569,16 +567,13 @@ export function DepartmentsPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-slate-400">
+                  <td colSpan={6} className="p-8 text-center text-slate-400">
                     Đang tải dữ liệu phòng ban...
                   </td>
                 </tr>
               ) : items.length > 0 ? (
                 items.map((dept) => {
                   const isSelected = selectedIds.includes(dept.id)
-                  const companyName = dept.companyId
-                    ? companyMap.get(dept.companyId) || 'Chưa xác định'
-                    : 'Trực thuộc hệ thống'
 
                   return (
                     <tr
@@ -607,12 +602,6 @@ export function DepartmentsPage() {
                             {dept.note}
                           </div>
                         )}
-                      </td>
-                      <td className="p-3.5">
-                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                          <Building className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span className="font-medium">{companyName}</span>
-                        </div>
                       </td>
                       <td className="p-3.5">
                         <div className="space-y-0.5 text-[11px]">
@@ -693,7 +682,7 @@ export function DepartmentsPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">
                     Không tìm thấy phòng ban nào phù hợp
                   </td>
                 </tr>

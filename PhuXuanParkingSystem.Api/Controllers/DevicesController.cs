@@ -14,46 +14,52 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class DevicesController : ControllerBase
     {
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IRepository<LicenseInfo> _licenseRepo;
 
-        public DevicesController(IRepository<Device> deviceRepo)
+        public DevicesController(IRepository<Device> deviceRepo, IRepository<LicenseInfo> licenseRepo)
         {
             _deviceRepo = deviceRepo;
+            _licenseRepo = licenseRepo;
         }
 
-        // GET api/devices?search=&type=Camera&pageNumber=1&pageSize=10
+        // GET api/devices
         [HttpGet]
         public async Task<IActionResult> GetList(
             [FromQuery] string? search,
-            [FromQuery] string? type,
-            [FromQuery] int pageNumber = 1,
+            [FromQuery] DeviceType? type,
+            [FromQuery] bool? isActive,
+            [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
             var filter = Builders<Device>.Filter.Eq(d => d.IsDeleted, false);
 
-            // Lọc theo loại thiết bị (Camera / Controller)
-            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<DeviceType>(type, true, out var parsedType))
-            {
-                filter &= Builders<Device>.Filter.Eq(d => d.Type, parsedType);
-            }
-
-            // Tìm kiếm theo mã thiết bị, tên hoặc địa chỉ IP
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var s = search.Trim();
-                filter &= (Builders<Device>.Filter.Regex(d => d.Name, new MongoDB.Bson.BsonRegularExpression(s, "i"))
-                         | Builders<Device>.Filter.Regex(d => d.Code, new MongoDB.Bson.BsonRegularExpression(s, "i"))
-                         | Builders<Device>.Filter.Regex(d => d.IpAddress, new MongoDB.Bson.BsonRegularExpression(s, "i")));
+                filter &= (Builders<Device>.Filter.Regex(d => d.Name, new MongoDB.Bson.BsonRegularExpression(s, "i")) |
+                           Builders<Device>.Filter.Regex(d => d.Code, new MongoDB.Bson.BsonRegularExpression(s, "i")) |
+                           Builders<Device>.Filter.Regex(d => d.IpAddress, new MongoDB.Bson.BsonRegularExpression(s, "i")));
+            }
+
+            if (type.HasValue)
+            {
+                filter &= Builders<Device>.Filter.Eq(d => d.Type, type.Value);
+            }
+
+            if (isActive.HasValue)
+            {
+                filter &= Builders<Device>.Filter.Eq(d => d.IsActive, isActive.Value);
             }
 
             var totalCount = (int)await _deviceRepo.CountAsync(filter);
-            var skip = (pageNumber - 1) * pageSize;
-            var items = await _deviceRepo.FindAsync(filter, null, skip, pageSize);
+            var skip = (page - 1) * pageSize;
+            var items = await _deviceRepo.FindAsync(filter, Builders<Device>.Sort.Descending(d => d.CreatedAt), skip, pageSize);
 
             var result = new PagedResult<Device>
             {
                 Items = items,
                 TotalCount = totalCount,
-                PageNumber = pageNumber,
+                PageNumber = page,
                 PageSize = pageSize
             };
 
@@ -80,6 +86,27 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             if (string.IsNullOrWhiteSpace(device.IpAddress))
                 return BadRequest(ApiResponse.Fail("Địa chỉ IP không được để trống."));
+
+            // Kiểm tra giới hạn bản quyền MaxCameras / MaxControllers
+            var payload = await Helpers.LicenseValidationHelper.GetCurrentPayloadAsync(_licenseRepo);
+            var allDevices = await _deviceRepo.GetAllAsync();
+
+            if (device.Type == DeviceType.PlateCamera || device.Type == DeviceType.OverviewCamera)
+            {
+                int cameraCount = allDevices.Count(d => !d.IsDeleted && (d.Type == DeviceType.PlateCamera || d.Type == DeviceType.OverviewCamera));
+                if (cameraCount >= payload.MaxCameras)
+                {
+                    return BadRequest(ApiResponse.Fail($"Số lượng Camera đã đạt tối đa giới hạn bản quyền ({payload.MaxCameras} camera). Vui lòng liên hệ nhà cung cấp để nâng cấp gói bản quyền."));
+                }
+            }
+            else if (device.Type == DeviceType.Controller)
+            {
+                int controllerCount = allDevices.Count(d => !d.IsDeleted && d.Type == DeviceType.Controller);
+                if (controllerCount >= payload.MaxControllers)
+                {
+                    return BadRequest(ApiResponse.Fail($"Số lượng Bộ điều khiển đã đạt tối đa giới hạn bản quyền ({payload.MaxControllers} bộ). Vui lòng liên hệ nhà cung cấp để nâng cấp gói bản quyền."));
+                }
+            }
 
             await _deviceRepo.AddAsync(device);
             return Ok(ApiResponse<Device>.Ok(device, "Thêm thiết bị mới thành công."));

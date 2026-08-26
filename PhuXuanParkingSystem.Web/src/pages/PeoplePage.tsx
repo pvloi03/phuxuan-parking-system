@@ -28,6 +28,7 @@ import {
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Person, PersonType, Department, Company, Contractor } from '@/types'
 import { getPersonTypeLabel } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -158,9 +159,10 @@ export function PeoplePage() {
       queryClient.invalidateQueries({ queryKey: ['people-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới nhân sự thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi thêm nhân sự: ' + (err?.response?.data?.message || err.message))
+      notify.error('Thêm mới nhân sự thất bại', err)
     },
   })
 
@@ -183,9 +185,10 @@ export function PeoplePage() {
       queryClient.invalidateQueries({ queryKey: ['people-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin nhân sự thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi cập nhật nhân sự: ' + (err?.response?.data?.message || err.message))
+      notify.error('Cập nhật nhân sự thất bại', err)
     },
   })
 
@@ -195,6 +198,10 @@ export function PeoplePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      notify.success('Đã chuyển nhân sự vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhân sự thất bại', err)
     },
   })
 
@@ -204,7 +211,11 @@ export function PeoplePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} nhân sự thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều nhân sự thất bại', err)
     },
   })
 
@@ -212,12 +223,12 @@ export function PeoplePage() {
     mutationFn: async (people: Partial<Person>[]) => {
       await apiClient.post('/people/batch', people)
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['people-list'] })
-      alert('Nhập danh sách nhân sự từ Excel thành công!')
+      notify.success(`Nhập thành công ${variables?.length || 0} nhân sự từ file Excel!`)
     },
     onError: (err: any) => {
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
+      notify.error('Nhập file Excel thất bại', err)
     },
   })
 
@@ -273,7 +284,7 @@ export function PeoplePage() {
   // Excel Handlers
   const handleExportExcel = () => {
     if (!items.length) {
-      alert('Không có dữ liệu để xuất Excel.')
+      notify.warning('Không có dữ liệu nhân sự để xuất Excel.')
       return
     }
 
@@ -302,21 +313,21 @@ export function PeoplePage() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Định Danh': 'NV-001',
-        'Họ Và Tên': 'Nguyễn Văn An',
+        'Mã Định Danh': 'NS001',
+        'Họ Và Tên': 'Nguyễn Văn A',
         'Phân Loại (Employee/Contractor/Visitor/VIP)': 'Employee',
         'Số Điện Thoại': '0901234567',
-        'Email': 'an.nguyen@phuxuan.vn',
+        'Email': 'nhansu.a@example.com',
       },
       {
-        'Mã Định Danh': 'NT-001',
-        'Họ Và Tên': 'Vũ Đình Em',
+        'Mã Định Danh': 'NS002',
+        'Họ Và Tên': 'Trần Thị B',
         'Phân Loại (Employee/Contractor/Visitor/VIP)': 'Contractor',
-        'Số Điện Thoại': '0945678901',
-        'Email': 'em.vu@thaithuy.vn',
+        'Số Điện Thoại': '0912345678',
+        'Email': 'nhansu.b@example.com',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Nhan_Su.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Nhan_Su.xlsx', 'MauNhapNhanSu')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -326,7 +337,7 @@ export function PeoplePage() {
     try {
       const rawData = await parseExcelFile<any>(file)
       if (!rawData || rawData.length === 0) {
-        alert('File Excel không có dữ liệu.')
+        notify.warning('File Excel không có dữ liệu.')
         return
       }
 
@@ -349,11 +360,14 @@ export function PeoplePage() {
         })
         .filter((p) => p.fullName && p.code)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi nhân sự hợp lệ trong file Excel.'); return }
+      if (!formattedData.length) {
+        notify.warning('Không tìm thấy bản ghi nhân sự hợp lệ trong file Excel.')
+        return
+      }
 
       batchImportMutation.mutate(formattedData as Person[])
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

@@ -64,6 +64,7 @@ const menuConfig: MenuItem[] = [
   { type: 'single', item: { title: 'Quản Lý Phương Tiện', href: '/vehicles', icon: Car, roles: ['Admin', 'Manager', '1', '2'] } },
   { type: 'single', item: { title: 'Làn Kiểm Soát', href: '/lanes', icon: Route, roles: ['Admin', 'Manager', '1', '2'] } },
   { type: 'single', item: { title: 'Thiết Bị Phần Cứng', href: '/devices', icon: Cpu, roles: ['Admin', 'Manager', '1', '2'] } },
+  { type: 'single', item: { title: 'Bản Quyền Phần Mềm', href: '/license', icon: ShieldCheck, roles: ['Admin', 'Manager', '1', '2'] } },
   { type: 'single', item: { title: 'Quản Lý Tài Khoản', href: '/users', icon: Users, roles: ['Admin', '1'] } },
   { type: 'single', item: { title: 'Thùng Rác', href: '/recycle-bin', icon: Trash2, roles: ['Admin', '1'] } },
 ]

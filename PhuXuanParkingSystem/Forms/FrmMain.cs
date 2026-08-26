@@ -1,12 +1,15 @@
 using Microsoft.Extensions.DependencyInjection;
+using PhuXuanParkingSystem.Licensing;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
 using PhuXuanParkingSystem.Services.DeviceConfig;
 using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Services.License;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Parking;
 using System;
+using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -33,6 +36,7 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IRepository<Lane> _laneRepo;
         private readonly IDeviceHealthMonitorService _deviceHealthService;
         private readonly IDeviceConfigService _deviceConfigService = null!;
+        private readonly LicenseManager _licenseManager;
 
         private string _captureDir = "";
         private string _controllerIp = "192.168.1.202";
@@ -43,6 +47,8 @@ namespace PhuXuanParkingSystem.Forms
         public FrmMain()
         {
             InitializeComponent();
+
+            _licenseManager = new LicenseManager(new MongoRepository<LicenseInfo>());
 
             if (Program.ServiceProvider != null)
             {
@@ -92,6 +98,7 @@ namespace PhuXuanParkingSystem.Forms
         {
             InitializeComponent();
 
+            _licenseManager = new LicenseManager(new MongoRepository<LicenseInfo>());
             _parkingLaneService = parkingLaneService ?? throw new ArgumentNullException(nameof(parkingLaneService));
             _anprService = anprService ?? new SimpleLprAnprService();
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
@@ -103,10 +110,95 @@ namespace PhuXuanParkingSystem.Forms
             KeyPreview = true;
         }
 
-        private void FrmMain_Load(object sender, EventArgs e)
+        private async void FrmMain_Load(object sender, EventArgs e)
         {
+            lblFooterMachineCode.Text = $"Mã Máy: {HardwareFingerprint.GetMachineCode()}";
+
             LoadConfigurations();
             UpdateClock();
+
+            // Kiểm tra bản quyền phần mềm khi khởi động
+            await CheckAndEnforceLicenseAsync();
+        }
+
+        private async Task CheckAndEnforceLicenseAsync()
+        {
+            string? currentKey = await _licenseManager.GetCurrentLicenseKeyAsync();
+            var validation = !string.IsNullOrWhiteSpace(currentKey)
+                ? LicenseCrypto.ValidateLicense(currentKey!)
+                : new LicenseValidationResult { IsValid = false, Message = "Chưa tìm thấy thông tin bản quyền trên máy trạm này." };
+
+            if (!validation.IsValid)
+            {
+                lblFooterLicense.Text = "🔴 Bản quyền: Hết hạn / Chưa kích hoạt";
+                lblFooterLicense.ForeColor = Color.Red;
+
+                // Tự động mở form kích hoạt / hết hạn
+                using (var expiredForm = new LicenseExpiredForm(validation.Message))
+                {
+                    var dialogResult = expiredForm.ShowDialog(this);
+                    if (dialogResult == DialogResult.OK && expiredForm.IsActivatedSuccessfully)
+                    {
+                        var newValidation = LicenseCrypto.ValidateLicense(expiredForm.ActivatedKey);
+                        if (newValidation.Payload != null)
+                        {
+                            await _licenseManager.SaveLicenseKeyAsync(expiredForm.ActivatedKey, newValidation.Payload);
+                            UpdateLicenseFooter(newValidation);
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        // Người dùng đóng form hoặc bấm Thoát ➔ Đóng ứng dụng
+                        Application.Exit();
+                        return;
+                    }
+                }
+            }
+
+            UpdateLicenseFooter(validation);
+        }
+
+        private void UpdateLicenseFooter(LicenseValidationResult validation)
+        {
+            if (validation.Payload?.IsPermanent == true)
+            {
+                lblFooterLicense.Text = "🛡️ Bản quyền: Vĩnh viễn (Đã kích hoạt)";
+                lblFooterLicense.ForeColor = Color.FromArgb(16, 185, 129); // Green
+            }
+            else if (validation.DaysRemaining > 15)
+            {
+                lblFooterLicense.Text = $"🛡️ Thời gian sử dụng: {validation.DaysRemaining} ngày (Đến {validation.Payload?.ExpiryDate:dd/MM/yyyy})";
+                lblFooterLicense.ForeColor = Color.FromArgb(16, 185, 129); // Green
+            }
+            else if (validation.DaysRemaining > 0)
+            {
+                lblFooterLicense.Text = $"⚠️ Sắp hết hạn: Còn {validation.DaysRemaining} ngày (Đến {validation.Payload?.ExpiryDate:dd/MM/yyyy})";
+                lblFooterLicense.ForeColor = Color.FromArgb(245, 158, 11); // Orange
+            }
+            else
+            {
+                lblFooterLicense.Text = "🔴 Bản quyền đã hết hạn - Click để nạp Key";
+                lblFooterLicense.ForeColor = Color.Red;
+            }
+        }
+
+        private async void LblFooterLicense_DoubleClick(object sender, EventArgs e)
+        {
+            // Cho phép người dùng click đúp vào footer để nạp key gia hạn sớm
+            using (var activateForm = new LicenseExpiredForm("Quản Lý & Gia Hạn Bản Quyền Phần Mềm"))
+            {
+                if (activateForm.ShowDialog(this) == DialogResult.OK && activateForm.IsActivatedSuccessfully)
+                {
+                    var newValidation = LicenseCrypto.ValidateLicense(activateForm.ActivatedKey);
+                    if (newValidation.Payload != null)
+                    {
+                        await _licenseManager.SaveLicenseKeyAsync(activateForm.ActivatedKey, newValidation.Payload);
+                        UpdateLicenseFooter(newValidation);
+                        MessageBox.Show("Đã cập nhật bản quyền mới thành công!", "Thông Báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
         }
 
         private async void FrmMain_Shown(object sender, EventArgs e)

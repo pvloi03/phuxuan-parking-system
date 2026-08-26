@@ -15,7 +15,6 @@ import {
   Download,
   Upload,
   Phone,
-  Mail,
   FileSpreadsheet,
   CheckCircle2,
   XCircle,
@@ -236,21 +235,21 @@ export function CompaniesPage() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Công Ty': 'CT-HP',
-        'Tên Công Ty': 'Công Ty Cổ Phần Công Nghệ HP',
-        'Số Điện Thoại': '0243123456',
-        'Email': 'contact@hptech.vn',
-        'Ghi Chú': 'Chủ đầu tư quản lý tòa nhà',
+        'Mã Công Ty': 'CT001',
+        'Tên Công Ty': 'Công Ty Mẫu A',
+        'Số Điện Thoại': '0901234567',
+        'Email': 'contact@company-a.com',
+        'Ghi Chú': 'Mô tả thông tin công ty mẫu 1',
       },
       {
-        'Mã Công Ty': 'CT-PX',
-        'Tên Công Ty': 'Công Ty TNHH Phú Xuân',
-        'Số Điện Thoại': '0243987654',
-        'Email': 'info@phuxuan.vn',
-        'Ghi Chú': 'Đối tác vận hành hệ thống',
+        'Mã Công Ty': 'CT002',
+        'Tên Công Ty': 'Công Ty Mẫu B',
+        'Số Điện Thoại': '0912345678',
+        'Email': 'info@company-b.com',
+        'Ghi Chú': 'Mô tả thông tin công ty mẫu 2',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Cong_Ty.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Cong_Ty.xlsx', 'MauNhapCongTy')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -485,8 +484,6 @@ export function CompaniesPage() {
                 <th className="p-3.5">Mã Công Ty</th>
                 <th className="p-3.5">Tên Doanh Nghiệp</th>
                 <th className="p-3.5">Số Điện Thoại</th>
-                <th className="p-3.5">Email</th>
-                <th className="p-3.5">Ghi Chú</th>
                 <th className="p-3.5 text-center">Trạng Thái</th>
                 <th className="p-3.5 text-right pr-4">Thao Tác</th>
               </tr>
@@ -494,7 +491,7 @@ export function CompaniesPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={6} className="p-8 text-center text-slate-400">
                     Đang tải danh sách công ty...
                   </td>
                 </tr>
@@ -531,25 +528,6 @@ export function CompaniesPage() {
                             <Phone className="h-3 w-3 text-slate-400" />
                             <span>{comp.phoneNumber}</span>
                           </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-[11px]">--</span>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-slate-700 dark:text-slate-300">
-                        {comp.email ? (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3 text-slate-400" />
-                            <span>{comp.email}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic text-[11px]">--</span>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-slate-600 dark:text-slate-400">
-                        {comp.note ? (
-                          <span className="text-xs line-clamp-1" title={comp.note}>
-                            {comp.note}
-                          </span>
                         ) : (
                           <span className="text-slate-400 italic text-[11px]">--</span>
                         )}
@@ -614,7 +592,7 @@ export function CompaniesPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">
                     Không tìm thấy công ty nào phù hợp
                   </td>
                 </tr>

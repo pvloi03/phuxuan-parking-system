@@ -16,6 +16,7 @@ var mongoConn = builder.Configuration.GetConnectionString("MongoDb") ?? "mongodb
 var dbName = builder.Configuration["DatabaseName"] ?? "PhuXuanParkingSystemDb";
 builder.Services.AddSingleton(new MongoDbContext(mongoConn, dbName));
 builder.Services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
+builder.Services.AddScoped(typeof(MongoRepository<>));
 
 // 2. Cấu hình JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "PhuXuanParkingSystem_Super_Secret_Key_2026_For_JWT_Authentication_Secure!";

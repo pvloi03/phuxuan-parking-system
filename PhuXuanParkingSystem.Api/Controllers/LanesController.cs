@@ -19,11 +19,16 @@ namespace PhuXuanParkingSystem.Api.Controllers
     {
         private readonly IRepository<Lane> _laneRepo;
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IRepository<LicenseInfo> _licenseRepo;
 
-        public LanesController(IRepository<Lane> laneRepo, IRepository<Device> deviceRepo)
+        public LanesController(
+            IRepository<Lane> laneRepo,
+            IRepository<Device> deviceRepo,
+            IRepository<LicenseInfo> licenseRepo)
         {
             _laneRepo = laneRepo;
             _deviceRepo = deviceRepo;
+            _licenseRepo = licenseRepo;
         }
 
         // GET api/lanes
@@ -53,33 +58,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 filter &= Builders<Lane>.Filter.Eq(l => l.IsActive, isActive.Value);
             }
 
-            var items = await _laneRepo.FindAsync(filter, Builders<Lane>.Sort.Ascending(l => l.Code));
-
-            // Tự động khởi tạo 2 làn mặc định (Làn Vào, Làn Ra) nếu DB hoàn toàn chưa có
-            if ((items == null || items.Count == 0) && string.IsNullOrWhiteSpace(search) && !direction.HasValue && !isActive.HasValue)
-            {
-                var defaultLaneIn = new Lane("L01", "Làn Vào 1 (Cổng Chính)", LaneDirection.In, 1)
-                {
-                    Description = "Làn kiểm soát xe vào cổng chính",
-                    IsActive = true,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
-                var defaultLaneOut = new Lane("L02", "Làn Ra 1 (Cổng Chính)", LaneDirection.Out, 2)
-                {
-                    Description = "Làn kiểm soát xe ra cổng chính",
-                    IsActive = true,
-                    CreatedAt = DateTime.Now,
-                    UpdatedAt = DateTime.Now
-                };
-
-                await _laneRepo.AddAsync(defaultLaneIn);
-                await _laneRepo.AddAsync(defaultLaneOut);
-
-                items = await _laneRepo.FindAsync(filter, Builders<Lane>.Sort.Ascending(l => l.Code));
-            }
-
-            // Nạp thông tin thiết bị (OverviewCamera, PlateCamera, Controller) nạp runtime
+            var items = await _laneRepo.FindAsync(filter);
             await EnrichLaneDevicesAsync(items);
 
             return Ok(ApiResponse<IReadOnlyList<Lane>>.Ok(items ?? [], "Lấy danh sách làn kiểm soát thành công."));
@@ -111,6 +90,15 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(lane.Code))
             {
                 return BadRequest(ApiResponse.Fail("Mã làn không được để trống."));
+            }
+
+            // Kiểm tra giới hạn bản quyền MaxLanes
+            var payload = await Helpers.LicenseValidationHelper.GetCurrentPayloadAsync(_licenseRepo);
+            var existingLanes = await _laneRepo.GetAllAsync();
+            int activeCount = existingLanes.Count(l => !l.IsDeleted);
+            if (activeCount >= payload.MaxLanes)
+            {
+                return BadRequest(ApiResponse.Fail($"Số lượng làn xe đã đạt tối đa giới hạn bản quyền ({payload.MaxLanes} làn). Vui lòng liên hệ nhà cung cấp để nâng cấp gói bản quyền."));
             }
 
             lane.Code = lane.Code.Trim().ToUpperInvariant();

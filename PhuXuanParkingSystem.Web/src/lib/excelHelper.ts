@@ -66,7 +66,8 @@ export function parseExcelFile<T = any>(file: File): Promise<T[]> {
  */
 export function downloadExcelTemplate(
   templateHeaders: Record<string, any>[],
-  fileName: string = 'Mau_Nhap_Lieu.xlsx'
+  fileName: string = 'Mau_Nhap_Lieu.xlsx',
+  sheetName: string = 'MauNhapLieu'
 ) {
   const worksheet = XLSX.utils.json_to_sheet(templateHeaders)
   const colWidths = Object.keys(templateHeaders[0] || {}).map((key) => ({
@@ -75,7 +76,7 @@ export function downloadExcelTemplate(
   worksheet['!cols'] = colWidths
 
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'MauNhapLieu')
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName)
 
   const finalFileName = fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`
   XLSX.writeFile(workbook, finalFileName)
