@@ -28,7 +28,7 @@ namespace PhuXuanParkingSystem.Tests.Entities
             session.PlateNumber.Should().Be("29A12345"); // Cleaned
             session.PersonName.Should().Be("Nguyễn Văn A");
             session.InTime.Should().NotBeNull();
-            session.InTime.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
+            session.InTime!.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
             session.OutTime.Should().BeNull();
             session.OutLaneName.Should().BeNull();
             session.IsUnknown.Should().BeFalse();
@@ -62,12 +62,12 @@ namespace PhuXuanParkingSystem.Tests.Entities
             session.OutOverviewImagePath.Path.Should().Be("out_ov.jpg");
             session.OutPlateImagePath.Path.Should().Be("out_pl.jpg");
             session.OutTime.Should().NotBeNull();
-            session.OutTime.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
+            session.OutTime!.Value.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
             session.UpdatedAt.Should().NotBeNull();
             session.Note.Should().Be("Thu phí tiền mặt");
 
             session.Duration.Should().NotBeNull();
-            session.Duration.Value.TotalMinutes.Should().BeApproximately(150, 1.0);
+            session.Duration!.Value.TotalMinutes.Should().BeApproximately(150, 1.0);
         }
 
         [Fact]

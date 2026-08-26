@@ -1,6 +1,7 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
+using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Parking;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,11 +30,14 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IParkingLaneService _parkingLaneService;
         private readonly IPlateRecognitionService _anprService;
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IRepository<Lane> _laneRepo;
+        private readonly IDeviceHealthMonitorService _deviceHealthService;
 
         private string _captureDir = "";
         private string _controllerIp = "192.168.1.202";
         private int _controllerPort = 4370;
         private readonly object _lockDebounce = new();
+        private System.Windows.Forms.Timer? _deviceSyncTimer;
 
         public FrmMain()
         {
@@ -51,6 +55,8 @@ namespace PhuXuanParkingSystem.Forms
                         new MongoRepository<Contractor>());
                 _anprService = Program.ServiceProvider.GetService<IPlateRecognitionService>() ?? new SimpleLprAnprService();
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
+                _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
+                _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo);
             }
             else
             {
@@ -63,6 +69,8 @@ namespace PhuXuanParkingSystem.Forms
                     new MongoRepository<Contractor>());
                 _anprService = new SimpleLprAnprService();
                 _deviceRepo = new MongoRepository<Device>();
+                _laneRepo = new MongoRepository<Lane>();
+                _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo);
             }
 
             // Đăng ký sự kiện Controller ZKTeco
@@ -76,13 +84,17 @@ namespace PhuXuanParkingSystem.Forms
         public FrmMain(
             IParkingLaneService parkingLaneService,
             IPlateRecognitionService anprService,
-            IRepository<Device> deviceRepo)
+            IRepository<Device> deviceRepo,
+            IRepository<Lane>? laneRepo = null,
+            IDeviceHealthMonitorService? deviceHealthService = null)
         {
             InitializeComponent();
 
             _parkingLaneService = parkingLaneService ?? throw new ArgumentNullException(nameof(parkingLaneService));
             _anprService = anprService ?? new SimpleLprAnprService();
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
+            _laneRepo = laneRepo ?? new MongoRepository<Lane>();
+            _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo);
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
             KeyPreview = true;
@@ -98,6 +110,30 @@ namespace PhuXuanParkingSystem.Forms
         private async void FrmMain_Shown(object sender, EventArgs e)
         {
             await AutoConnectAllAsync();
+
+            // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
+            StartDeviceSyncBackgroundWorker();
+        }
+
+        private void StartDeviceSyncBackgroundWorker()
+        {
+            try
+            {
+                // Chạy 1 lần ngay sau khi kết nối
+                _ = _deviceHealthService.CheckAllAndSyncAsync();
+
+                _deviceSyncTimer = new System.Windows.Forms.Timer();
+                _deviceSyncTimer.Interval = 30000; // 30 giây
+                _deviceSyncTimer.Tick += async (s, e) =>
+                {
+                    await _deviceHealthService.CheckAllAndSyncAsync();
+                };
+                _deviceSyncTimer.Start();
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"Lỗi khởi tạo Background Device Sync: {ex.Message}");
+            }
         }
 
         private void TimerClock_Tick(object sender, EventArgs e)
@@ -126,6 +162,12 @@ namespace PhuXuanParkingSystem.Forms
                 _ = CaptureOutLaneAsync("MANUAL_LAN_RA");
                 e.Handled = true;
             }
+            // Phím F9: Mở Trung Tâm Giám Sát Thiết Bị
+            else if (e.KeyCode == Keys.F9)
+            {
+                OpenDeviceMonitor();
+                e.Handled = true;
+            }
             // Phím Ctrl + R: Tự động kết nối lại
             else if (e.Control && e.KeyCode == Keys.R)
             {
@@ -141,6 +183,28 @@ namespace PhuXuanParkingSystem.Forms
                 }
                 e.Handled = true;
             }
+        }
+
+        public void OpenDeviceMonitor()
+        {
+            try
+            {
+                var frm = Program.ServiceProvider != null
+                    ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo))
+                    : new FrmDeviceMonitor(_deviceHealthService, _deviceRepo);
+
+                frm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, "Lỗi mở màn hình Giám sát thiết bị");
+                MessageBox.Show($"Không thể mở màn hình Giám sát thiết bị: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void BtnDeviceMonitor_Click(object? sender, EventArgs e)
+        {
+            OpenDeviceMonitor();
         }
 
         private void SetHeaderStatus(string message)

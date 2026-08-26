@@ -30,6 +30,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\PhuXuanParkingSystem.Domain\PhuXuanParkingSystem.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="System.Configuration" />
     <Reference Include="SimpleLPR3">
       <HintPath>SDK\Native\x86\SimpleLPR3\SimpleLPR3.dll</HintPath>

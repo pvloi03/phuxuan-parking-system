@@ -58,5 +58,25 @@
     "UpdatedAt": null,
     "IsDeleted": false,
     "DeletedAt": null
+  },
+  {
+    "_id": { "$oid": "66c8e008a1b2c3d4e5f67804" },
+    "PlateNumber": "38L105531",
+    "VehicleType": "Motorbike",
+    "Status": "Active",
+    "PersonName": "Vũ Đình Em",
+    "InTime": { "$date": "2026-08-26T08:00:00.000Z" },
+    "InLaneName": "Làn Vào Số 1",
+    "InOverviewImagePath": "",
+    "InPlateImagePath": "",
+    "OutTime": null,
+    "OutLaneName": null,
+    "OutOverviewImagePath": "",
+    "OutPlateImagePath": "",
+    "Note": "Bản ghi thử nghiệm đường dẫn ảnh vào/ra đều rỗng",
+    "CreatedAt": { "$date": "2026-08-26T08:00:00.000Z" },
+    "UpdatedAt": null,
+    "IsDeleted": false,
+    "DeletedAt": null
   }
 ]
