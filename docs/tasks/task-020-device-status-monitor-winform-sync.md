@@ -26,10 +26,35 @@ Xây dựng màn hình WinForms chuyên dụng (`FrmDeviceMonitor`) và dịch v
 - Chạy ngầm định kỳ để cập nhật trạng thái thiết bị lên Web Admin 24/7.
 
 ## 3. Checklist Tiến Độ
-- [ ] Tạo branch git `task/020-device-status-monitor-winform-sync`
-- [ ] Tạo `IDeviceHealthMonitorService.cs` và `DeviceHealthMonitorService.cs`
-- [ ] Tạo WinForms `FrmDeviceMonitor.cs` & `FrmDeviceMonitor.Designer.cs`
-- [ ] Tích hợp phím tắt F9 và nút mở màn hình trên `FrmMain`
-- [ ] Thêm Background Worker tự động đồng bộ trạng thái định kỳ lên MongoDB
-- [ ] Kiểm thử biên dịch và chạy thử nghiệm
-- [ ] Kiểm thử hiển thị trên Web Admin `DevicesPage`
+- [x] Tạo branch git `task/020-device-status-monitor-winform-sync`
+- [x] Tạo `IDeviceHealthMonitorService.cs` và `DeviceHealthMonitorService.cs`
+- [x] Tạo WinForms `FrmDeviceMonitor.cs` & `FrmDeviceMonitor.Designer.cs`
+- [x] Tích hợp phím tắt F9 và nút mở màn hình trên `FrmMain`
+- [x] Thêm Background Worker tự động đồng bộ trạng thái định kỳ lên MongoDB
+- [x] Kiểm thử biên dịch và chạy thử nghiệm
+- [x] Kiểm thử hiển thị trên Web Admin `DevicesPage`
+
+---
+
+## 4. Chi Tiết Kỹ Thuật
+
+### 4.1. DeviceHealthMonitorService
+**Vị trí**: `PhuXuanParkingSystem/Services/DeviceHealth/DeviceHealthMonitorService.cs`
+
+**Chức năng**:
+- Kiểm tra trạng thái kết nối TCP/IP và ICMP Ping song song cho tất cả thiết bị
+- Cập nhật `DeviceStatus` và `LastHeartbeat` vào MongoDB theo chu kỳ 10s/30s/1m
+- Đo độ trễ (ms) của từng thiết bị
+
+**Các file chính**:
+- `DeviceHealthMonitorService.cs` - Service kiểm tra và đồng bộ
+- `FrmDeviceMonitor.cs` - Giao diện hiển thị trạng thái thiết bị
+
+### 4.2. FrmDeviceMonitor
+**Vị trí**: `PhuXuanParkingSystem/Forms/FrmDeviceMonitor.cs`
+
+**Tính năng**:
+- Thẻ thống kê: Tổng thiết bị, Đang kết nối, Mất kết nối
+- Danh sách thiết bị với đèn LED trạng thái (Xanh/Đỏ/Vàng)
+- Kiểm tra ngay, kiểm tra từng thiết bị, tự động quét theo chu kỳ
+- Phím tắt F9 để mở nhanh từ FrmMain

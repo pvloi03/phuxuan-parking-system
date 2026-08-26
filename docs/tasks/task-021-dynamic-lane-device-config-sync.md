@@ -23,3 +23,139 @@ Nâng cấp cơ chế nạp cấu hình phần cứng trong ứng dụng WinForm
 - [x] 2. Đăng ký `IRepository<Lane>` vào DI trong `Program.cs`.
 - [x] 3. Nâng cấp phương thức `LoadConfigurationsFromDbAsync()` trong `FrmMain.Cameras.cs`.
 - [x] 4. Biên dịch và kiểm thử WinForms x86 (`0 Error, 0 Warning`).
+
+---
+
+## 4. Chi Tiết Kỹ Thuật
+
+### 4.1. Luồng Nạp Cấu Hình Động
+
+```
+LoadConfigurationsFromDbAsync()
+│
+├── Query Lanes (IsActive == true && !IsDeleted)
+│
+├── Filter: Direction == LaneDirection.In → InLane
+│   └── Read: PlateCameraDeviceId, OverviewCameraDeviceId, ControllerDeviceId
+│
+├── Filter: Direction == LaneDirection.Out → OutLane
+│   └── Read: PlateCameraDeviceId, OverviewCameraDeviceId, ControllerDeviceId
+│
+└── Resolve Device Details
+    └── _deviceRepo.GetByIdAsync(deviceId) → IP, Port, Username, Password, RTSPUrl
+```
+
+### 4.2. Cơ Chế Fallback An Toàn
+
+1. **Ưu tiên 1**: `Lane.PlateCameraDeviceId` (MongoDB)
+2. **Fallback 1**: Tìm theo `DeviceType` + `LaneId`
+3. **Fallback cuối cùng**: `App.config` (legacy)
+
+### 4.3. Các File Chính
+
+| File | Mô tả |
+|------|-------|
+| `FrmMain.cs` | Constructor inject `IRepository<Lane>`, `IRepository<Device>` |
+| `FrmMain.Cameras.cs` | `LoadConfigurationsFromDbAsync()` nạp cấu hình từ MongoDB |
+| `Program.cs` | Đăng ký DI container |
+| `Lane.cs` | Entity Làn (PlateCameraDeviceId, OverviewCameraDeviceId, ControllerDeviceId) |
+| `Device.cs` | Entity Thiết bị (IP, Port, Username, Password, DeviceType) |
+
+---
+
+## 4. Chi Tiết Kỹ Thuật
+
+### 4.1. Luồng Nạp Cấu Hình Động
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     FrmMain Constructor                          │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ 1. Inject IRepository<Lane>                                │ │
+│  │ 2. Inject IRepository<Device>                              │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 LoadConfigurationsFromDbAsync()                  │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ 1. Query Lanes (IsActive == true && !IsDeleted)            │ │
+│  │ 2. Filter: Direction == LaneDirection.In  → InLane         │ │
+│  │ 3. Filter: Direction == LaneDirection.Out → OutLane        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+          ┌───────────────────┴───────────────────┐
+          ▼                                       ▼
+┌─────────────────────┐               ┌─────────────────────┐
+│    InLane Config    │               │   OutLane Config    │
+│  - PlateCameraId   │               │  - PlateCameraId   │
+│  - OverviewCameraId│               │  - OverviewCameraId│
+│  - ControllerId    │               │  - ControllerId    │
+└─────────────────────┘               └─────────────────────┘
+          │                                       │
+          └───────────────────┬───────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              _deviceRepo.GetByIdAsync(deviceId)                  │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ Resolve: IP, Port, Username, Password, RTSPUrl               │ │
+│  │ Build: CameraConfig / ControllerConfig objects              │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              InitializeCamerasAsync() + ConnectAllAsync()        │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ 1. Create camera services with resolved configs             │ │
+│  │ 2. Open live streams                                       │ │
+│  │ 3. Start radar listener                                    │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2. Cơ Chế Fallback An Toàn
+
+```csharp
+// 1. Ưu tiên: Lấy từ Lane.DeviceId (MongoDB)
+if (!string.IsNullOrEmpty(lane.PlateCameraDeviceId))
+{
+    var device = await _deviceRepo.GetByIdAsync(lane.PlateCameraDeviceId);
+    if (device != null) return BuildCameraConfig(device);
+}
+
+// 2. Fallback: Tìm theo DeviceType
+var fallbackDevice = await _deviceRepo.FindAsync(
+    d => d.DeviceType == DeviceType.CameraPlate && d.LaneId == lane.Id
+);
+
+// 3. Fallback cuối cùng: App.config (legacy)
+return LoadFromAppConfig(key);
+```
+
+### 4.3. Các File Chính
+
+| File | Mô tả |
+|------|-------|
+| `FrmMain.cs` | Constructor inject IRepository<Lane>, IRepository<Device> |
+| `FrmMain.Cameras.cs` | LoadConfigurationsFromDbAsync(), khởi tạo camera với config động |
+| `Program.cs` | Đăng ký IRepository<Lane> vào DI container |
+| `App.config` | Fallback cuối cùng (legacy) |
+
+### 4.4. Cải Thiện So Với Phiên Bản Trước
+
+| Trước | Sau |
+|-------|-----|
+| Hardcode `CAM-IN-PLT`, `CAM-OUT-PLT` | Đọc từ `Lane.PlateCameraDeviceId` |
+| Tìm theo `Contains("Vào")` | Query theo `LaneDirection.In` |
+| Config cố định trong App.config | Config động từ MongoDB |
+| Không phản ánh thay đổi từ Web Admin | Đồng bộ real-time khi khởi động lại |
+
+---
+
+## 5. Ghi Chú Triển Khai
+
+- **Commit**: `a1bf6d7` - feat(winforms): dynamically sync camera and controller configs from MongoDB Lanes and Devices
+- **Commit**: `230710f` - refactor(winforms): clean up LoadConfigurations and remove obsolete App.config camera settings

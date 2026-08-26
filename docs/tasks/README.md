@@ -17,6 +17,11 @@
 | **[Task 007](task-007-logging-system-serilog.md)** | Xây Dựng Hệ Thống Logging Bất Đồng Bộ | ✅ **Hoàn thành** | Triển khai Serilog Async File Sink, Global Exception Handler và Live UI Log. |
 | **[Task 008](task-008-application-notification-system.md)** | Xây Dựng Hệ Thống Thông Báo Toàn Cục | ✅ **Hoàn thành** | Triển khai `AppNotificationService` (Pub/Sub pattern) đồng bộ trạng thái phần cứng và thông báo lên UI. |
 | **[Task 009](task-009-anpr-vietnam-plate-recognition.md)** | Tích Hợp Nhận Diện Biển Số SimpleLPR3 x86 | ✅ **Hoàn thành** | Tích hợp Engine AI SimpleLPR3 32-bit cho nhận diện biển số xe Việt Nam tốc độ cao (~30-50ms), đồng bộ UI và MongoDB. |
+| **[Task 017](task-013-to-019-system-upgrade-plan.md)** | Phân Hệ Quản Lý Thiết Bị Phần Cứng | ✅ **Hoàn thành** | Backend API + Giao diện quản lý Camera IP, Barrier, Đầu đọc RFID, Trạm kiểm soát với trạng thái Online/Offline. |
+| **[Task 018](task-013-to-019-system-upgrade-plan.md)** | Phân Hệ Thùng Rác (Soft-Delete Recovery) | ✅ **Hoàn thành** | Xem, lọc nhóm, tìm kiếm, khôi phục từng mục hoặc khôi phục tất cả trong trang hiện tại. |
+| **[Task 019](task-013-to-019-system-upgrade-plan.md)** | Hệ Thống Phân Quyền Đa Tầng (RBAC) | ✅ **Hoàn thành** | 3 cấp vai trò: Super Admin, Manager, Operator. JWT Claims + Middleware + Frontend UI Permissions. |
+| **[Task 020](task-020-device-status-monitor-winform-sync.md)** | Giám Sát Tình Trạng Thiết Bị WinForms | ✅ **Hoàn thành** | Màn hình `FrmDeviceMonitor` + `DeviceHealthMonitorService` kiểm tra TCP/Ping, đồng bộ trạng thái lên Web Admin. Phím tắt F9. |
+| **[Task 021](task-021-dynamic-lane-device-config-sync.md)** | Nạp Cấu Hình Động Từ MongoDB | ✅ **Hoàn thành** | Đọc cấu hình Camera/Controller trực tiếp từ MongoDB theo Làn (`Lane`) → Thiết bị (`Device`). Loại bỏ hardcode App.config. |
 
 ---
 

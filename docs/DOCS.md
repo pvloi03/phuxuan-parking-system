@@ -212,39 +212,10 @@ Toàn bộ thông số thiết bị và cơ sở dữ liệu được quản lý
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
 <configuration>
-    <startup> 
+    <startup>
         <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8" />
     </startup>
     <appSettings>
-        <!-- ================= LÀN VÀO (IN-LANE) ================= -->
-        <add key="In_PlateCam_Ip" value="192.168.1.109" />
-        <add key="In_PlateCam_Port" value="80" />
-        <add key="In_PlateCam_User" value="admin" />
-        <add key="In_PlateCam_Password" value="admin" />
-
-        <add key="In_OverviewCam_Ip" value="192.168.1.61" />
-        <add key="In_OverviewCam_Port" value="8000" />
-        <add key="In_OverviewCam_User" value="admin" />
-        <add key="In_OverviewCam_Password" value="Hoangphat130225" />
-
-        <!-- ================= LÀN RA (OUT-LANE) ================= -->
-        <add key="Out_PlateCam_Ip" value="192.168.1.203" />
-        <add key="Out_PlateCam_Port" value="80" />
-        <add key="Out_PlateCam_User" value="admin" />
-        <add key="Out_PlateCam_Password" value="admin" />
-
-        <add key="Out_OverviewCam_Ip" value="192.168.1.62" />
-        <add key="Out_OverviewCam_Port" value="8000" />
-        <add key="Out_OverviewCam_User" value="admin" />
-        <add key="Out_OverviewCam_Password" value="Hoangphat130225" />
-
-        <!-- ================= CONTROLLER DÙNG CHUNG ================= -->
-        <add key="Controller_ConnType" value="TCP" />
-        <add key="Controller_Ip" value="192.168.1.202" />
-        <add key="Controller_Port" value="4370" />
-        <add key="Controller_Timeout" value="3000" />
-        <add key="Controller_Password" value="" />
-
         <!-- ================= LƯU TRỮ & DATABASE ================= -->
         <add key="CaptureSavePath" value="Captures" />
         <add key="MongoDb_ConnectionString" value="mongodb://localhost:27017" />
@@ -252,6 +223,75 @@ Toàn bộ thông số thiết bị và cơ sở dữ liệu được quản lý
     </appSettings>
 </configuration>
 ```
+
+> ⚠️ **Lưu ý quan trọng**: Cấu hình Camera và Controller đã được chuyển sang đọc từ **MongoDB** (xem Mục 8). `App.config` chỉ còn chứa cấu hình lưu trữ và database.
+
+---
+
+## 8. NẠP CẤU HÌNH ĐỘNG TỪ MONGODB (Task-020, Task-021)
+
+### 8.1. Tổng Quan
+
+Từ **Task-020** và **Task-021**, hệ thống WinForms đã được nâng cấp để đọc cấu hình thiết bị trực tiếp từ MongoDB thay vì hardcode trong `App.config`.
+
+### 8.2. Luồng Nạp Cấu Hình
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                 LoadConfigurationsFromDbAsync()                   │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │ 1. Query Lanes (IsActive == true && !IsDeleted)          │ │
+│  │ 2. Filter: Direction == LaneDirection.In  → InLane         │ │
+│  │ 3. Filter: Direction == LaneDirection.Out → OutLane        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                              │                                    │
+│          ┌───────────────────┴───────────────────┐                │
+│          ▼                                       ▼                │
+│  ┌─────────────────────┐               ┌─────────────────────┐   │
+│  │    InLane Config    │               │   OutLane Config    │   │
+│  │  - PlateCameraId   │               │  - PlateCameraId   │   │
+│  │  - OverviewCameraId│               │  - OverviewCameraId│   │
+│  │  - ControllerId    │               │  - ControllerId    │   │
+│  └─────────────────────┘               └─────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  _deviceRepo.GetByIdAsync(deviceId)                         │ │
+│  │  → Resolve: IP, Port, Username, Password, RTSPUrl           │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 8.3. Cơ Chế Fallback An Toàn
+
+1. **Ưu tiên**: Lấy từ `Lane.PlateCameraDeviceId` (MongoDB)
+2. **Fallback 1**: Tìm theo `DeviceType` + `LaneId`
+3. **Fallback cuối cùng**: `App.config` (legacy - đang loại bỏ dần)
+
+### 8.4. Giám Sát Thiết Bị (Task-020)
+
+**Màn hình `FrmDeviceMonitor`** (`Forms/FrmDeviceMonitor.cs`):
+
+- Thẻ thống kê: Tổng thiết bị, Đang kết nối, Mất kết nối
+- Danh sách thiết bị với đèn LED trạng thái (Xanh/Đỏ/Vàng)
+- Đo độ trễ (ms), thời gian phản hồi cuối
+- Kiểm tra ngay, kiểm tra từng thiết bị, tự động quét theo chu kỳ (10s/30s/1m)
+- Phím tắt **F9** để mở nhanh từ `FrmMain`
+
+**Service `DeviceHealthMonitorService`** (`Services/DeviceHealth/DeviceHealthMonitorService.cs`):
+- Kiểm tra song song TCP Port connect & ICMP Ping
+- Cập nhật `DeviceStatus` và `LastHeartbeat` vào MongoDB
+- Đồng bộ real-time với Web Admin `DevicesPage`
+
+### 8.5. Các File Chính
+
+| File | Mô tả |
+|------|-------|
+| `FrmMain.cs` | Constructor inject IRepository<Lane>, IRepository<Device> |
+| `FrmMain.Cameras.cs` | LoadConfigurationsFromDbAsync() |
+| `FrmDeviceMonitor.cs` | Màn hình giám sát thiết bị |
+| `DeviceHealthMonitorService.cs` | Service kiểm tra & đồng bộ trạng thái |
+| `Program.cs` | Đăng ký DI container |
 
 ---
 *Tài liệu được biên soạn và cập nhật tự động cho dự án PhuXuanParkingSystem.*
