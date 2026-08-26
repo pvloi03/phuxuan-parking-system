@@ -1,9 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Text.Json;
-using System.Windows.Forms;
 using PhuXuanParkingSystem.Licensing;
 
 namespace PhuXuanParkingSystem.LicenseTool
@@ -52,7 +46,6 @@ namespace PhuXuanParkingSystem.LicenseTool
                 }
 
                 lblKeyStatus.Text = "Khóa RSA 3072-bit: Đã sẵn sàng";
-                lblKeyStatus.ForeColor = Color.ForestGreen;
             }
             catch (Exception ex)
             {

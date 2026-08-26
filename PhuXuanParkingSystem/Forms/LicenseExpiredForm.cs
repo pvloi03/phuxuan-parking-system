@@ -23,30 +23,37 @@ namespace PhuXuanParkingSystem.Forms
 
         private void btnCopyMachineCode_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(txtMachineCode.Text))
+            try
             {
-                Clipboard.SetText(txtMachineCode.Text);
-                MessageBox.Show("Đã sao chép Mã Máy Tính vào Clipboard!\nVui lòng gửi mã này cho nhà cung cấp để nhận License Key mới.", "Sao Chép Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (!string.IsNullOrWhiteSpace(txtMachineCode.Text))
+                {
+                    Clipboard.SetDataObject(txtMachineCode.Text, true);
+                    MessageBox.Show("Đã sao chép Mã Máy Tính vào Clipboard!\n\nVui lòng gửi mã này cho nhà cung cấp để nhận License Key mới.", "Sao Chép Thành Công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không thể truy cập Clipboard: " + ex.Message + "\nBạn có thể bôi đen mã máy và nhấn Ctrl+C để sao chép.", "Thông Báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
         private void btnBrowseFile_Click(object sender, EventArgs e)
         {
-            using (var ofd = new OpenFileDialog())
+            try
             {
-                ofd.Filter = "License File (*.lic;*.txt)|*.lic;*.txt|All Files (*.*)|*.*";
-                ofd.Title = "Chọn file bản quyền (.lic) do nhà cung cấp cấp";
-                if (ofd.ShowDialog() == DialogResult.OK)
+                using (var ofd = new OpenFileDialog())
                 {
-                    try
+                    ofd.Filter = "License File (*.lic;*.txt)|*.lic;*.txt|All Files (*.*)|*.*";
+                    ofd.Title = "Chọn file bản quyền (.lic) do nhà cung cấp cấp";
+                    if (ofd.ShowDialog(this) == DialogResult.OK)
                     {
                         txtLicenseKey.Text = File.ReadAllText(ofd.FileName).Trim();
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Không thể đọc file: " + ex.Message, "Lỗi đọc file", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Không thể đọc file: " + ex.Message, "Lỗi Đọc File", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

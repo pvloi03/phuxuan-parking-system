@@ -64,9 +64,9 @@ namespace PhuXuanParkingSystem.LicenseTool
             txtVerifyKey = new TextBox();
             lblVerifyKey = new Label();
             pnlHeader = new Panel();
-            lblKeyStatus = new Label();
             lblSubTitle = new Label();
             lblTitle = new Label();
+            lblKeyStatus = new Label();
             tabControlMain.SuspendLayout();
             tabGenerate.SuspendLayout();
             grpOutput.SuspendLayout();
@@ -88,11 +88,11 @@ namespace PhuXuanParkingSystem.LicenseTool
             tabControlMain.Controls.Add(tabVerify);
             tabControlMain.Dock = DockStyle.Fill;
             tabControlMain.Font = new Font("Segoe UI", 9.5F);
-            tabControlMain.Location = new Point(0, 108);
+            tabControlMain.Location = new Point(0, 79);
             tabControlMain.Margin = new Padding(4, 5, 4, 5);
             tabControlMain.Name = "tabControlMain";
             tabControlMain.SelectedIndex = 0;
-            tabControlMain.Size = new Size(1263, 799);
+            tabControlMain.Size = new Size(1263, 971);
             tabControlMain.TabIndex = 0;
             // 
             // tabGenerate
@@ -107,7 +107,7 @@ namespace PhuXuanParkingSystem.LicenseTool
             tabGenerate.Margin = new Padding(4, 5, 4, 5);
             tabGenerate.Name = "tabGenerate";
             tabGenerate.Padding = new Padding(17, 20, 17, 20);
-            tabGenerate.Size = new Size(1255, 904);
+            tabGenerate.Size = new Size(1255, 933);
             tabGenerate.TabIndex = 0;
             tabGenerate.Text = "  🔑 Phát Hành License Key  ";
             // 
@@ -120,11 +120,11 @@ namespace PhuXuanParkingSystem.LicenseTool
             grpOutput.Controls.Add(lblStatusMessage);
             grpOutput.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
             grpOutput.ForeColor = Color.FromArgb(15, 23, 42);
-            grpOutput.Location = new Point(17, 667);
+            grpOutput.Location = new Point(17, 611);
             grpOutput.Margin = new Padding(4, 5, 4, 5);
             grpOutput.Name = "grpOutput";
             grpOutput.Padding = new Padding(4, 5, 4, 5);
-            grpOutput.Size = new Size(1217, 205);
+            grpOutput.Size = new Size(1217, 234);
             grpOutput.TabIndex = 4;
             grpOutput.TabStop = false;
             grpOutput.Text = "3. Chuỗi License Key Đã Tạo";
@@ -174,7 +174,7 @@ namespace PhuXuanParkingSystem.LicenseTool
             txtGeneratedKey.Name = "txtGeneratedKey";
             txtGeneratedKey.ReadOnly = true;
             txtGeneratedKey.ScrollBars = ScrollBars.Vertical;
-            txtGeneratedKey.Size = new Size(993, 116);
+            txtGeneratedKey.Size = new Size(993, 145);
             txtGeneratedKey.TabIndex = 0;
             // 
             // lblStatusMessage
@@ -183,7 +183,7 @@ namespace PhuXuanParkingSystem.LicenseTool
             lblStatusMessage.AutoSize = true;
             lblStatusMessage.Font = new Font("Segoe UI", 9F);
             lblStatusMessage.ForeColor = Color.DarkGreen;
-            lblStatusMessage.Location = new Point(14, 165);
+            lblStatusMessage.Location = new Point(14, 194);
             lblStatusMessage.Margin = new Padding(4, 0, 4, 0);
             lblStatusMessage.Name = "lblStatusMessage";
             lblStatusMessage.Size = new Size(343, 25);
@@ -199,7 +199,7 @@ namespace PhuXuanParkingSystem.LicenseTool
             btnGenerateKey.FlatStyle = FlatStyle.Flat;
             btnGenerateKey.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             btnGenerateKey.ForeColor = Color.White;
-            btnGenerateKey.Location = new Point(17, 583);
+            btnGenerateKey.Location = new Point(17, 528);
             btnGenerateKey.Margin = new Padding(4, 5, 4, 5);
             btnGenerateKey.Name = "btnGenerateKey";
             btnGenerateKey.Size = new Size(1217, 73);
@@ -223,11 +223,11 @@ namespace PhuXuanParkingSystem.LicenseTool
             grpLimits.Controls.Add(lblMaxLanes);
             grpLimits.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
             grpLimits.ForeColor = Color.FromArgb(15, 23, 42);
-            grpLimits.Location = new Point(17, 383);
+            grpLimits.Location = new Point(17, 346);
             grpLimits.Margin = new Padding(4, 5, 4, 5);
             grpLimits.Name = "grpLimits";
             grpLimits.Padding = new Padding(4, 5, 4, 5);
-            grpLimits.Size = new Size(1217, 183);
+            grpLimits.Size = new Size(1217, 172);
             grpLimits.TabIndex = 2;
             grpLimits.TabStop = false;
             grpLimits.Text = "2. Giới Hạn Bản Quyền & Tính Năng (Quota Limits)";
@@ -366,11 +366,11 @@ namespace PhuXuanParkingSystem.LicenseTool
             grpDuration.Controls.Add(rad30Days);
             grpDuration.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
             grpDuration.ForeColor = Color.FromArgb(15, 23, 42);
-            grpDuration.Location = new Point(17, 233);
+            grpDuration.Location = new Point(17, 230);
             grpDuration.Margin = new Padding(4, 5, 4, 5);
             grpDuration.Name = "grpDuration";
             grpDuration.Padding = new Padding(4, 5, 4, 5);
-            grpDuration.Size = new Size(1217, 133);
+            grpDuration.Size = new Size(1217, 106);
             grpDuration.TabIndex = 1;
             grpDuration.TabStop = false;
             grpDuration.Text = "Thời Hạn Bản Quyền";
@@ -597,7 +597,7 @@ namespace PhuXuanParkingSystem.LicenseTool
             tabVerify.Margin = new Padding(4, 5, 4, 5);
             tabVerify.Name = "tabVerify";
             tabVerify.Padding = new Padding(17, 20, 17, 20);
-            tabVerify.Size = new Size(1255, 761);
+            tabVerify.Size = new Size(1255, 933);
             tabVerify.TabIndex = 1;
             tabVerify.Text = "  🔍 Kiểm Tra & Giải Mã Key  ";
             // 
@@ -741,28 +741,15 @@ namespace PhuXuanParkingSystem.LicenseTool
             pnlHeader.Margin = new Padding(4, 5, 4, 5);
             pnlHeader.Name = "pnlHeader";
             pnlHeader.Padding = new Padding(23, 20, 23, 20);
-            pnlHeader.Size = new Size(1263, 108);
+            pnlHeader.Size = new Size(1263, 79);
             pnlHeader.TabIndex = 1;
-            // 
-            // lblKeyStatus
-            // 
-            lblKeyStatus.Dock = DockStyle.Right;
-            lblKeyStatus.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
-            lblKeyStatus.ForeColor = Color.FromArgb(128, 255, 128);
-            lblKeyStatus.Location = new Point(996, 20);
-            lblKeyStatus.Margin = new Padding(4, 0, 4, 0);
-            lblKeyStatus.Name = "lblKeyStatus";
-            lblKeyStatus.Size = new Size(244, 68);
-            lblKeyStatus.TabIndex = 2;
-            lblKeyStatus.Text = "Khóa RSA: Đang kiểm tra...";
-            lblKeyStatus.TextAlign = ContentAlignment.MiddleRight;
             // 
             // lblSubTitle
             // 
             lblSubTitle.AutoSize = true;
             lblSubTitle.Font = new Font("Segoe UI", 8.5F);
             lblSubTitle.ForeColor = Color.White;
-            lblSubTitle.Location = new Point(23, 63);
+            lblSubTitle.Location = new Point(27, 45);
             lblSubTitle.Margin = new Padding(4, 0, 4, 0);
             lblSubTitle.Name = "lblSubTitle";
             lblSubTitle.Size = new Size(611, 23);
@@ -774,19 +761,32 @@ namespace PhuXuanParkingSystem.LicenseTool
             lblTitle.AutoSize = true;
             lblTitle.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
             lblTitle.ForeColor = Color.White;
-            lblTitle.Location = new Point(23, 17);
+            lblTitle.Location = new Point(23, 9);
             lblTitle.Margin = new Padding(4, 0, 4, 0);
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new Size(571, 36);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "PHÚ XUÂN PARKING — LICENSE GENERATOR";
             // 
+            // lblKeyStatus
+            // 
+            lblKeyStatus.Dock = DockStyle.Right;
+            lblKeyStatus.Font = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point, 0);
+            lblKeyStatus.ForeColor = Color.White;
+            lblKeyStatus.Location = new Point(943, 20);
+            lblKeyStatus.Margin = new Padding(4, 0, 4, 0);
+            lblKeyStatus.Name = "lblKeyStatus";
+            lblKeyStatus.Size = new Size(297, 39);
+            lblKeyStatus.TabIndex = 2;
+            lblKeyStatus.Text = "Khóa RSA: Đang kiểm tra...";
+            lblKeyStatus.TextAlign = ContentAlignment.MiddleRight;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.White;
-            ClientSize = new Size(1263, 907);
+            ClientSize = new Size(1263, 1050);
             Controls.Add(tabControlMain);
             Controls.Add(pnlHeader);
             Margin = new Padding(4, 5, 4, 5);
@@ -825,7 +825,6 @@ namespace PhuXuanParkingSystem.LicenseTool
         private Panel pnlHeader;
         private Label lblSubTitle;
         private Label lblTitle;
-        private Label lblKeyStatus;
         private GroupBox grpCustomer;
         private TextBox txtCustomerName;
         private Label lblCustomerName;
@@ -869,5 +868,6 @@ namespace PhuXuanParkingSystem.LicenseTool
         private Button btnOpenLicFile;
         private GroupBox grpDecodedResult;
         private TextBox txtDecodedInfo;
+        private Label lblKeyStatus;
     }
 }

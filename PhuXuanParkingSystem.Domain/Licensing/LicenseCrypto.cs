@@ -24,12 +24,11 @@ namespace PhuXuanParkingSystem.Licensing
         /// </summary>
         public static (string PublicKeyXml, string PrivateKeyXml) GenerateKeyPair()
         {
-            using (var rsa = RSA.Create(KeySize))
-            {
-                string privateKeyXml = rsa.ToXmlString(true);
-                string publicKeyXml = rsa.ToXmlString(false);
-                return (publicKeyXml, privateKeyXml);
-            }
+            using var rsa = RSA.Create();
+            rsa.KeySize = KeySize;
+            string privateKeyXml = rsa.ToXmlString(true);
+            string publicKeyXml = rsa.ToXmlString(false);
+            return (publicKeyXml, privateKeyXml);
         }
 
         /// <summary>

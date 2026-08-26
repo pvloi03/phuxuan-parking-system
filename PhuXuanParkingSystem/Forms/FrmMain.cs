@@ -110,15 +110,12 @@ namespace PhuXuanParkingSystem.Forms
             KeyPreview = true;
         }
 
-        private async void FrmMain_Load(object sender, EventArgs e)
+        private void FrmMain_Load(object sender, EventArgs e)
         {
             lblFooterMachineCode.Text = $"Mã Máy: {HardwareFingerprint.GetMachineCode()}";
 
             LoadConfigurations();
             UpdateClock();
-
-            // Kiểm tra bản quyền phần mềm khi khởi động
-            await CheckAndEnforceLicenseAsync();
         }
 
         private async Task CheckAndEnforceLicenseAsync()
@@ -149,8 +146,8 @@ namespace PhuXuanParkingSystem.Forms
                     }
                     else
                     {
-                        // Người dùng đóng form hoặc bấm Thoát ➔ Đóng ứng dụng
-                        Application.Exit();
+                        // Người dùng đóng form hoặc bấm Thoát ➔ Đóng ứng dụng ngay lập tức
+                        Environment.Exit(0);
                         return;
                     }
                 }
@@ -203,6 +200,9 @@ namespace PhuXuanParkingSystem.Forms
 
         private async void FrmMain_Shown(object sender, EventArgs e)
         {
+            // Kiểm tra và thực thi bản quyền phần mềm
+            await CheckAndEnforceLicenseAsync();
+
             await AutoConnectAllAsync();
 
             // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
