@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Services.Notification;
+using PhuXuanParkingSystem.Services.Notification;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.SDK.ZKTeco;
 using System;
@@ -138,18 +138,28 @@ namespace PhuXuanParkingSystem.Services.Controller
 
                     if (result >= 0)
                     {
-                        var rawString = Encoding.Default.GetString(buffer).Trim('\0', '\r', '\n');
+                        var rawString = Encoding.Default.GetString(buffer).Trim('\0');
 
                         if (!string.IsNullOrWhiteSpace(rawString) && rawString != _lastRawLog)
                         {
                             _lastRawLog = rawString;
-                            ParseAndDispatchLog(rawString);
+                            
+                            // Tách từng dòng log nếu buffer chứa nhiều sự kiện liên tiếp
+                            var lines = rawString.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var line in lines)
+                            {
+                                var trimmedLine = line.Trim();
+                                if (!string.IsNullOrEmpty(trimmedLine))
+                                {
+                                    ParseAndDispatchLog(trimmedLine);
+                                }
+                            }
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Bỏ qua lỗi đọc dữ liệu tạm thời
+                    AppLogger.Debug($"[ZKTeco ListenLoop Warning] {ex.Message}");
                 }
 
                 // TaskCompletionSource pattern:
@@ -169,24 +179,38 @@ namespace PhuXuanParkingSystem.Services.Controller
         /// <summary>
         /// Phân tích chuỗi RTLog và phát sự kiện OnAuxInputTriggered
         /// Định dạng: Time,Pin,CardNo,DoorID,EventType,InOutState,VerifyMode
+        /// Ví dụ: 2026-08-26 10:47:41,0,0,1,221,2,200
         /// </summary>
         public void ParseAndDispatchLog(string rawLog)
         {
-            var parts = rawLog.Split(',');
-            if (parts.Length < 5) return;
+            if (string.IsNullOrWhiteSpace(rawLog)) return;
 
-            // Cột DoorID (index 3): 1 = Làn Vào, 2 = Làn Ra
-            if (!int.TryParse(parts[3], out var portIndex) || (portIndex != 1 && portIndex != 2))
+            AppLogger.Information($"[ZKTeco RTLog] Nhận chuỗi log từ C3-200: {rawLog}", "ZKTecoController");
+
+            var parts = rawLog.Split(',');
+            if (parts.Length < 5)
             {
+                AppLogger.Warning($"[ZKTeco RTLog] Bỏ qua log không đủ 5 trường: {rawLog}", "ZKTecoController");
+                return;
+            }
+
+            // Cột DoorID / AuxID (index 3): 1 = Làn Vào, 2 = Làn Ra
+            if (!int.TryParse(parts[3].Trim(), out var portIndex) || (portIndex != 1 && portIndex != 2))
+            {
+                AppLogger.Debug($"[ZKTeco RTLog] Cổng không thuộc Làn 1 hoặc 2 (Port={parts[3]}): {rawLog}");
                 return;
             }
 
             // Cột EventType (index 4):
-            // 221 = Có xe / Đang kích hoạt Radar
+            // 221 = Có xe / Đang kích hoạt Radar (Aux In trigger)
             // 220 = Hết xe / Đã ngắt Radar
-            _ = int.TryParse(parts[4], out var eventType);
+            // 25 = Báo động Aux Input
+            // 1 = Sensor trigger
+            _ = int.TryParse(parts[4].Trim(), out var eventType);
 
-            bool isActive = eventType == 221;
+            // Xác định trạng thái kích hoạt: 221 hoặc 220 hoặc 25 hoặc 1
+            // Theo log thực tế: 221 là sự kiện kích hoạt Aux In
+            bool isActive = eventType == 221 || eventType == 220 || eventType == 25 || eventType == 1;
 
             if (portIndex == 1)
             {
@@ -202,6 +226,8 @@ namespace PhuXuanParkingSystem.Services.Controller
                 else
                     AppNotificationService.NotifyInfo(NotificationCategory.LaneOut, "Xe đã qua cổng ra", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Ra.", rawLog);
             }
+
+            AppLogger.Information($"[ZKTeco Trigger] Phát sự kiện OnAuxInputTriggered: Làn {portIndex} (Aux {portIndex}), IsActive={isActive}, EventType={eventType}");
 
             OnAuxInputTriggered?.Invoke(this, new AuxTriggerEventArgs(
                 auxPort: portIndex,

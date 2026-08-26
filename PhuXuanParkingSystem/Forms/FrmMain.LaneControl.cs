@@ -106,6 +106,8 @@ namespace PhuXuanParkingSystem.Forms
 
         private async Task CaptureInLaneAsync(string triggerSource)
         {
+            AppLogger.Information($"[LÀN VÀO] Bắt đầu kích hoạt chụp ảnh từ nguồn: {triggerSource}...", "LaneControl");
+
             try
             {
                 string todayFolder = Path.Combine(_captureDir, DateTime.Now.ToString("yyyy-MM-dd"));
@@ -122,19 +124,29 @@ namespace PhuXuanParkingSystem.Forms
                 var tOverview = _inOverviewCam.CaptureToFileAsync(fileOverview);
                 await Task.WhenAll(tPlate, tOverview);
 
-                if (File.Exists(fileOverview)) DisplayCapturedImage(picInOverview, fileOverview);
+                bool plateOk = File.Exists(filePlate);
+                bool ovwOk = File.Exists(fileOverview);
+
+                AppLogger.Information($"[LÀN VÀO] Kết quả chụp ảnh: Plate={plateOk} ({filePlate}), Overview={ovwOk} ({fileOverview})", "LaneControl");
+
+                if (ovwOk) DisplayCapturedImage(picInOverview, fileOverview);
 
                 PlateRecognitionResult? anprResult = null;
-                if (File.Exists(filePlate))
+                if (plateOk)
                 {
                     anprResult = await _anprService.RecognizeAsync(filePlate);
+                    AppLogger.Information($"[LÀN VÀO ANPR] Nhận diện biển số: {anprResult?.FormattedPlate ?? "Không đọc được"} (Độ tin cậy: {anprResult?.Confidence:P1})", "ANPR");
+                }
+                else
+                {
+                    AppLogger.Warning($"[LÀN VÀO] Không thể chụp ảnh biển số (Camera Biển Số có thể đang Offline hoặc chưa kết nối).", "LaneControl");
                 }
 
                 if (anprResult?.CroppedPlateImage != null)
                 {
                     DisplayCapturedBitmap(picInPlate, anprResult.CroppedPlateImage);
                 }
-                else if (File.Exists(filePlate))
+                else if (plateOk)
                 {
                     DisplayCapturedImage(picInPlate, filePlate);
                 }
@@ -154,7 +166,7 @@ namespace PhuXuanParkingSystem.Forms
             }
             catch (Exception ex)
             {
-                AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Vào: {ex.Message}");
+                AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Vào: {ex.Message}", "LaneControl");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Vào: {ex.Message}");
             }
         }
@@ -179,6 +191,8 @@ namespace PhuXuanParkingSystem.Forms
 
         private async Task CaptureOutLaneAsync(string triggerSource)
         {
+            AppLogger.Information($"[LÀN RA] Bắt đầu kích hoạt chụp ảnh từ nguồn: {triggerSource}...", "LaneControl");
+
             try
             {
                 string todayFolder = Path.Combine(_captureDir, DateTime.Now.ToString("yyyy-MM-dd"));
@@ -195,19 +209,29 @@ namespace PhuXuanParkingSystem.Forms
                 var tOverview = _outOverviewCam.CaptureToFileAsync(fileOverview);
                 await Task.WhenAll(tPlate, tOverview);
 
-                if (File.Exists(fileOverview)) DisplayCapturedImage(picOutOverview, fileOverview);
+                bool plateOk = File.Exists(filePlate);
+                bool ovwOk = File.Exists(fileOverview);
+
+                AppLogger.Information($"[LÀN RA] Kết quả chụp ảnh: Plate={plateOk} ({filePlate}), Overview={ovwOk} ({fileOverview})", "LaneControl");
+
+                if (ovwOk) DisplayCapturedImage(picOutOverview, fileOverview);
 
                 PlateRecognitionResult? anprResult = null;
-                if (File.Exists(filePlate))
+                if (plateOk)
                 {
                     anprResult = await _anprService.RecognizeAsync(filePlate);
+                    AppLogger.Information($"[LÀN RA ANPR] Nhận diện biển số: {anprResult?.FormattedPlate ?? "Không đọc được"} (Độ tin cậy: {anprResult?.Confidence:P1})", "ANPR");
+                }
+                else
+                {
+                    AppLogger.Warning($"[LÀN RA] Không thể chụp ảnh biển số (Camera Biển Số có thể đang Offline hoặc chưa kết nối).", "LaneControl");
                 }
 
                 if (anprResult?.CroppedPlateImage != null)
                 {
                     DisplayCapturedBitmap(picOutPlate, anprResult.CroppedPlateImage);
                 }
-                else if (File.Exists(filePlate))
+                else if (plateOk)
                 {
                     DisplayCapturedImage(picOutPlate, filePlate);
                 }
@@ -227,7 +251,7 @@ namespace PhuXuanParkingSystem.Forms
             }
             catch (Exception ex)
             {
-                AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Ra: {ex.Message}");
+                AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Ra: {ex.Message}", "LaneControl");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Ra: {ex.Message}");
             }
         }

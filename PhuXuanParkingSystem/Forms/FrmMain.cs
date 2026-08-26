@@ -1,13 +1,16 @@
+using Microsoft.Extensions.DependencyInjection;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
+using PhuXuanParkingSystem.Services.DeviceConfig;
 using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Notification;
 using PhuXuanParkingSystem.Services.Parking;
-using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PhuXuanParkingSystem.Forms
@@ -32,12 +35,13 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IRepository<Device> _deviceRepo;
         private readonly IRepository<Lane> _laneRepo;
         private readonly IDeviceHealthMonitorService _deviceHealthService;
+        private readonly IDeviceConfigService _deviceConfigService = null!;
 
         private string _captureDir = "";
         private string _controllerIp = "192.168.1.202";
         private int _controllerPort = 4370;
         private readonly object _lockDebounce = new();
-        private System.Windows.Forms.Timer? _deviceSyncTimer;
+        private Timer? _deviceSyncTimer;
 
         public FrmMain()
         {
@@ -45,7 +49,7 @@ namespace PhuXuanParkingSystem.Forms
 
             if (Program.ServiceProvider != null)
             {
-                _parkingLaneService = Program.ServiceProvider.GetService<IParkingLaneService>() 
+                _parkingLaneService = Program.ServiceProvider.GetService<IParkingLaneService>()
                     ?? new ParkingLaneService(
                         new MongoRepository<ParkingSession>(),
                         new MongoRepository<Vehicle>(),
@@ -57,6 +61,7 @@ namespace PhuXuanParkingSystem.Forms
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
                 _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
                 _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo);
+                _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             }
             else
             {
@@ -71,7 +76,11 @@ namespace PhuXuanParkingSystem.Forms
                 _deviceRepo = new MongoRepository<Device>();
                 _laneRepo = new MongoRepository<Lane>();
                 _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo);
+                _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             }
+
+            // Đăng ký sự kiện khi cấu hình thay đổi (Web Admin sửa IP, etc.)
+            _deviceConfigService.OnConfigChanged += DeviceConfigService_OnConfigChanged;
 
             // Đăng ký sự kiện Controller ZKTeco
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
@@ -95,6 +104,7 @@ namespace PhuXuanParkingSystem.Forms
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
             _laneRepo = laneRepo ?? new MongoRepository<Lane>();
             _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo);
+            _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
             KeyPreview = true;
@@ -113,6 +123,9 @@ namespace PhuXuanParkingSystem.Forms
 
             // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
             StartDeviceSyncBackgroundWorker();
+
+            // Bắt đầu giám sát thay đổi cấu hình từ Web Admin mỗi 5 phút
+            StartConfigMonitoring();
         }
 
         private void StartDeviceSyncBackgroundWorker()
@@ -122,8 +135,10 @@ namespace PhuXuanParkingSystem.Forms
                 // Chạy 1 lần ngay sau khi kết nối
                 _ = _deviceHealthService.CheckAllAndSyncAsync();
 
-                _deviceSyncTimer = new System.Windows.Forms.Timer();
-                _deviceSyncTimer.Interval = 30000; // 30 giây
+                _deviceSyncTimer = new Timer
+                {
+                    Interval = 30000 // 30 giây
+                };
                 _deviceSyncTimer.Tick += async (s, e) =>
                 {
                     await _deviceHealthService.CheckAllAndSyncAsync();
@@ -144,6 +159,45 @@ namespace PhuXuanParkingSystem.Forms
         private void UpdateClock()
         {
             lblClock.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+        }
+
+        /// <summary>
+        /// Bắt đầu giám sát thay đổi cấu hình định kỳ (5 phút)
+        /// </summary>
+        private void StartConfigMonitoring()
+        {
+            try
+            {
+                _deviceConfigService.StartMonitoring(TimeSpan.FromMinutes(5));
+                AppLogger.Information("[FrmMain] Đã bắt đầu giám sát thay đổi cấu hình thiết bị (5 phút/lần)");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"Lỗi khởi tạo Config Monitoring: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Xử lý khi Web Admin thay đổi cấu hình thiết bị
+        /// </summary>
+        private async void DeviceConfigService_OnConfigChanged(object? sender, ConfigChangeEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => DeviceConfigService_OnConfigChanged(sender, e)));
+                return;
+            }
+
+            AppLogger.Warning($"[FrmMain] Phát hiện thay đổi cấu hình từ Web Admin: {string.Join(", ", e.ChangedDevices)}");
+
+            // Hiển thị thông báo cho người vận hành
+            SetHeaderStatus("⚠️ Cấu hình thiết bị đã thay đổi từ Web Admin!");
+            AppNotificationService.NotifyWarning(NotificationCategory.System, "Cấu hình thay đổi",
+                $"Các thiết bị sau đã thay đổi: {string.Join(", ", e.ChangedDevices)}. Nhấn Ctrl+R để kết nối lại.");
+
+            // Tự động ngắt kết nối cũ và kết nối lại với cấu hình mới
+            await Task.Delay(1000); // Chờ 1s để người dùng nhận biết
+            await AutoConnectAllAsync();
         }
 
         #region Phím Tắt & Status Helpers
