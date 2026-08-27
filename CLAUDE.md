@@ -4,6 +4,18 @@
 
 ---
 
+## Agent Skills
+
+### Issue tracker
+
+GitHub Issues (pvloi03/phuxuan-parking-system). Xem `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context layout. Xem `docs/agents/domain.md`.
+
+---
+
 ## Context Pointers
 
 | Pointer | Trigger | Target |

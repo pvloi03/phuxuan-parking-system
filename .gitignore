@@ -1,5 +1,5 @@
-database_seed
 *.claude
+database_seed/
 
 ## Visual Studio & .NET Build Artifacts
 [Bb]in/
