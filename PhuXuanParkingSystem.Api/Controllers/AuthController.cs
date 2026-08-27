@@ -33,10 +33,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu."));
             }
 
-            var trimmedUsername = request.Username.Trim();
+            var trimmedUsername = request.Username.Trim().ToLowerInvariant();
 
             // Kiểm tra xem đã có user nào trong hệ thống chưa, hoặc đảm bảo có tài khoản admin
-            var user = await _userRepo.FindOneAsync(u => u.Username == trimmedUsername && !u.IsDeleted);
+            // IMPORTANT: Case-insensitive comparison để tránh bug không đăng nhập được
+            var user = await _userRepo.FindOneAsync(u => u.Username.ToLower() == trimmedUsername && !u.IsDeleted);
+
             if (user == null && trimmedUsername.Equals("admin", StringComparison.OrdinalIgnoreCase))
             {
                 user = new User(
@@ -66,14 +68,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             {
                 // Fallback nếu password lưu dạng plain text cũ
                 isPasswordValid = user.PasswordHash == request.Password;
-            }
-
-            if (!isPasswordValid && trimmedUsername.Equals("admin", StringComparison.OrdinalIgnoreCase) && request.Password == "admin123")
-            {
-                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
-                user.IsActive = true;
-                await _userRepo.UpdateAsync(user);
-                isPasswordValid = true;
             }
 
             if (!isPasswordValid)
@@ -154,6 +148,76 @@ namespace PhuXuanParkingSystem.Api.Controllers
             };
 
             return Ok(ApiResponse<UserProfileDto>.Ok(profile, "Lấy thông tin người dùng thành công."));
+        }
+
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangeMyPassword([FromBody] ChangePasswordRequest request)
+        {
+            if (request == null)
+            {
+                return BadRequest(ApiResponse.Fail("Dữ liệu không hợp lệ."));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
+            {
+                return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu mới."));
+            }
+
+            if (request.NewPassword.Trim().Length < 6)
+            {
+                return BadRequest(ApiResponse.Fail("Mật khẩu mới phải có tối thiểu 6 ký tự."));
+            }
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(ApiResponse.Fail("Chưa đăng nhập."));
+            }
+
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null || user.IsDeleted)
+            {
+                return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng."));
+            }
+
+            // Lấy mật khẩu cũ (hỗ trợ cả OldPassword và CurrentPassword từ frontend)
+            var oldPassword = request.OldPassword ?? request.CurrentPassword ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(oldPassword))
+            {
+                return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu hiện tại để xác thực."));
+            }
+
+            // Xác thực mật khẩu cũ
+            bool isOldValid = false;
+            try
+            {
+                isOldValid = BCrypt.Net.BCrypt.Verify(oldPassword, user.PasswordHash);
+            }
+            catch
+            {
+                // Fallback: nếu mật khẩu lưu dạng plain text cũ
+                isOldValid = user.PasswordHash == oldPassword;
+            }
+
+            if (!isOldValid)
+            {
+                return BadRequest(ApiResponse.Fail("Mật khẩu hiện tại không chính xác. Vui lòng kiểm tra lại."));
+            }
+
+            // Cập nhật mật khẩu mới
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
+            user.UpdatedAt = DateTime.Now;
+
+            var updateResult = await _userRepo.UpdateAsync(user);
+            if (!updateResult)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponse.Fail("Không thể cập nhật mật khẩu. Vui lòng thử lại."));
+            }
+
+            return Ok(ApiResponse.Ok("Đổi mật khẩu thành công!"));
         }
     }
 }

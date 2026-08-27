@@ -131,25 +131,23 @@ namespace PhuXuanParkingSystem.Forms
                 lblFooterLicense.ForeColor = Color.Red;
 
                 // Tự động mở form kích hoạt / hết hạn
-                using (var expiredForm = new LicenseExpiredForm(validation.Message))
+                using var expiredForm = new LicenseExpiredForm(validation.Message);
+                var dialogResult = expiredForm.ShowDialog(this);
+                if (dialogResult == DialogResult.OK && expiredForm.IsActivatedSuccessfully)
                 {
-                    var dialogResult = expiredForm.ShowDialog(this);
-                    if (dialogResult == DialogResult.OK && expiredForm.IsActivatedSuccessfully)
+                    var newValidation = LicenseCrypto.ValidateLicense(expiredForm.ActivatedKey);
+                    if (newValidation.Payload != null)
                     {
-                        var newValidation = LicenseCrypto.ValidateLicense(expiredForm.ActivatedKey);
-                        if (newValidation.Payload != null)
-                        {
-                            await _licenseManager.SaveLicenseKeyAsync(expiredForm.ActivatedKey, newValidation.Payload);
-                            UpdateLicenseFooter(newValidation);
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        // Người dùng đóng form hoặc bấm Thoát ➔ Đóng ứng dụng ngay lập tức
-                        Environment.Exit(0);
+                        await _licenseManager.SaveLicenseKeyAsync(expiredForm.ActivatedKey, newValidation.Payload);
+                        UpdateLicenseFooter(newValidation);
                         return;
                     }
+                }
+                else
+                {
+                    // Người dùng đóng form hoặc bấm Thoát ➔ Đóng ứng dụng ngay lập tức
+                    Environment.Exit(0);
+                    return;
                 }
             }
 

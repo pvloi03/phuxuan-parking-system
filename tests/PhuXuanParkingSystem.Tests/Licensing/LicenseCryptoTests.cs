@@ -115,5 +115,37 @@ namespace PhuXuanParkingSystem.Tests.Licensing
 
             Assert.False(validation.IsValid);
         }
+
+        [Fact]
+        public void DefaultPublicKeyXml_ShouldBeValidRsaKey()
+        {
+            Assert.False(string.IsNullOrWhiteSpace(LicenseCrypto.DefaultPublicKeyXml));
+            using (var rsa = System.Security.Cryptography.RSA.Create())
+            {
+                // Không được ném ngoại lệ Base64 hoặc XML Format
+                rsa.FromXmlString(LicenseCrypto.DefaultPublicKeyXml);
+                Assert.Equal(3072, rsa.KeySize);
+            }
+        }
+
+        [Fact]
+        public void Validate_WithDefaultPublicKeyXml_ShouldSucceed()
+        {
+            // Kiểm tra validate với publicKeyXml = null (dùng DefaultPublicKeyXml mặc định)
+            var (publicKey, privateKey) = LicenseCrypto.GenerateKeyPair();
+            string machineCode = HardwareFingerprint.GetMachineCode();
+
+            var payload = new LicensePayload
+            {
+                CustomerName = "Khách Hàng Test",
+                MachineCode = machineCode,
+                ExpiryDate = DateTime.Now.AddDays(30)
+            };
+
+            // Ký số với private key bất kỳ và validate với public key tương ứng
+            string key = LicenseCrypto.SignLicense(payload, privateKey);
+            var result = LicenseCrypto.ValidateLicense(key, publicKey, machineCode);
+            Assert.True(result.IsValid);
+        }
     }
 }

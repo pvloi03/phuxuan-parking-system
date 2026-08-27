@@ -2,22 +2,24 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+#if NET6_0_OR_GREATER
+using System.Runtime.Versioning;
+#endif
 
 namespace PhuXuanParkingSystem.Licensing
 {
     /// <summary>
     /// Engine Mã Hóa & Ký Số RSA 3072-bit cho Hệ Thống Bản Quyền
     /// </summary>
+#if NET6_0_OR_GREATER
+    [SupportedOSPlatform("windows")]
+#endif
     public static class LicenseCrypto
     {
         private const int KeySize = 3072;
         public const string LicensePrefix = "PX-LIC-";
 
-        // =========================================================================
-        // KHÓA CÔNG KHAI MẶC ĐỊNH (PUBLIC KEY) — NHÚNG TRONG PHẦN MỀM CLIENT/API
-        // Dùng để Verify chữ ký số, TUYỆT ĐỐI AN TOÀN vì không thể dùng để tạo key giả mạo.
-        // =========================================================================
-        public const string DefaultPublicKeyXml = @"<RSAKeyValue><Modulus>r5H07/X2J9wHw0q0k9p9qB8aN7yM6xL5k4j3h2g1f0e9d8c7b6a5z4y3x2w1v0u9t8s7r6q5p4o3n2m1l0k9j8h7g6f5e4d3c2b1a0z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3h2g1f0e9d8c7b6a5z4y3x2w1v0u9t8s7r6q5p4o3n2m1l0k9j8h7g6f5e4d3c2b1a0z9y8x7w6v5u4t3s2r1q0p9o8n7m6l5k4j3h2g1f0e9d8c7b6a5z4y3x2w1v0u9t8s7r6q5p4o3n2m1l0k9j8h7g6f5e4d3c2b1a0=</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+        public const string DefaultPublicKeyXml = @"<RSAKeyValue><Modulus>ngkRE8TrNYUW5hyaHEdG0B9Ez+pV28ewRYCiGxDlu5uZapISLi03JAbhdvSYP1pTjU3o2+ygMOxyCKjt4QA0iXQ6qhGsPKAJP5tASkCbHaqc7pyJb2+lpVkTiusMl+XJTXJPsfdUMkusP43hHUO4NdXV+yDvWhzOKfkjhIvLv5au2DttvQmluxCqmHPbwygt4sZjmqR7EIPtMRBFe5tPUN6045dVpBQXeKr6joTbkPB9/XtTlMjOcq1e4JfTHTJw9AyMRGoDlSVkMiaIQCfR6GLs0nfUbfWzpvm998UrYHZWaWJCIkZF7HOYb9t23OJzJ/jFN9q2tZ2jGy4keP9OkYSgoNMC1MiCUMXeXRIidNVxIp9VtcBV/Il1sxZVzoXX/k0K6WQaOu2EM2sD06U8Hi9CUgBFSX1MT0ie9OnzWk1ALC8mzF6efuTgalp600DRn5ZFCHIWb+2Yz179Y6VZ7H8/+46ZDQJxufeVNMXN2rQo/iS7qW+WzS/KJ2SC/EEh</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
 
         /// <summary>
         /// Sinh cặp khóa RSA 3072-bit mới (Dành cho Tool Tạo Key)

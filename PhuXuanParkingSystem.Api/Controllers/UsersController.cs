@@ -47,7 +47,14 @@ namespace PhuXuanParkingSystem.Api.Controllers
         public class ChangePasswordRequest
         {
             public string? OldPassword { get; set; }
+            public string? CurrentPassword { get; set; }
             public string NewPassword { get; set; } = string.Empty;
+        }
+
+        private string? GetOldPassword(ChangePasswordRequest request)
+        {
+            // Hỗ trợ cả hai tên field: OldPassword (frontend) và CurrentPassword (AuthDtos)
+            return request.OldPassword ?? request.CurrentPassword;
         }
 
         public class UserDto
@@ -258,7 +265,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
         [HttpPut("{id}/password")]
         public async Task<IActionResult> ChangePassword(string id, [FromBody] ChangePasswordRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.NewPassword))
+            if (request == null)
+            {
+                return BadRequest(ApiResponse.Fail("Dữ liệu không hợp lệ."));
+            }
+
+            if (string.IsNullOrWhiteSpace(request.NewPassword))
             {
                 return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu mới."));
             }
@@ -286,17 +298,25 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var isCurrentUserAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase)
                                   || roleClaim == "1";
 
+            // Lấy mật khẩu cũ (hỗ trợ cả OldPassword và CurrentPassword)
+            var oldPassword = GetOldPassword(request);
+
             // Quy tắc phân quyền:
             // - Admin: Được reset mật khẩu cho bất kỳ ai (kể cả chính mình), KHÔNG cần oldPassword.
             // - Non-Admin: Chỉ được đổi mật khẩu của chính mình, BẮT BUỘC nhập đúng oldPassword.
             if (!isCurrentUserAdmin)
             {
-                if (user.Id != currentUserId)
+                // So sánh an toàn: đảm bảo cả hai đều có giá trị và khớp nhau
+                var isSameUser = !string.IsNullOrEmpty(user.Id)
+                              && !string.IsNullOrEmpty(currentUserId)
+                              && string.Equals(user.Id, currentUserId, StringComparison.OrdinalIgnoreCase);
+
+                if (!isSameUser)
                 {
                     return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail("Bạn không có quyền đổi mật khẩu của tài khoản khác."));
                 }
 
-                if (string.IsNullOrWhiteSpace(request.OldPassword))
+                if (string.IsNullOrWhiteSpace(oldPassword))
                 {
                     return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu hiện tại để xác thực."));
                 }
@@ -304,11 +324,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 bool isOldValid = false;
                 try
                 {
-                    isOldValid = BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash);
+                    isOldValid = BCrypt.Net.BCrypt.Verify(oldPassword, user.PasswordHash);
                 }
                 catch
                 {
-                    isOldValid = user.PasswordHash == request.OldPassword;
+                    // Fallback: nếu mật khẩu lưu dạng plain text cũ
+                    isOldValid = user.PasswordHash == oldPassword;
                 }
 
                 if (!isOldValid)
@@ -318,10 +339,23 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             // Cập nhật mật khẩu mới (Mã hóa BCrypt an toàn)
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
+            var newPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
+            user.PasswordHash = newPasswordHash;
             user.UpdatedAt = DateTime.Now;
 
-            await _userRepo.UpdateAsync(user);
+            // Log để debug
+            Console.WriteLine($"[ChangePassword] User ID: {user.Id}, Username: {user.Username}");
+            Console.WriteLine($"[ChangePassword] New Hash: {newPasswordHash.Substring(0, Math.Min(20, newPasswordHash.Length))}...");
+            Console.WriteLine($"[ChangePassword] Test verify: {BCrypt.Net.BCrypt.Verify(request.NewPassword.Trim(), newPasswordHash)}");
+
+            var updateResult = await _userRepo.UpdateAsync(user);
+            Console.WriteLine($"[ChangePassword] Update result: {updateResult}");
+
+            if (!updateResult)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Fail("Không thể cập nhật mật khẩu vào database. Vui lòng thử lại."));
+            }
+
             return Ok(ApiResponse.Ok("Đổi mật khẩu tài khoản thành công!"));
         }
 
