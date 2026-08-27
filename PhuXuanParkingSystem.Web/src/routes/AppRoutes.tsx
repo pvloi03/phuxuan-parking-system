@@ -14,6 +14,7 @@ import { LanesPage } from '@/pages/LanesPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { RecycleBinPage } from '@/pages/RecycleBinPage'
 import { LicensePage } from '@/pages/LicensePage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export function AppRoutes() {
   return (
@@ -48,8 +49,8 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Fallback - 404 Page */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
 }
