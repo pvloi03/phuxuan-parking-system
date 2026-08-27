@@ -32,7 +32,8 @@ namespace PhuXuanParkingSystem.Api.DTOs
 
     public class ChangePasswordRequest
     {
-        public string CurrentPassword { get; set; } = string.Empty;
+        public string? OldPassword { get; set; }
+        public string? CurrentPassword { get; set; }
         public string NewPassword { get; set; } = string.Empty;
     }
 }

@@ -1,5 +1,5 @@
-/AGENTS.md
-/database_seed
+database_seed
+*.claude
 
 ## Visual Studio & .NET Build Artifacts
 [Bb]in/

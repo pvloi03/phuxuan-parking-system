@@ -1,6 +1,6 @@
-# Đặc Tả Layout Giao Diện WinForms — HPParkingSystem
+# Đặc Tả Layout Giao Diện WinForms — PhuXuanParkingSystem
 
-Tài liệu này đặc tả chi tiết bố cục giao diện người dùng (UI Layout Wireframe), các thành phần điều khiển (UserControls), màu sắc, trạng thái hiển thị và luồng tương tác trên ứng dụng **WinForms Client** của hệ thống **HPParkingSystem**.
+Tài liệu này đặc tả chi tiết bố cục giao diện người dùng (UI Layout Wireframe), các thành phần điều khiển (UserControls), màu sắc, trạng thái hiển thị và luồng tương tác trên ứng dụng **WinForms Client** của hệ thống **PhuXuanParkingSystem**.
 
 ---
 

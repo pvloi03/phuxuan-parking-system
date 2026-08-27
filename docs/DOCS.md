@@ -1,5 +1,5 @@
 ﻿# TÀI LIỆU KỸ THUẬT HỆ THỐNG QUẢN LÝ BÃI XE THÁI THỤY
-**Hệ thống Kiểm soát Xe Thông minh (1 Làn Vào - 1 Làn Ra - 4 Camera - 1 Controller - MongoDB)**
+**PhuXuanParkingSystem** — Hệ thống Kiểm soát Xe Thông minh (1 Làn Vào - 1 Làn Ra - 4 Camera - 1 Controller - MongoDB)
 
 ---
 
@@ -11,6 +11,7 @@
 5. [Thiết Kế Giao Diện (UI/UX) & Luồng Vận Hành](#5-thiết-kế-giao-diện-uiux--luồng-vận-hành)
 6. [Tối Ưu Hóa Hiệu Năng & Quản Lý Bộ Nhớ (24/7)](#6-tối-ưu-hóa-hiệu-năng--quản-lý-bộ-nhớ-247)
 7. [Cấu Hình Hệ Thống (`App.config`)](#7-cấu-hình-hệ-thống-appconfig)
+8. [Hệ Thống Bản Quyền (License System)](#8-hệ-thống-bản-quyền-license-system)
 
 ---
 
@@ -44,26 +45,39 @@ Hệ thống **PhuXuanParkingSystem** là phần mềm quản lý kiểm soát p
 
 ## 2. KIẾN TRÚC PHẦN CỨNG & GIAO THỨC THIẾT BỊ
 
-### 2.1. Camera Nhận Diện Biển Số (NST SDK)
+### 2.1. DeviceType Enum (Phân loại thiết bị)
+```csharp
+public enum DeviceType
+{
+    PlateCamera = 1,     // Camera chụp ảnh nhận diện biển số xe (ANPR/LPR)
+    OverviewCamera = 2,  // Camera chụp ảnh toàn cảnh làn xe
+    Controller = 3,      // Bộ điều khiển Barrier & Cảm biến Radar
+}
+```
+
+### 2.2. Camera Nhận Diện Biển Số (NST SDK)
 * **Thư viện Native**: `HISDK.dll`, `HIPlayer.dll`, `NetLib.dll`, `avcodec-54.dll`, `avutil-51.dll` (Build x86).
 * **P/Invoke Wrapper**: `PhuXuanParkingSystem.SDK.NST.CHISDK`.
 * **Cổng mặc định**: `3000` hoặc `80` qua TCP.
+* **DeviceType**: `PlateCamera`
 * **Cơ chế**:
   * Live Stream: `HI_SDK_RealPlayExt` gán trực tiếp lên Handle của Panel.
   * Chụp ảnh: `CaptureToFileAsync` ghi trực tiếp file ảnh JPEG chuẩn HD từ SDK.
 
-### 2.2. Camera Chụp Toàn Cảnh (HikVision SDK)
+### 2.3. Camera Chụp Toàn Cảnh (HikVision SDK)
 * **Thư viện Native**: `HCNetSDK.dll`, `HCCore.dll`, `PlayCtrl.dll`, `HCNetSDKCom/` (Build x86).
 * **P/Invoke Wrapper**: `CHCNetSDK_Library.CHCNetSDK`.
 * **Cổng mặc định**: `8000` qua TCP.
+* **DeviceType**: `OverviewCamera`
 * **Cơ chế**:
   * Live Stream: `NET_DVR_RealPlay_V40` gán trực tiếp lên Handle của Panel.
   * Chụp ảnh: `NET_DVR_CaptureJPEGPicture_NEW` kết hợp Stream bất đồng bộ.
 
-### 2.3. Bộ điều khiển Cảm biến Radar (ZKTeco C3-200 Pull SDK)
+### 2.4. Bộ điều khiển Cảm biến Radar (ZKTeco C3-200 Pull SDK)
 * **Thư viện Native**: `plcommpro.dll`, `plcomms.dll`, `pltcpcomm.dll`, `plcommutils.dll` (Build x86).
 * **P/Invoke Wrapper**: `PhuXuanParkingSystem.SDK.ZKTeco.ZKTecoPullSDK`.
 * **Cổng kết nối**: `4370` TCP.
+* **DeviceType**: `Controller`
 * **Cơ chế đọc log thời gian thực**:
   * Vòng lặp ngầm `ListenLoopAsync` đọc hàm `GetRTLog` liên tục.
   * Phân tích chuỗi CSV: `Time,Pin,CardNo,DoorID,EventType,InOutState,VerifyMode`.
@@ -78,39 +92,47 @@ Hệ thống **PhuXuanParkingSystem** là phần mềm quản lý kiểm soát p
 
 ```
 PhuXuanParkingSystem/
-├── Models/                               # Lớp dữ liệu & Đối tượng quản lý
-│   ├── Common/
-│   │   └── BaseEntity.cs                 # Lớp cơ sở (Id ObjectId, CreatedAt, Soft-Delete)
-│   ├── Enums/
-│   │   ├── VehicleType.cs                # Loại xe (Car, Motorcycle, Truck, Bicycle...)
-│   │   ├── ParkingSessionStatus.cs       # Trạng thái lượt gửi (Active, Completed, UnmatchedOut)
-│   │   ├── PersonType.cs                 # Phân loại (Employee, Contractor, Visitor, VIP)
-│   │   ├── LaneDirection.cs              # Chiều làn (In, Out, Bidirectional)
-│   │   └── SystemEnums.cs                # DeviceType, DeviceStatus, UserRole
-│   ├── ValueObjects/
-│   │   ├── PlateNumber.cs                # Chuẩn hóa biển số (loại bỏ ký tự thừa, regex)
-│   │   └── ImageStoragePath.cs           # Quản lý đường dẫn ảnh snapshot
-│   ├── Entities/
-│   │   ├── ParkingSession.cs             # Lượt gửi xe (Biển số, ảnh vào/ra, thời gian, chủ xe)
-│   │   ├── Vehicle.cs                    # Danh mục xe đăng ký
-│   │   ├── Person.cs                     # Danh mục chủ xe / nhân viên / nhà thầu
-│   │   ├── Department.cs                 # Danh mục phòng ban
-│   │   ├── OrganizationEntities.cs       # Company, Contractor
-│   │   └── SystemEntities.cs             # Lane, Device, User
-│   └── Data/
-│       └── MongoDbContext.cs             # Quản lý kết nối MongoDB & Khởi tạo Index
-├── SDK/                                  # Tầng giao tiếp Driver Native C++
-│   ├── HikVision/CHCNetSDK.cs            # P/Invoke Hikvision SDK
-│   ├── NST/CHISDK.cs                     # P/Invoke NST SDK
-│   └── ZKTeco/
-│       ├── CZKPullSDK.cs
-│       └── ZKTecoPullSDK.cs              # P/Invoke ZKTeco Pull SDK
-├── Services/                             # Tầng dịch vụ logic thiết bị
-│   ├── Camera/
-│   │   ├── CameraConfig.cs               # Cấu hình IP, Port, User, Pass
-│   │   ├── OverviewCameraService.cs      # Service Camera Toàn Cảnh (Hikvision)
-│   │   └── PlateCameraService.cs         # Service Camera Biển Số (NST)
-│   └── Controller/
+├── PhuXuanParkingSystem.Domain/          # Class Library: Domain Layer (Zero Dependencies)
+│   └── Models/
+│       ├── Common/
+│       │   └── BaseEntity.cs            # Lớp cơ sở (Id ObjectId, CreatedAt, Soft-Delete)
+│       ├── Enums/
+│       │   ├── VehicleType.cs           # Car=1, Motorcycle=2, Truck=3, Other=99
+│       │   ├── ParkingSessionStatus.cs  # Active=1, Completed=2, UnmatchedOut=3, Cancelled=4
+│       │   ├── PersonType.cs            # Employee, Contractor, Visitor, VIP, Other
+│       │   ├── LaneDirection.cs         # In, Out, Bidirectional
+│       │   ├── DeviceType.cs            # PlateCamera=1, OverviewCamera=2, Controller=3
+│       │   ├── DeviceStatus.cs          # Connected, Disconnected, Error
+│       │   └── UserRole.cs              # SuperAdmin, Manager, Operator
+│       ├── ValueObjects/
+│       │   ├── PlateNumber.cs           # Chuẩn hóa biển số VN (Clean/FormatDisplay)
+│       │   └── ImageStoragePath.cs      # Đường dẫn ảnh UNC + BSON Serializer
+│       └── Entities/
+│           ├── ParkingSession.cs        # Aggregate Root: Lượt xe vào-ra
+│           ├── Vehicle.cs                # Danh mục xe đăng ký
+│           ├── Person.cs                 # Người dùng/hành khách
+│           ├── Lane.cs                   # Làn kiểm soát (In/Out)
+│           ├── Device.cs                # Thiết bị phần cứng (Camera, Controller)
+│           ├── Department.cs            # Phòng ban
+│           ├── Company.cs               # Công ty/đơn vị thành viên
+│           ├── Contractor.cs            # Đơn vị nhà thầu/đối tác
+│           ├── User.cs                  # Tài khoản đăng nhận hệ thống
+│           └── LicenseInfo.cs          # Bản quyền phần mềm
+│
+├── PhuXuanParkingSystem.Api/            # Web API (ASP.NET Core)
+├── PhuXuanParkingSystem.Web/             # Web Frontend (React)
+│
+├── PhuXuanParkingSystem/                # WinForms Application (.NET 4.8, x86)
+│   ├── SDK/                             # Tầng giao tiếp Driver Native C++
+│   │   ├── HikVision/CHCNetSDK.cs       # P/Invoke Hikvision SDK
+│   │   ├── NST/CHISDK.cs                # P/Invoke NST SDK
+│   │   └── ZKTeco/ZKTecoPullSDK.cs      # P/Invoke ZKTeco Pull SDK
+│   ├── Services/                        # Tầng dịch vụ logic thiết bị
+│   │   ├── Camera/
+│   │   │   ├── CameraConfig.cs         # Cấu hình IP, Port, User, Pass
+│   │   │   ├── OverviewCameraService.cs # Service Camera Toàn Cảnh (Hikvision)
+│   │   │   └── PlateCameraService.cs    # Service Camera Biển Số (NST)
+│   │   └── Controller/
 │       ├── AuxTriggerEventArgs.cs        # Model sự kiện Radar (AuxPort, IsActive, Time)
 │       └── ZKTecoDeviceAdapter.cs        # Adapter kết nối & đọc log Controller
 ├── FrmMain.cs                            # Form giao diện chính & Xử lý nghiệp vụ
@@ -125,38 +147,151 @@ PhuXuanParkingSystem/
 
 Dự án sử dụng thư viện chính thức **`MongoDB.Driver 2.28.0`**:
 
-### 4.1. Entity Lượt Gửi Xe (`ParkingSession.cs`)
+### 4.1. Entity Lượt Gửi Xe (`ParkingSession.cs`) — Aggregate Root
 ```csharp
 [BsonIgnoreExtraElements]
 public class ParkingSession : BaseEntity
 {
-    public string PlateNumber { get; set; }           // Biển số xe đã chuẩn hóa
-    public VehicleType VehicleType { get; set; }      // Loại xe (Ô tô, Xe máy...)
-    public ParkingSessionStatus Status { get; set; }  // Active / Completed / UnmatchedOut
-    
-    public string? PersonName { get; set; }           // Tên chủ xe
-    public string? DepartmentName { get; set; }       // Phòng ban / Đơn vị
+    // === THÔNG TIN PHƯƠNG TIỆN ===
+    public string PlateNumber { get; set; }                          // Biển số (chuẩn hóa)
+    public VehicleType VehicleType { get; set; }                      // Car, Motorcycle, Truck, Other
+    public ParkingSessionStatus Status { get; set; }                  // Active, Completed, UnmatchedOut, Cancelled
 
-    [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
-    public DateTime? InTime { get; set; }             // Giờ vào
-    public string? InLaneId { get; set; }             // Làn vào
-    public string? InOverviewImagePath { get; set; }  // Đường dẫn ảnh toàn cảnh vào
-    public string? InPlateImagePath { get; set; }     // Đường dẫn ảnh biển số vào
+    // === ĐỊNH DANH CHỦ XE ===
+    public string? PersonId { get; set; }                             // ID chủ xe (nullable)
+    public string? PersonName { get; set; }                          // Tên chủ xe
+    public string? CompanyName { get; set; }                         // Tên công ty
+    public string? DepartmentName { get; set; }                      // Tên phòng ban
+    public PersonType? PersonType { get; set; }                     // Employee, Contractor, Visitor, VIP
 
+    // === LƯỢT VÀO ===
     [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
-    public DateTime? OutTime { get; set; }            // Giờ ra
-    public string? OutLaneId { get; set; }            // Làn ra
-    public string? OutOverviewImagePath { get; set; } // Đường dẫn ảnh toàn cảnh ra
-    public string? OutPlateImagePath { get; set; }    // Đường dẫn ảnh biển số ra
+    public DateTime? InTime { get; set; }                           // Thời gian vào
+    public string? InLaneName { get; set; }                         // Tên làn vào
+    public ImageStoragePath InOverviewImagePath { get; set; }        // Ảnh toàn cảnh vào (Value Object)
+    public ImageStoragePath InPlateImagePath { get; set; }          // Ảnh biển số vào (Value Object)
+
+    // === LƯỢT RA ===
+    [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
+    public DateTime? OutTime { get; set; }                           // Thời gian ra
+    public string? OutLaneName { get; set; }                        // Tên làn ra
+    public ImageStoragePath OutOverviewImagePath { get; set; }       // Ảnh toàn cảnh ra (Value Object)
+    public ImageStoragePath OutPlateImagePath { get; set; }         // Ảnh biển số ra (Value Object)
+
+    // === COMPUTED GETTERS ===
+    [BsonIgnore]
+    public bool IsUnknown => string.IsNullOrWhiteSpace(PersonName);
 
     [BsonIgnore]
-    public TimeSpan? Duration => (InTime.HasValue && OutTime.HasValue) ? OutTime.Value - InTime.Value : null;
+    public TimeSpan? Duration => (InTime.HasValue && OutTime.HasValue && OutTime >= InTime)
+        ? OutTime.Value - InTime.Value
+        : null;
+
+    // === FACTORY METHODS ===
+    public static ParkingSession CheckIn(...)  // Tạo phiên xe vào
+    public static ParkingSession CreateUnmatchedOut(...) // Xe ra không có lượt vào
+    public void CheckOut(...)                  // Hoàn thành phiên khi xe ra
 }
 ```
 
-### 4.2. Database Context (`MongoDbContext.cs`)
+### 4.2. Entity Thiết Bị (`Device.cs`)
+```csharp
+[BsonIgnoreExtraElements]
+public class Device : BaseEntity
+{
+    public string Code { get; set; }                       // Mã thiết bị (CAM-01, CTR-01...)
+    public string Name { get; set; }                       // Tên mô tả
+    public DeviceType Type { get; set; }                   // PlateCamera=1, OverviewCamera=2, Controller=3
+
+    // === CẤU HÌNH MẠNG ===
+    public string IpAddress { get; set; }                   // IP thiết bị
+    public int Port { get; set; } = 8000;                  // Port (Hik:8000, NST:3000, ZKTeco:4370)
+    public string? UserName { get; set; }                 // Tên đăng nhập
+    public string? Password { get; set; }                 // Mật khẩu
+
+    // === TRẠNG THÁI SỨC KHỎE ===
+    public DeviceStatus Status { get; set; }               // Connected, Disconnected, Error
+    public DateTime? LastHeartbeat { get; set; }           // Heartbeat gần nhất
+    public string? ErrorMessage { get; set; }              // Chi tiết lỗi
+
+    // === BEHAVIOR METHODS ===
+    public void MarkConnected()
+    public void MarkError(string errorMessage)
+    public void MarkDisconnected()
+}
+```
+
+### 4.3. Entity Làn (`Lane.cs`)
+```csharp
+[BsonIgnoreExtraElements]
+public class Lane : BaseEntity
+{
+    public string Code { get; set; }                       // Mã làn (L01, L02...)
+    public string Name { get; set; }                       // Tên làn
+    public LaneDirection Direction { get; set; }           // In, Out, Bidirectional
+    public bool IsActive { get; set; } = true;             // Trạng thái hoạt động
+
+    // === THAM CHIẾU THIẾT BỊ ===
+    public string? OverviewCameraDeviceId { get; set; }    // ID Camera toàn cảnh
+    public string? PlateCameraDeviceId { get; set; }      // ID Camera biển số
+    public string? ControllerDeviceId { get; set; }       // ID Controller
+    public int TriggerAuxPort { get; set; } = 1;          // Cổng Aux (1=Vào, 2=Ra)
+
+    // === NAVIGATION (Runtime, not persisted) ===
+    [BsonIgnore]
+    public Device? OverviewCamera { get; set; }
+    [BsonIgnore]
+    public Device? PlateCamera { get; set; }
+    [BsonIgnore]
+    public Device? Controller { get; set; }
+}
+```
+
+### 4.4. Entity Bản Quyền (`LicenseInfo.cs`)
+```csharp
+[BsonIgnoreExtraElements]
+public class LicenseInfo : BaseEntity
+{
+    public string CustomerName { get; set; }              // Tên khách hàng
+    public string MachineCode { get; set; }              // Hardware Fingerprint
+    public DateTime ExpiryDate { get; set; }             // Ngày hết hạn
+    public DateTime IssuedAt { get; set; }              // Ngày cấp
+    public string LicenseKey { get; set; }               // RSA-3072 signed key
+    public string? Signature { get; set; }               // Digital signature
+    public bool IsActive { get; set; } = true;           // Trạng thái hiệu lực
+
+    // === QUOTA LIMITS ===
+    public int MaxLanes { get; set; } = 2;              // Số làn tối đa
+    public int MaxCameras { get; set; } = 4;            // Số camera tối đa
+    public int MaxControllers { get; set; } = 1;        // Số controller tối đa
+    public List<string> Features { get; set; }           // Tính năng: ANPR_Vietnam, AutoBarrier...
+
+    // === COMPUTED GETTERS ===
+    [BsonIgnore]
+    public bool IsPermanent => ExpiryDate.Year >= 2099;
+
+    [BsonIgnore]
+    public bool IsExpired => !IsPermanent && DateTime.Now > ExpiryDate;
+
+    [BsonIgnore]
+    public int DaysRemaining
+    {
+        get
+        {
+            if (IsPermanent) return 99999;
+            if (IsExpired) return 0;
+            return (int)Math.Ceiling((ExpiryDate - DateTime.Now).TotalDays);
+        }
+    }
+
+    [BsonIgnore]
+    public bool IsValid => IsActive && !IsDeleted && !IsExpired && !string.IsNullOrWhiteSpace(LicenseKey);
+}
+```
+
+### 4.5. Database Context (`MongoDbContext.cs`)
 * Tự động khởi tạo kết nối Singleton: `MongoDbContext.Instance`.
-* Cung cấp các Collection: `ParkingSessions`, `Vehicles`, `Persons`, `Departments`, `Companies`, `Lanes`, `Devices`...
+* Cung cấp các Collection: `ParkingSessions`, `Vehicles`, `Persons`, `Departments`, `Companies`, `Lanes`, `Devices`, `Users`, `LicenseInfos`.
 * Tự động khởi tạo **Index tìm kiếm siêu tốc** trên trường `PlateNumber`, `InTime`, `Status`.
 
 ---
@@ -292,6 +427,87 @@ Từ **Task-020** và **Task-021**, hệ thống WinForms đã được nâng c�
 | `FrmDeviceMonitor.cs` | Màn hình giám sát thiết bị |
 | `DeviceHealthMonitorService.cs` | Service kiểm tra & đồng bộ trạng thái |
 | `Program.cs` | Đăng ký DI container |
+
+---
+
+## 9. HỆ THỐNG BẢN QUYỀN (LICENSE SYSTEM) — TASK-022
+
+### 9.1. Tổng Quan
+
+Hệ thống bản quyền sử dụng **chữ ký số RSA 3072-bit** kết hợp **Hardware Fingerprint** để bảo vệ phần mềm khỏi vi phạm bản quyền.
+
+### 9.2. Kiến Trúc Bản Quyền
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    LICENSE SYSTEM ARCHITECTURE                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌──────────────┐ │
+│  │ LicenseTool.exe │───▶│   LicenseInfo   │◀───│ LicenseCrypto│ │
+│  │ (WinForms App)  │    │ (License Key)   │    │ (RSA-3072)   │ │
+│  └─────────────────┘    └─────────────────┘    └──────────────┘ │
+│           │                     │                     │          │
+│           ▼                     ▼                     ▼          │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │                 HardwareFingerprint (WMI)                    │ │
+│  │  • CPU Processor ID    • Motherboard Serial                 │ │
+│  │  • Disk Serial Number  • BIOS Serial                        │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+│  ┌─────────────────┐    ┌─────────────────┐                     │
+│  │ WinForms Client │◀───│ LicenseManager  │                     │
+│  │ (FrmMain)       │    │ (Validation)    │                     │
+│  └─────────────────┘    └─────────────────┘                     │
+│                                                                  │
+│  ┌─────────────────┐    ┌─────────────────┐                     │
+│  │ Web Admin       │◀───│ LicenseController│                    │
+│  │ (LicensePage)   │    │ (API)            │                     │
+│  └─────────────────┘    └─────────────────┘                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 9.3. License Info Entity (Đã định nghĩa ở Mục 4.4)
+
+### 9.4. Quota Limits (Giới Hạn Bản Quyền)
+
+| Quota | Giá trị mặc định | Mô tả |
+|-------|------------------|-------|
+| `MaxLanes` | 2 | Số làn xe tối đa (1 vào, 1 ra) |
+| `MaxCameras` | 4 | Số camera tối đa (2 biển số + 2 toàn cảnh) |
+| `MaxControllers` | 1 | Số bộ điều khiển tối đa |
+| `Features` | ANPR_Vietnam, AutoBarrier, DualCameraPerLane | Danh sách tính năng |
+
+### 9.5. Validation Rules
+
+```csharp
+public bool IsValid => IsActive && !IsDeleted && !IsExpired && !string.IsNullOrWhiteSpace(LicenseKey);
+
+// Kiểm tra quota trong API:
+- LanesController: Kiểm tra MaxLanes
+- DevicesController: Kiểm tra MaxCameras, MaxControllers
+```
+
+### 9.6. Các File Chính
+
+| File | Mô tả |
+|------|-------|
+| `LicenseInfo.cs` | Entity bản quyền |
+| `LicenseCrypto.cs` | RSA-3072 sign/verify |
+| `HardwareFingerprint.cs` | WMI hardware fingerprint |
+| `LicenseManager.cs` | WinForms client validation |
+| `LicenseController.cs` | Web API endpoints |
+| `LicensePage.tsx` | Web Admin UI |
+| `LicenseTool/` | WinForms tool tạo license key |
+
+### 9.7. License Status Colors (Footer Label)
+
+| Days Remaining | Màu sắc | Trạng thái |
+|---------------|---------|------------|
+| > 15 ngày | 🟢 Xanh lá | Bình thường |
+| ≤ 15 ngày | 🟡 Cam | Sắp hết hạn |
+| ≤ 0 ngày | 🔴 Đỏ | Hết hạn → Hiển thị `LicenseExpiredForm` |
 
 ---
 *Tài liệu được biên soạn và cập nhật tự động cho dự án PhuXuanParkingSystem.*

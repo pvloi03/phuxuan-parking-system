@@ -89,7 +89,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     OwnerName = "Xe lạ",
                     DepartmentName = "Khách vãng lai",
                     VehicleType = VehicleType.Car,
-                    StatusText = "Cho phép vào - Ghi nhận hình ảnh (Không đọc được biển)",
+                    StatusText = "Ghi nhận hình ảnh (Không đọc được biển)",
                     StatusColor = Color.FromArgb(200, 120, 30),
                     Session = unknownSession
                 };
@@ -173,7 +173,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     DepartmentName = deptName,
                     VehicleType = vType,
                     IsRegistered = isRegistered,
-                    StatusText = $"Cho phép vào (Cảnh báo: Xe đang trong bãi từ {existingActiveSession.InTime:HH:mm:ss})",
+                    StatusText = $"Cảnh báo: Xe đang trong bãi từ {existingActiveSession.InTime:HH:mm:ss})",
                     StatusColor = Color.FromArgb(220, 110, 0),
                     Session = existingActiveSession
                 };
@@ -211,7 +211,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 DepartmentName = deptName,
                 VehicleType = vType,
                 IsRegistered = isRegistered,
-                StatusText = isRegistered ? "Cho phép vào - Đã đăng ký" : "Cho phép vào - Khách vãng lai",
+                StatusText = isRegistered ? "Đã đăng ký" : "Khách vãng lai",
                 StatusColor = isRegistered ? Color.FromArgb(40, 140, 70) : Color.FromArgb(0, 120, 215),
                 Session = newSession
             };
@@ -256,7 +256,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     OwnerName = "Xe lạ",
                     DepartmentName = "Khách vãng lai",
                     VehicleType = VehicleType.Car,
-                    StatusText = "Cho phép ra - Ghi nhận hình ảnh (Không đọc được biển - Unmatched Out)",
+                    StatusText = "Ghi nhận hình ảnh (Không đọc được biển - Unmatched Out)",
                     StatusColor = Color.FromArgb(200, 120, 30),
                     Session = unmatchedSession
                 };

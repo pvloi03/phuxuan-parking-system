@@ -35,9 +35,9 @@ namespace PhuXuanParkingSystem.Forms
             this.lblSubtitle = new System.Windows.Forms.Label();
             this.lblTitle = new System.Windows.Forms.Label();
             this.pnlControls = new System.Windows.Forms.Panel();
+            this.lblAutoCheck = new System.Windows.Forms.Label();
             this.panel1 = new System.Windows.Forms.Panel();
             this.cboAutoCheckInterval = new System.Windows.Forms.ComboBox();
-            this.lblAutoCheck = new System.Windows.Forms.Label();
             this.btnCheckSelected = new System.Windows.Forms.Button();
             this.btnCheckAll = new System.Windows.Forms.Button();
             this.btnClose = new System.Windows.Forms.Button();
@@ -200,7 +200,7 @@ namespace PhuXuanParkingSystem.Forms
             // 
             this.lblSubtitle.AutoSize = true;
             this.lblSubtitle.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblSubtitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(150)))), ((int)(((byte)(165)))), ((int)(((byte)(185)))));
+            this.lblSubtitle.ForeColor = System.Drawing.Color.White;
             this.lblSubtitle.Location = new System.Drawing.Point(12, 48);
             this.lblSubtitle.Name = "lblSubtitle";
             this.lblSubtitle.Size = new System.Drawing.Size(308, 25);
@@ -233,6 +233,18 @@ namespace PhuXuanParkingSystem.Forms
             this.pnlControls.Size = new System.Drawing.Size(1262, 50);
             this.pnlControls.TabIndex = 1;
             // 
+            // lblAutoCheck
+            // 
+            this.lblAutoCheck.Dock = System.Windows.Forms.DockStyle.Right;
+            this.lblAutoCheck.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblAutoCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(70)))), ((int)(((byte)(85)))));
+            this.lblAutoCheck.Location = new System.Drawing.Point(739, 8);
+            this.lblAutoCheck.Name = "lblAutoCheck";
+            this.lblAutoCheck.Size = new System.Drawing.Size(226, 34);
+            this.lblAutoCheck.TabIndex = 4;
+            this.lblAutoCheck.Text = "Tự động kiểm tra định kỳ:";
+            this.lblAutoCheck.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            // 
             // panel1
             // 
             this.panel1.Controls.Add(this.cboAutoCheckInterval);
@@ -260,18 +272,6 @@ namespace PhuXuanParkingSystem.Forms
             this.cboAutoCheckInterval.Size = new System.Drawing.Size(160, 33);
             this.cboAutoCheckInterval.TabIndex = 3;
             this.cboAutoCheckInterval.SelectedIndexChanged += new System.EventHandler(this.CboAutoCheckInterval_SelectedIndexChanged);
-            // 
-            // lblAutoCheck
-            // 
-            this.lblAutoCheck.Dock = System.Windows.Forms.DockStyle.Right;
-            this.lblAutoCheck.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblAutoCheck.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(60)))), ((int)(((byte)(70)))), ((int)(((byte)(85)))));
-            this.lblAutoCheck.Location = new System.Drawing.Point(739, 8);
-            this.lblAutoCheck.Name = "lblAutoCheck";
-            this.lblAutoCheck.Size = new System.Drawing.Size(226, 34);
-            this.lblAutoCheck.TabIndex = 4;
-            this.lblAutoCheck.Text = "Tự động kiểm tra định kỳ:";
-            this.lblAutoCheck.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // btnCheckSelected
             // 

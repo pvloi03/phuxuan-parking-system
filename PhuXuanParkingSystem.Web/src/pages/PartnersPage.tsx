@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Contractor } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -93,6 +94,10 @@ export function PartnersPage() {
       queryClient.invalidateQueries({ queryKey: ['partners-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới đối tác thành công!')
+    },
+    onError: (err: any) => {
+      notify.error('Thêm mới đối tác thất bại', err)
     },
   })
 
@@ -114,6 +119,10 @@ export function PartnersPage() {
       queryClient.invalidateQueries({ queryKey: ['partners-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin đối tác thành công!')
+    },
+    onError: (err: any) => {
+      notify.error('Cập nhật đối tác thất bại', err)
     },
   })
 
@@ -125,6 +134,10 @@ export function PartnersPage() {
     onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['partners-list'] })
       setSelectedIds((prev) => prev.filter((item) => item !== deletedId))
+      notify.success('Đã chuyển đối tác vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa đối tác thất bại', err)
     },
   })
 
@@ -135,7 +148,11 @@ export function PartnersPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partners-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} đối tác thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều đối tác thất bại', err)
     },
   })
 
@@ -144,12 +161,12 @@ export function PartnersPage() {
     mutationFn: async (contractors: Partial<Contractor>[]) => {
       await apiClient.post('/contractors/batch', contractors)
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['partners-list'] })
-      alert('Nhập danh sách đối tác từ Excel thành công!')
+      notify.success(`Nhập thành công ${variables?.length || 0} đối tác từ file Excel!`)
     },
     onError: (err: any) => {
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
+      notify.error('Nhập file Excel thất bại', err)
     },
   })
 
@@ -199,7 +216,7 @@ export function PartnersPage() {
   // Excel Handlers
   const handleExportExcel = () => {
     if (!items.length) {
-      alert('Không có dữ liệu để xuất Excel.')
+      notify.warning('Không có dữ liệu đối tác để xuất Excel.')
       return
     }
 
@@ -220,23 +237,23 @@ export function PartnersPage() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        'Mã Đối Tác': 'DT-001',
-        'Tên Đối Tác': 'Công Ty TNHH Xây Dựng & Dịch Vụ Thái Thụy',
-        'Người Đại Diện': 'Vũ Đình Em',
-        'Số Điện Thoại': '0945678901',
-        'Email': 'em.vu@thaithuy.vn',
-        'Ghi Chú': 'Nhà thầu vệ sinh công nghiệp',
+        'Mã Đối Tác': 'DT001',
+        'Tên Đối Tác': 'Đối Tác / Nhà Thầu A',
+        'Người Đại Diện': 'Nguyễn Văn A',
+        'Số Điện Thoại': '0901234567',
+        'Email': 'doitac.a@example.com',
+        'Ghi Chú': 'Mô tả hợp đồng đối tác 1',
       },
       {
-        'Mã Đối Tác': 'DT-002',
-        'Tên Đối Tác': 'Công Ty Cổ Phần Cơ Điện Hoàng Hà',
-        'Người Đại Diện': 'Nguyễn Văn Minh',
-        'Số Điện Thoại': '0988776655',
-        'Email': 'minh.nguyen@hoanghapt.com',
-        'Ghi Chú': 'Bảo trì hệ thống PCCC và thang máy',
+        'Mã Đối Tác': 'DT002',
+        'Tên Đối Tác': 'Đối Tác / Nhà Thầu B',
+        'Người Đại Diện': 'Trần Thị B',
+        'Số Điện Thoại': '0912345678',
+        'Email': 'doitac.b@example.com',
+        'Ghi Chú': 'Mô tả hợp đồng đối tác 2',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Doi_Tac.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Doi_Tac.xlsx', 'MauNhapDoiTac')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -246,25 +263,30 @@ export function PartnersPage() {
     try {
       const rawData = await parseExcelFile<any>(file)
       if (!rawData || rawData.length === 0) {
-        alert('File Excel không có dữ liệu.')
+        notify.warning('File Excel không có dữ liệu.')
         return
       }
 
-      const formattedData: Partial<Contractor>[] = rawData.map((row) => ({
-        code: String(row['Mã Đối Tác'] || row['code'] || '').trim(),
-        name: String(row['Tên Đối Tác'] || row['Tên Đối Tác / Nhà Thầu'] || row['name'] || '').trim(),
-        contactPerson: String(row['Người Đại Diện'] || row['contactPerson'] || '').trim() || undefined,
-        phoneNumber: String(row['Số Điện Thoại'] || row['phone'] || '').trim() || undefined,
-        email: String(row['Email'] || row['email'] || '').trim() || undefined,
-        note: String(row['Ghi Chú'] || row['note'] || '').trim() || undefined,
-        isActive: true,
-      })).filter((p) => p.name)
+      const formattedData: Partial<Contractor>[] = rawData
+        .map((row) => ({
+          code: String(row['Mã Đối Tác'] || row['code'] || '').trim().toUpperCase(),
+          name: String(row['Tên Đối Tác'] || row['name'] || '').trim(),
+          contactPerson: String(row['Người Đại Diện'] || row['contactPerson'] || '').trim() || undefined,
+          phoneNumber: String(row['Số Điện Thoại'] || row['phone'] || '').trim() || undefined,
+          email: String(row['Email'] || row['email'] || '').trim() || undefined,
+          note: String(row['Ghi Chú'] || row['note'] || '').trim() || undefined,
+          isActive: true,
+        }))
+        .filter((p) => p.name && p.code)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi đối tác hợp lệ trong file Excel.'); return }
+      if (!formattedData.length) {
+        notify.warning('Không tìm thấy bản ghi đối tác hợp lệ trong file Excel.')
+        return
+      }
 
       batchImportMutation.mutate(formattedData as Contractor[])
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

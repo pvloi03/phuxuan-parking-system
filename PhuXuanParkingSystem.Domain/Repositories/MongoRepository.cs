@@ -187,11 +187,22 @@ namespace PhuXuanParkingSystem.Repositories
         public virtual async Task<bool> UpdateAsync(T entity, CancellationToken cancellationToken = default)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
+            if (string.IsNullOrWhiteSpace(entity.Id))
+            {
+                // Cannot update entity without Id - return false
+                return false;
+            }
+
             entity.UpdatedAt = DateTime.Now;
 
-            var idFilter = BuildIdFilter(entity.Id);
-            var filter = CombineSoftDeleteFilter(idFilter);
-            var result = await _collection.ReplaceOneAsync(filter, entity, (ReplaceOptions?)null, cancellationToken);
+            // Use ReplaceOneAsync to replace the entire document
+            // This is more reliable than UpdateOneAsync for full entity updates
+            var result = await _collection.ReplaceOneAsync(
+                Builders<T>.Filter.Eq("_id", MongoDB.Bson.ObjectId.Parse(entity.Id)),
+                entity,
+                new ReplaceOptions { IsUpsert = false },
+                cancellationToken);
+
             return result.MatchedCount > 0;
         }
 

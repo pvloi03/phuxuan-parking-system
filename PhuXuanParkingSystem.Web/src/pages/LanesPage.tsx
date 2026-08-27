@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { Lane, Device } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -137,9 +138,10 @@ export function LanesPage() {
       queryClient.invalidateQueries({ queryKey: ['lanes-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới làn kiểm soát thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi thêm làn kiểm soát: ' + (err?.response?.data?.message || err.message))
+      notify.error('Thêm mới làn kiểm soát thất bại', err)
     },
   })
 
@@ -162,9 +164,10 @@ export function LanesPage() {
       queryClient.invalidateQueries({ queryKey: ['lanes-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin làn thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi cập nhật làn kiểm soát: ' + (err?.response?.data?.message || err.message))
+      notify.error('Cập nhật làn kiểm soát thất bại', err)
     },
   })
 
@@ -174,6 +177,10 @@ export function LanesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lanes-list'] })
+      notify.success('Đã chuyển làn kiểm soát vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa làn kiểm soát thất bại', err)
     },
   })
 
@@ -183,7 +190,11 @@ export function LanesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lanes-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} làn thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều làn kiểm soát thất bại', err)
     },
   })
 
@@ -239,7 +250,7 @@ export function LanesPage() {
   // Excel Handlers
   const handleExportExcel = () => {
     if (!lanes.length) {
-      alert('Không có dữ liệu làn để xuất Excel.')
+      notify.warning('Không có dữ liệu làn kiểm soát để xuất Excel.')
       return
     }
 
@@ -268,20 +279,20 @@ export function LanesPage() {
     const template = [
       {
         'Mã Làn': 'L01',
-        'Tên Làn': 'Làn Vào 1 (Cổng Chính)',
+        'Tên Làn': 'Làn Vào 1',
         'Chiều Làn (In/Out)': 'In',
         'Cổng Tín Hiệu Aux In (1/2)': '1',
-        'Mô Tả': 'Làn kiểm soát xe vào cổng chính',
+        'Mô Tả': 'Làn kiểm soát xe vào',
       },
       {
         'Mã Làn': 'L02',
-        'Tên Làn': 'Làn Ra 1 (Cổng Chính)',
+        'Tên Làn': 'Làn Ra 1',
         'Chiều Làn (In/Out)': 'Out',
         'Cổng Tín Hiệu Aux In (1/2)': '2',
-        'Mô Tả': 'Làn kiểm soát xe ra cổng chính',
+        'Mô Tả': 'Làn kiểm soát xe ra',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Lan_Kiem_Soat.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Lan_Kiem_Soat.xlsx', 'MauNhapLanKiemSoat')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,13 +302,13 @@ export function LanesPage() {
     try {
       const rawData = await parseExcelFile<any>(file)
       if (!rawData || rawData.length === 0) {
-        alert('File Excel không có dữ liệu.')
+        notify.warning('File Excel không có dữ liệu.')
         return
       }
 
-      alert(`Tính năng nhập Excel làn kiểm soát: Đã đọc được ${rawData.length} dòng dữ liệu.`)
+      notify.info(`Đã đọc ${rawData.length} dòng dữ liệu từ file Excel.`)
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

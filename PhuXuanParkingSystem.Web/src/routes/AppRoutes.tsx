@@ -13,6 +13,7 @@ import { DevicesPage } from '@/pages/DevicesPage'
 import { LanesPage } from '@/pages/LanesPage'
 import { UsersPage } from '@/pages/UsersPage'
 import { RecycleBinPage } from '@/pages/RecycleBinPage'
+import { LicensePage } from '@/pages/LicensePage'
 
 export function AppRoutes() {
   return (
@@ -36,6 +37,7 @@ export function AppRoutes() {
             <Route path="/lanes" element={<LanesPage />} />
             <Route path="/devices" element={<DevicesPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/license" element={<LicensePage />} />
           </Route>
 
           {/* Super Admin only Routes */}

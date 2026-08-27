@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { recycleBinService, type ItemKey } from '@/services/recycleBinService'
 import type { RecycleBinItem } from '@/types'
+import { notify } from '@/lib/notify'
 
 export const RecycleBinPage = () => {
   const queryClient = useQueryClient()
@@ -88,9 +89,10 @@ export const RecycleBinPage = () => {
       // Invalidate all related modules cache
       queryClient.invalidateQueries()
       setSingleActionModal({ isOpen: false, action: 'restore' })
+      notify.success('Khôi phục bản ghi thành công!')
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi khôi phục mục này.')
+      notify.error('Có lỗi xảy ra khi khôi phục bản ghi này.', err)
     },
   })
 
@@ -100,41 +102,48 @@ export const RecycleBinPage = () => {
       handleRefresh()
       queryClient.invalidateQueries()
       setSingleActionModal({ isOpen: false, action: 'hard-delete' })
+      notify.success('Đã xóa vĩnh viễn bản ghi khỏi hệ thống.')
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Không thể xóa vĩnh viễn do ràng buộc quan hệ dữ liệu.')
+      notify.error('Không thể xóa vĩnh viễn do ràng buộc quan hệ dữ liệu.', err)
     },
   })
 
   const restoreBatchMutation = useMutation({
     mutationFn: (batch: ItemKey[]) => recycleBinService.restoreBatch(batch),
     onSuccess: (data) => {
+      const count = selectedItems.length
       handleRefresh()
       queryClient.invalidateQueries()
       setSelectedItems([])
       setBatchActionModal({ isOpen: false, action: 'restore' })
       if (data.errors && data.errors.length > 0) {
-        alert(`Khôi phục một số mục thành công, nhưng có các cảnh báo:\n${data.errors.join('\n')}`)
+        notify.warning(`Đã khôi phục thành công nhưng có cảnh báo: ${data.errors.join('; ')}`)
+      } else {
+        notify.success(`Khôi phục thành công ${count} bản ghi!`)
       }
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi khôi phục hàng loạt.')
+      notify.error('Có lỗi xảy ra khi khôi phục hàng loạt.', err)
     },
   })
 
   const hardDeleteBatchMutation = useMutation({
     mutationFn: (batch: ItemKey[]) => recycleBinService.hardDeleteBatch(batch),
     onSuccess: (data) => {
+      const count = selectedItems.length
       handleRefresh()
       queryClient.invalidateQueries()
       setSelectedItems([])
       setBatchActionModal({ isOpen: false, action: 'hard-delete' })
       if (data.errors && data.errors.length > 0) {
-        alert(`Xóa một số mục thành công, nhưng có mục không thể xóa do ràng buộc:\n${data.errors.join('\n')}`)
+        notify.warning(`Đã xóa một số mục, còn lại không thể xóa do ràng buộc: ${data.errors.join('; ')}`)
+      } else {
+        notify.success(`Đã xóa vĩnh viễn ${count} bản ghi khỏi hệ thống.`)
       }
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa hàng loạt.')
+      notify.error('Có lỗi xảy ra khi xóa hàng loạt.', err)
     },
   })
 
@@ -145,9 +154,10 @@ export const RecycleBinPage = () => {
       queryClient.invalidateQueries()
       setSelectedItems([])
       setEmptyTrashModal(false)
+      notify.success('Đã dọn sạch thùng rác thành công!')
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi dọn sạch thùng rác.')
+      notify.error('Có lỗi xảy ra khi dọn sạch thùng rác.', err)
     },
   })
 

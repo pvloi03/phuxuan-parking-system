@@ -20,9 +20,11 @@ import {
   AlertCircle,
   Timer,
   Trash2,
+  Calendar,
 } from 'lucide-react'
 import { parkingService } from '@/services/parkingService'
 import type { ImageStoragePathDto, ParkingSession, ParkingSessionStatus, VehicleType } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +41,8 @@ export function HistoryPage() {
   const queryClient = useQueryClient()
   const [plateNumber, setPlateNumber] = useState('')
   const [status, setStatus] = useState<string>('')
+  const [fromDate, setFromDate] = useState<string>('')
+  const [toDate, setToDate] = useState<string>('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedSession, setSelectedSession] = useState<ParkingSession | null>(null)
@@ -55,11 +59,13 @@ export function HistoryPage() {
   }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parking-history', plateNumber, status, page, pageSize],
+    queryKey: ['parking-history', plateNumber, status, fromDate, toDate, page, pageSize],
     queryFn: () =>
       parkingService.getSessions({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
+        fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
+        toDate: toDate ? `${toDate}T23:59:59` : undefined,
         pageNumber: page,
         pageSize: pageSize,
       }),
@@ -73,9 +79,10 @@ export function HistoryPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] })
       setSelectedIds((prev) => prev.filter((i) => i !== deletingId))
       setDeletingId(null)
+      notify.success('Đã xóa bản ghi thành công.')
     },
-    onError: () => {
-      alert('Có lỗi xảy ra khi xóa bản ghi. Vui lòng thử lại.')
+    onError: (err: any) => {
+      notify.error('Có lỗi xảy ra khi xóa bản ghi.', err)
       setDeletingId(null)
     },
   })
@@ -86,14 +93,44 @@ export function HistoryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['parking-history'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] })
+      notify.success(`Đã xóa ${selectedIds.length} bản ghi thành công.`)
       setSelectedIds([])
     },
-    onError: () => {
-      alert('Có lỗi xảy ra khi xóa hàng loạt. Vui lòng thử lại.')
+    onError: (err: any) => {
+      notify.error('Có lỗi xảy ra khi xóa hàng loạt.', err)
     },
   })
 
+  // Quick Date Presets
+  const setDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'all') => {
+    const now = new Date()
+    const formatDate = (d: Date) => d.toISOString().slice(0, 10)
 
+    if (preset === 'today') {
+      const t = formatDate(now)
+      setFromDate(t)
+      setToDate(t)
+    } else if (preset === 'yesterday') {
+      const y = new Date(now)
+      y.setDate(y.getDate() - 1)
+      const t = formatDate(y)
+      setFromDate(t)
+      setToDate(t)
+    } else if (preset === 'week') {
+      const w = new Date(now)
+      w.setDate(w.getDate() - 6)
+      setFromDate(formatDate(w))
+      setToDate(formatDate(now))
+    } else if (preset === 'month') {
+      const m = new Date(now.getFullYear(), now.getMonth(), 1)
+      setFromDate(formatDate(m))
+      setToDate(formatDate(now))
+    } else if (preset === 'all') {
+      setFromDate('')
+      setToDate('')
+    }
+    setPage(1)
+  }
 
   const toggleSelectAll = () => {
     if (!data?.items) return
@@ -111,12 +148,25 @@ export function HistoryPage() {
   }
 
   const handleExport = async () => {
+    // 1. Kiểm tra danh sách rỗng
+    if (!data?.totalCount || data.totalCount === 0 || !data.items || data.items.length === 0) {
+      notify.warning('Không có bản ghi nào để xuất báo cáo trong khoảng thời gian đã chọn!')
+      return
+    }
+
     setIsExporting(true)
+    notify.info('Đang khởi tạo và xuất báo cáo thống kê số lượt xe vào ra...')
+
     try {
       await parkingService.exportExcel({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
+        fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
+        toDate: toDate ? `${toDate}T23:59:59` : undefined,
       })
+      notify.success(`Xuất báo cáo Excel thành công! Đã tổng hợp ${data.totalCount} lượt xe vào ra.`)
+    } catch (err: any) {
+      notify.error('Lỗi khi xuất file Excel báo cáo.', err)
     } finally {
       setIsExporting(false)
     }
@@ -367,9 +417,11 @@ export function HistoryPage() {
         </div>
       </div>
 
-      {/* Filters Bar */}
-      <Card className="p-4 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Filters Bar & Quick Date Selector */}
+      <Card className="p-4 shadow-xs space-y-3">
+        {/* Hàng 1: Các trường lọc chính */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. Tìm theo biển số */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
@@ -379,10 +431,11 @@ export function HistoryPage() {
                 setPlateNumber(e.target.value)
                 setPage(1)
               }}
-              className="pl-9 text-xs"
+              className="pl-9 text-xs h-9"
             />
           </div>
 
+          {/* 2. Lọc trạng thái */}
           <div>
             <select
               value={status}
@@ -399,20 +452,111 @@ export function HistoryPage() {
             </select>
           </div>
 
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setPlateNumber('')
-                setStatus('')
+          {/* 3. Từ ngày */}
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
+            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Từ:</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                setFromDate(e.target.value)
                 setPage(1)
               }}
-              className="text-xs h-9 cursor-pointer"
+              className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+            />
+          </div>
+
+          {/* 4. Đến ngày */}
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
+            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Đến:</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                setToDate(e.target.value)
+                setPage(1)
+              }}
+              className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+            />
+          </div>
+        </div>
+
+        {/* Hàng 2: Bộ chọn nhanh khoảng thời gian & Reset */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mr-1">
+              <Calendar className="h-3.5 w-3.5 text-blue-600" />
+              Xem nhanh:
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDatePreset('today')}
+              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                fromDate && fromDate === toDate && fromDate === new Date().toISOString().slice(0, 10)
+                  ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                  : 'text-slate-600 dark:text-slate-300'
+              }`}
             >
-              Đặt lại bộ lọc
+              Hôm nay
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDatePreset('yesterday')}
+              className="h-7 px-2.5 text-[11px] cursor-pointer rounded-md text-slate-600 dark:text-slate-300"
+            >
+              Hôm qua
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDatePreset('week')}
+              className="h-7 px-2.5 text-[11px] cursor-pointer rounded-md text-slate-600 dark:text-slate-300"
+            >
+              7 ngày qua
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDatePreset('month')}
+              className="h-7 px-2.5 text-[11px] cursor-pointer rounded-md text-slate-600 dark:text-slate-300"
+            >
+              Tháng này
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDatePreset('all')}
+              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                !fromDate && !toDate
+                  ? 'bg-slate-200 dark:bg-slate-700 font-bold'
+                  : 'text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              Tất cả thời gian
             </Button>
           </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPlateNumber('')
+              setStatus('')
+              setFromDate('')
+              setToDate('')
+              setPage(1)
+            }}
+            className="text-xs h-7 px-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"
+          >
+            Đặt lại bộ lọc
+          </Button>
         </div>
       </Card>
 

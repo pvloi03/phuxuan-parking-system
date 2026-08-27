@@ -77,6 +77,9 @@ namespace PhuXuanParkingSystem.Forms
             this.lblOutStatusVal = new System.Windows.Forms.Label();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
             this.lblFooterStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.lblFooterLicenseSpring = new System.Windows.Forms.ToolStripStatusLabel();
+            this.lblFooterMachineCode = new System.Windows.Forms.ToolStripStatusLabel();
+            this.lblFooterLicense = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerClock = new System.Windows.Forms.Timer(this.components);
             this.pnlHeader.SuspendLayout();
             this.tblMainLayout.SuspendLayout();
@@ -720,7 +723,10 @@ namespace PhuXuanParkingSystem.Forms
             this.statusStrip.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.lblFooterStatus});
+            this.lblFooterStatus,
+            this.lblFooterLicenseSpring,
+            this.lblFooterMachineCode,
+            this.lblFooterLicense});
             this.statusStrip.Location = new System.Drawing.Point(0, 829);
             this.statusStrip.Name = "statusStrip";
             this.statusStrip.Size = new System.Drawing.Size(1400, 32);
@@ -734,6 +740,29 @@ namespace PhuXuanParkingSystem.Forms
             this.lblFooterStatus.Name = "lblFooterStatus";
             this.lblFooterStatus.Size = new System.Drawing.Size(168, 25);
             this.lblFooterStatus.Text = "Sẵn sàng làm việc.";
+            // 
+            // lblFooterLicenseSpring
+            // 
+            this.lblFooterLicenseSpring.Name = "lblFooterLicenseSpring";
+            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(700, 25);
+            this.lblFooterLicenseSpring.Spring = true;
+            // 
+            // lblFooterMachineCode
+            // 
+            this.lblFooterMachineCode.Font = new System.Drawing.Font("Consolas", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblFooterMachineCode.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
+            this.lblFooterMachineCode.Name = "lblFooterMachineCode";
+            this.lblFooterMachineCode.Size = new System.Drawing.Size(180, 25);
+            this.lblFooterMachineCode.Text = "Mã Máy: PX-0000-0000";
+            // 
+            // lblFooterLicense
+            // 
+            this.lblFooterLicense.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblFooterLicense.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.lblFooterLicense.Name = "lblFooterLicense";
+            this.lblFooterLicense.Size = new System.Drawing.Size(260, 25);
+            this.lblFooterLicense.Text = "🛡️ Thời gian sử dụng: Đang kiểm tra...";
+            this.lblFooterLicense.DoubleClick += new System.EventHandler(this.LblFooterLicense_DoubleClick);
             // 
             // timerClock
             // 
@@ -831,6 +860,9 @@ namespace PhuXuanParkingSystem.Forms
         private System.Windows.Forms.Label lblOutStatusVal;
         private System.Windows.Forms.StatusStrip statusStrip;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterStatus;
+        private System.Windows.Forms.ToolStripStatusLabel lblFooterLicenseSpring;
+        private System.Windows.Forms.ToolStripStatusLabel lblFooterMachineCode;
+        private System.Windows.Forms.ToolStripStatusLabel lblFooterLicense;
         private System.Windows.Forms.Timer timerClock;
         private System.Windows.Forms.Button btnDeviceMonitor;
     }

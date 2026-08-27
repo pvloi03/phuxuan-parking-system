@@ -1,6 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '@/stores/useAuthStore'
-import { usePermission } from '@/hooks/usePermission'
 import type { UserRole } from '@/types'
 import { ShieldAlert } from 'lucide-react'
 

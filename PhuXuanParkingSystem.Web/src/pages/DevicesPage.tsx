@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Device, DeviceType, DeviceStatus } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -197,6 +198,10 @@ export function DevicesPage() {
       queryClient.invalidateQueries({ queryKey: ['devices-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới thiết bị thành công!')
+    },
+    onError: (err: any) => {
+      notify.error('Thêm mới thiết bị thất bại', err)
     },
   })
 
@@ -219,6 +224,10 @@ export function DevicesPage() {
       queryClient.invalidateQueries({ queryKey: ['devices-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin thiết bị thành công!')
+    },
+    onError: (err: any) => {
+      notify.error('Cập nhật thiết bị thất bại', err)
     },
   })
 
@@ -229,6 +238,10 @@ export function DevicesPage() {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['devices-list'] })
       setSelectedIds((prev) => prev.filter((item) => item !== id))
+      notify.success('Đã chuyển thiết bị vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa thiết bị thất bại', err)
     },
   })
 
@@ -238,7 +251,11 @@ export function DevicesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['devices-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} thiết bị thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều thiết bị thất bại', err)
     },
   })
 
@@ -246,12 +263,12 @@ export function DevicesPage() {
     mutationFn: async (devices: Partial<Device>[]) => {
       await apiClient.post('/devices/batch', devices)
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['devices-list'] })
-      alert('Nhập danh sách thiết bị từ Excel thành công!')
+      notify.success(`Nhập thành công ${variables?.length || 0} thiết bị từ file Excel!`)
     },
     onError: (err: any) => {
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
+      notify.error('Nhập file Excel thất bại', err)
     },
   })
 
@@ -306,7 +323,10 @@ export function DevicesPage() {
 
   // ======================== Excel Handlers ========================
   const handleExportExcel = () => {
-    if (!items.length) { alert('Không có dữ liệu để xuất Excel.'); return }
+    if (!items.length) {
+      notify.warning('Không có dữ liệu thiết bị để xuất Excel.')
+      return
+    }
 
     const exportData = items.map((d, i) => ({
       STT: (pageNumber - 1) * pageSize + i + 1,
@@ -327,36 +347,36 @@ export function DevicesPage() {
     const template = [
       {
         'Mã Thiết Bị': 'CAM-IN-PLT',
-        'Tên Thiết Bị': 'Camera Biển Số Làn Vào (NST)',
+        'Tên Thiết Bị': 'Camera Biển Số Làn Vào',
         'Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)': 'PlateCamera',
         'Địa Chỉ IP': '192.168.1.200',
         'Port': '3000',
         'Tên Đăng Nhập': 'admin',
-        'Mật Khẩu': 'admin',
-        'Ghi Chú': 'Camera nhận diện biển số NST LPR',
+        'Mật Khẩu': 'admin123',
+        'Ghi Chú': 'Camera nhận diện biển số LPR',
       },
       {
         'Mã Thiết Bị': 'CAM-IN-OVW',
-        'Tên Thiết Bị': 'Camera Toàn Cảnh Làn Vào (Hikvision)',
+        'Tên Thiết Bị': 'Camera Toàn Cảnh Làn Vào',
         'Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)': 'OverviewCamera',
         'Địa Chỉ IP': '192.168.1.61',
         'Port': '8000',
         'Tên Đăng Nhập': 'admin',
-        'Mật Khẩu': 'Hoangphat130225',
-        'Ghi Chú': 'Camera toàn cảnh Hikvision',
+        'Mật Khẩu': 'admin123',
+        'Ghi Chú': 'Camera toàn cảnh',
       },
       {
         'Mã Thiết Bị': 'CTRL-C3-200',
-        'Tên Thiết Bị': 'Bộ Điều Khiển ZKTeco C3-200 (Radar & Barrier)',
+        'Tên Thiết Bị': 'Bộ Điều Khiển Cổng & Barrier',
         'Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)': 'Controller',
         'Địa Chỉ IP': '192.168.1.202',
         'Port': '4370',
         'Tên Đăng Nhập': '',
         'Mật Khẩu': '',
-        'Ghi Chú': 'ZKTeco C3-200 — Nhận tín hiệu radar, điều khiển Barrier',
+        'Ghi Chú': 'Bộ điều khiển tiếp điểm & cảm biến',
       },
     ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Thiet_Bi.xlsx')
+    downloadExcelTemplate(template, 'Mau_Nhap_Thiet_Bi.xlsx', 'MauNhapThietBi')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,7 +385,10 @@ export function DevicesPage() {
 
     try {
       const rawData = await parseExcelFile<any>(file)
-      if (!rawData?.length) { alert('File Excel không có dữ liệu.'); return }
+      if (!rawData?.length) {
+        notify.warning('File Excel không có dữ liệu.')
+        return
+      }
 
       const formattedData: Partial<Device>[] = rawData.map((row) => {
         const rawType = String(row['Loại Thiết Bị (PlateCamera/OverviewCamera/Controller)'] || row['type'] || '').toLowerCase()
@@ -389,11 +412,14 @@ export function DevicesPage() {
         }
       }).filter((d) => d.name)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi thiết bị hợp lệ trong file Excel.'); return }
+      if (!formattedData.length) {
+        notify.warning('Không tìm thấy bản ghi thiết bị hợp lệ trong file Excel.')
+        return
+      }
 
       batchImportMutation.mutate(formattedData as Device[])
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
