@@ -116,6 +116,9 @@ namespace PhuXuanParkingSystem
             // Device Health Monitor Service (Giám sát thiết bị & đồng bộ Web Admin)
             services.AddSingleton<Services.DeviceHealth.IDeviceHealthMonitorService, Services.DeviceHealth.DeviceHealthMonitorService>();
 
+            // Device Config Service (Nạp cấu hình động từ MongoDB + Reload khi Web Admin thay đổi)
+            services.AddSingleton<Services.DeviceConfig.IDeviceConfigService, Services.DeviceConfig.DeviceConfigService>();
+
             // Forms
             services.AddTransient<FrmMain>();
             services.AddTransient<FrmDeviceMonitor>();

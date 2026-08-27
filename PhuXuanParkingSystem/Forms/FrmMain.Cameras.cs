@@ -1,6 +1,7 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Camera;
+using PhuXuanParkingSystem.Services.DeviceConfig;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
 using System;
@@ -63,64 +64,50 @@ namespace PhuXuanParkingSystem.Forms
         {
             try
             {
-                // 1. Lấy Lanes đang hoạt động và Devices từ MongoDB
-                var lanes = await _laneRepo.FindAsync(l => !l.IsDeleted && l.IsActive);
-                var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted);
+                // Sử dụng DeviceConfigService - đã có Cache + Hash để detect thay đổi
+                var result = await _deviceConfigService.LoadConfigAsync();
 
-                if (devices == null || devices.Count == 0)
+                if (!result.Success || result.InPlateCamera == null && result.OutPlateCamera == null)
                 {
-                    AppLogger.Warning("Không tìm thấy thiết bị nào trong CSDL MongoDB.");
+                    AppLogger.Warning("[Hardware Sync] Nạp cấu hình thất bại hoặc không có thiết bị.");
                     return;
                 }
 
-                // 2. Populate Navigation Properties trên Lane từ DeviceId references
-                //    Sử dụng trực tiếp navigation properties thay vì magic string fallback
-                foreach (var lane in lanes ?? Enumerable.Empty<Lane>())
+                // Áp dụng cấu hình vào Camera Services
+                if (result.InPlateCamera != null)
+                    ApplyDeviceToConfig(_inPlateCam.Config, result.InPlateCamera);
+
+                if (result.InOverviewCamera != null)
+                    ApplyDeviceToConfig(_inOverviewCam.Config, result.InOverviewCamera);
+
+                if (result.OutPlateCamera != null)
+                    ApplyDeviceToConfig(_outPlateCam.Config, result.OutPlateCamera);
+
+                if (result.OutOverviewCamera != null)
+                    ApplyDeviceToConfig(_outOverviewCam.Config, result.OutOverviewCamera);
+
+                if (!string.IsNullOrEmpty(result.ControllerIp))
                 {
-                    if (!string.IsNullOrEmpty(lane.PlateCameraDeviceId))
-                        lane.PlateCamera = devices.FirstOrDefault(d => d.Id == lane.PlateCameraDeviceId);
-
-                    if (!string.IsNullOrEmpty(lane.OverviewCameraDeviceId))
-                        lane.OverviewCamera = devices.FirstOrDefault(d => d.Id == lane.OverviewCameraDeviceId);
-
-                    if (!string.IsNullOrEmpty(lane.ControllerDeviceId))
-                        lane.Controller = devices.FirstOrDefault(d => d.Id == lane.ControllerDeviceId);
+                    _controllerIp = result.ControllerIp ?? _controllerIp;
+                    _controllerPort = result.ControllerPort > 0 ? result.ControllerPort : _controllerPort;
                 }
 
-                // 3. Áp dụng cấu hình vào Camera Services từ Navigation Properties
-                var inLane = lanes?.FirstOrDefault(l => l.Direction == LaneDirection.In);
-                if (inLane != null)
-                {
-                    if (inLane.PlateCamera != null)
-                        ApplyDeviceToConfig(_inPlateCam.Config, inLane.PlateCamera);
-                    if (inLane.OverviewCamera != null)
-                        ApplyDeviceToConfig(_inOverviewCam.Config, inLane.OverviewCamera);
-                    if (inLane.Controller != null)
-                    {
-                        _controllerIp = inLane.Controller.IpAddress;
-                        _controllerPort = inLane.Controller.Port;
-                    }
-                }
+                // Log chi tiết cấu hình
+                AppLogger.Information(
+                    $"[Hardware Sync] Nạp cấu hình thành công trong {result.LoadTime.TotalMilliseconds:F0}ms " +
+                    $"(InPlate: {_inPlateCam.Config.Ip}, InOvw: {_inOverviewCam.Config.Ip}, " +
+                    $"OutPlt: {_outPlateCam.Config.Ip}, OutOvw: {_outOverviewCam.Config.Ip}, " +
+                    $"Ctrl: {_controllerIp}:{_controllerPort}).");
 
-                var outLane = lanes?.FirstOrDefault(l => l.Direction == LaneDirection.Out);
-                if (outLane != null)
+                // Log warnings nếu có
+                foreach (var warning in result.Warnings)
                 {
-                    if (outLane.PlateCamera != null)
-                        ApplyDeviceToConfig(_outPlateCam.Config, outLane.PlateCamera);
-                    if (outLane.OverviewCamera != null)
-                        ApplyDeviceToConfig(_outOverviewCam.Config, outLane.OverviewCamera);
-                    if (outLane.Controller != null && string.IsNullOrEmpty(_controllerIp))
-                    {
-                        _controllerIp = outLane.Controller.IpAddress;
-                        _controllerPort = outLane.Controller.Port;
-                    }
+                    AppLogger.Warning($"[Hardware Sync] Cảnh báo: {warning}");
                 }
-
-                AppLogger.Information($"[Hardware Sync] Đã nạp cấu hình từ MongoDB (InPlate: {_inPlateCam.Config.Ip}, InOvw: {_inOverviewCam.Config.Ip}, OutPlt: {_outPlateCam.Config.Ip}, OutOvw: {_outOverviewCam.Config.Ip}, Ctrl: {_controllerIp}:{_controllerPort}).");
             }
             catch (Exception ex)
             {
-                AppLogger.Warning($"Không thể nạp thiết bị từ CSDL: {ex.Message}");
+                AppLogger.Error(ex, $"[Hardware Sync] Lỗi nạp cấu hình: {ex.Message}");
             }
         }
 

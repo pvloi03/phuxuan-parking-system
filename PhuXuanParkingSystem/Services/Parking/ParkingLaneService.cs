@@ -30,8 +30,8 @@ namespace PhuXuanParkingSystem.Services.Parking
         private string _lastOutProcessedPlate = string.Empty;
         private DateTime _lastOutProcessedTime = DateTime.MinValue;
 
-        private const int CROSS_LANE_LOCKOUT_SECONDS = 12;    // Khóa chéo biển số giữa 2 làn sát nhau: 12 giây
-        private const int SAME_LANE_PLATE_DEBOUNCE_SECONDS = 5;// Chống chụp lặp cùng 1 biển số trên 1 làn: 5 giây
+        private const int CROSS_LANE_LOCKOUT_SECONDS = 5;    // Khóa chéo biển số giữa 2 làn: 5 giây
+        private const int SAME_LANE_PLATE_DEBOUNCE_SECONDS = 3;// Chống chụp lặp cùng 1 biển số trên 1 làn: 3 giây
 
         public ParkingLaneService(
             IRepository<ParkingSession> sessionRepo,
@@ -106,7 +106,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 {
                     double secondsSinceOut = (DateTime.Now - _lastOutProcessedTime).TotalSeconds;
                     AppLogger.Warning($"[CHỐNG QUÉT CHÉO] Bỏ qua Làn Vào cho '{anprResult.FormattedPlate}' vì vừa qua Làn Ra cách đây {secondsSinceOut:F1}s.");
-                    return LaneProcessResult.Ignored($"Bỏ qua quét chéo (Xe vừa qua Làn Ra {secondsSinceOut:F0}s trước)", anprResult.FormattedPlate);
+                    return LaneProcessResult.Ignored($"Xe vừa qua Làn Ra {secondsSinceOut:F0}s trước", anprResult.FormattedPlate);
                 }
 
                 if (!string.IsNullOrEmpty(_lastInProcessedPlate) &&
@@ -114,7 +114,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     (DateTime.Now - _lastInProcessedTime).TotalSeconds < SAME_LANE_PLATE_DEBOUNCE_SECONDS)
                 {
                     AppLogger.Debug($"[CHỐNG CHỤP LẶP] Bỏ qua Làn Vào cho '{anprResult.FormattedPlate}' vì vừa xử lý cách đây {(DateTime.Now - _lastInProcessedTime).TotalSeconds:F1}s.");
-                    return LaneProcessResult.Ignored("Bỏ qua chụp lặp", anprResult.FormattedPlate);
+                    return LaneProcessResult.Ignored("", anprResult.FormattedPlate);
                 }
 
                 _lastInProcessedPlate = cleanPlate;
@@ -187,7 +187,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 filePlate,
                 isRegistered ? ownerName : null,
                 vType,
-                $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0}, Time: {anprResult.DurationMs}ms{(isRegistered ? " [Nội bộ]" : " [Xe lạ]")}");
+                $"Nguồn: {triggerSource}, Time: {anprResult.DurationMs}ms{(isRegistered ? " [Nội bộ]" : " [Xe lạ]")}");
 
             try
             {
@@ -211,7 +211,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 DepartmentName = deptName,
                 VehicleType = vType,
                 IsRegistered = isRegistered,
-                StatusText = isRegistered ? "Cho phép vào - Xe nội bộ / Đã đăng ký" : "Cho phép vào - Xe lạ / Khách vãng lai",
+                StatusText = isRegistered ? "Cho phép vào - Đã đăng ký" : "Cho phép vào - Khách vãng lai",
                 StatusColor = isRegistered ? Color.FromArgb(40, 140, 70) : Color.FromArgb(0, 120, 215),
                 Session = newSession
             };
@@ -273,7 +273,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 {
                     double secondsSinceIn = (DateTime.Now - _lastInProcessedTime).TotalSeconds;
                     AppLogger.Warning($"[CHỐNG QUÉT CHÉO] Bỏ qua Làn Ra cho '{anprResult.FormattedPlate}' vì vừa qua Làn Vào cách đây {secondsSinceIn:F1}s.");
-                    return LaneProcessResult.Ignored($"Bỏ qua quét chéo (Xe vừa qua Làn Vào {secondsSinceIn:F0}s trước)", anprResult.FormattedPlate);
+                    return LaneProcessResult.Ignored($"Xe vừa qua Làn Vào {secondsSinceIn:F0}s trước", anprResult.FormattedPlate);
                 }
 
                 if (!string.IsNullOrEmpty(_lastOutProcessedPlate) &&
@@ -281,7 +281,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     (DateTime.Now - _lastOutProcessedTime).TotalSeconds < SAME_LANE_PLATE_DEBOUNCE_SECONDS)
                 {
                     AppLogger.Debug($"[CHỐNG CHỤP LẶP] Bỏ qua Làn Ra cho '{anprResult.FormattedPlate}' vì vừa xử lý cách đây {(DateTime.Now - _lastOutProcessedTime).TotalSeconds:F1}s.");
-                    return LaneProcessResult.Ignored("Bỏ qua chụp lặp", anprResult.FormattedPlate);
+                    return LaneProcessResult.Ignored("", anprResult.FormattedPlate);
                 }
 
                 _lastOutProcessedPlate = cleanPlate;
@@ -352,7 +352,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     filePlate,
                     isRegistered ? ownerName : null,
                     vType,
-                    $"Nguồn: {triggerSource}, Conf: {anprResult.Confidence:P0} (Ghi nhận xe ra không có lượt vào)");
+                    $"Nguồn: {triggerSource}, Ghi nhận xe ra không có lượt vào");
 
                 try
                 {

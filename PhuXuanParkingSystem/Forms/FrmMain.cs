@@ -1,13 +1,13 @@
+using Microsoft.Extensions.DependencyInjection;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
+using PhuXuanParkingSystem.Services.DeviceConfig;
 using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Parking;
-using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Diagnostics;
-using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace PhuXuanParkingSystem.Forms
@@ -32,12 +32,13 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IRepository<Device> _deviceRepo;
         private readonly IRepository<Lane> _laneRepo;
         private readonly IDeviceHealthMonitorService _deviceHealthService;
+        private readonly IDeviceConfigService _deviceConfigService = null!;
 
         private string _captureDir = "";
         private string _controllerIp = "192.168.1.202";
         private int _controllerPort = 4370;
         private readonly object _lockDebounce = new();
-        private System.Windows.Forms.Timer? _deviceSyncTimer;
+        private Timer? _deviceSyncTimer;
 
         public FrmMain()
         {
@@ -45,7 +46,7 @@ namespace PhuXuanParkingSystem.Forms
 
             if (Program.ServiceProvider != null)
             {
-                _parkingLaneService = Program.ServiceProvider.GetService<IParkingLaneService>() 
+                _parkingLaneService = Program.ServiceProvider.GetService<IParkingLaneService>()
                     ?? new ParkingLaneService(
                         new MongoRepository<ParkingSession>(),
                         new MongoRepository<Vehicle>(),
@@ -57,6 +58,7 @@ namespace PhuXuanParkingSystem.Forms
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
                 _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
                 _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo);
+                _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             }
             else
             {
@@ -71,14 +73,14 @@ namespace PhuXuanParkingSystem.Forms
                 _deviceRepo = new MongoRepository<Device>();
                 _laneRepo = new MongoRepository<Lane>();
                 _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo);
+                _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             }
+
+            // Đăng ký sự kiện khi cấu hình thay đổi (Web Admin sửa IP, etc.)
+            _deviceConfigService.OnConfigChanged += DeviceConfigService_OnConfigChanged;
 
             // Đăng ký sự kiện Controller ZKTeco
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
-
-            // Hỗ trợ phím tắt tiện lợi cho vận hành
-            KeyPreview = true;
-            KeyDown += FrmMain_KeyDown;
         }
 
         public FrmMain(
@@ -95,10 +97,10 @@ namespace PhuXuanParkingSystem.Forms
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
             _laneRepo = laneRepo ?? new MongoRepository<Lane>();
             _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo);
+            _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
             KeyPreview = true;
-            KeyDown += FrmMain_KeyDown;
         }
 
         private void FrmMain_Load(object sender, EventArgs e)
@@ -113,6 +115,9 @@ namespace PhuXuanParkingSystem.Forms
 
             // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
             StartDeviceSyncBackgroundWorker();
+
+            // Bắt đầu giám sát thay đổi cấu hình từ Web Admin mỗi 5 phút
+            StartConfigMonitoring();
         }
 
         private void StartDeviceSyncBackgroundWorker()
@@ -122,8 +127,10 @@ namespace PhuXuanParkingSystem.Forms
                 // Chạy 1 lần ngay sau khi kết nối
                 _ = _deviceHealthService.CheckAllAndSyncAsync();
 
-                _deviceSyncTimer = new System.Windows.Forms.Timer();
-                _deviceSyncTimer.Interval = 30000; // 30 giây
+                _deviceSyncTimer = new Timer
+                {
+                    Interval = 30000 // 30 giây
+                };
                 _deviceSyncTimer.Tick += async (s, e) =>
                 {
                     await _deviceHealthService.CheckAllAndSyncAsync();
@@ -146,43 +153,40 @@ namespace PhuXuanParkingSystem.Forms
             lblClock.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
         }
 
-        #region Phím Tắt & Status Helpers
-
-        private void FrmMain_KeyDown(object? sender, KeyEventArgs e)
+        /// <summary>
+        /// Bắt đầu giám sát thay đổi cấu hình định kỳ (5 phút)
+        /// </summary>
+        private void StartConfigMonitoring()
         {
-            // Phím Space hoặc F5: Chụp thủ công Làn Vào
-            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.F5)
+            try
             {
-                _ = CaptureInLaneAsync("MANUAL_LAN_VAO");
-                e.Handled = true;
+                _deviceConfigService.StartMonitoring(TimeSpan.FromMinutes(5));
+                AppLogger.Information("[FrmMain] Đã bắt đầu giám sát thay đổi cấu hình thiết bị (5 phút/lần)");
             }
-            // Phím F6: Chụp thủ công Làn Ra
-            else if (e.KeyCode == Keys.F6)
+            catch (Exception ex)
             {
-                _ = CaptureOutLaneAsync("MANUAL_LAN_RA");
-                e.Handled = true;
+                AppLogger.Warning($"Lỗi khởi tạo Config Monitoring: {ex.Message}");
             }
-            // Phím F9: Mở Trung Tâm Giám Sát Thiết Bị
-            else if (e.KeyCode == Keys.F9)
+        }
+
+        /// <summary>
+        /// Xử lý khi Web Admin thay đổi cấu hình thiết bị
+        /// </summary>
+        private async void DeviceConfigService_OnConfigChanged(object? sender, ConfigChangeEventArgs e)
+        {
+            if (InvokeRequired)
             {
-                OpenDeviceMonitor();
-                e.Handled = true;
+                BeginInvoke(new Action(() => DeviceConfigService_OnConfigChanged(sender, e)));
+                return;
             }
-            // Phím Ctrl + R: Tự động kết nối lại
-            else if (e.Control && e.KeyCode == Keys.R)
-            {
-                _ = AutoConnectAllAsync();
-                e.Handled = true;
-            }
-            // Phím Ctrl + O: Mở thư mục ảnh
-            else if (e.Control && e.KeyCode == Keys.O)
-            {
-                if (Directory.Exists(_captureDir))
-                {
-                    Process.Start("explorer.exe", _captureDir);
-                }
-                e.Handled = true;
-            }
+
+            AppLogger.Warning($"[FrmMain] Phát hiện thay đổi cấu hình từ Web Admin: {string.Join(", ", e.ChangedDevices)}");
+
+            // Hiển thị thông báo cho người vận hành
+            SetHeaderStatus("⚠️ Cấu hình thiết bị đã thay đổi từ Web Admin!");
+            // Tự động ngắt kết nối cũ và kết nối lại với cấu hình mới
+            await Task.Delay(3000); // Chờ 3s để người dùng nhận biết
+            await AutoConnectAllAsync();
         }
 
         public void OpenDeviceMonitor()
@@ -190,7 +194,7 @@ namespace PhuXuanParkingSystem.Forms
             try
             {
                 var frm = Program.ServiceProvider != null
-                    ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo))
+                    ? (ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo))
                     : new FrmDeviceMonitor(_deviceHealthService, _deviceRepo);
 
                 frm.ShowDialog(this);
@@ -229,8 +233,6 @@ namespace PhuXuanParkingSystem.Forms
             lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {message}";
         }
 
-        #endregion
-
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             try
@@ -241,7 +243,7 @@ namespace PhuXuanParkingSystem.Forms
                 // Giải phóng dịch vụ ANPR
                 _anprService.Dispose();
 
-                // Dừng và giải phóng Controller C3-200
+                // Dừng và giải phóng Controller
                 _controller.Dispose();
             }
             catch (Exception ex)

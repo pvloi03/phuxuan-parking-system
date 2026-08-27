@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { notify } from './notify'
 
 /**
  * Xuất dữ liệu ra file Excel (.xlsx) với header đẹp và tự động căn chỉnh độ rộng cột
@@ -9,7 +10,7 @@ export function exportToExcel<T extends Record<string, any>>(
   sheetName: string = 'DuLieu'
 ) {
   if (!data || data.length === 0) {
-    alert('Không có dữ liệu để xuất Excel.')
+    notify.warning('Không có dữ liệu để xuất Excel.')
     return
   }
 

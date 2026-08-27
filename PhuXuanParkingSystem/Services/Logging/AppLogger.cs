@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Configuration;
 using System.IO;
 using System.Threading;
@@ -94,6 +94,9 @@ namespace PhuXuanParkingSystem.Services.Logging
                 sourceContext
             );
 
+            // In trực tiếp ra cửa sổ Output (Debug) của Visual Studio
+            System.Diagnostics.Debug.WriteLine(args.FormattedText);
+
             AppLogger.RaiseLogEmitted(args);
         }
     }
@@ -125,8 +128,8 @@ namespace PhuXuanParkingSystem.Services.Logging
                 if (_isInitialized) return;
 
                 // 1. Mức độ log từ App.config (mặc định Warning cho Production)
-                string levelStr = customLogLevel 
-                    ?? ConfigurationManager.AppSettings["LogLevel"] 
+                string levelStr = customLogLevel
+                    ?? ConfigurationManager.AppSettings["LogLevel"]
                     ?? "Warning";
 
                 if (!Enum.TryParse(levelStr, true, out LogEventLevel minimumLevel))
@@ -135,13 +138,13 @@ namespace PhuXuanParkingSystem.Services.Logging
                 }
 
                 // 2. Thư mục lưu file log (mặc định: Logs/)
-                string logFolder = customLogFolder 
-                    ?? ConfigurationManager.AppSettings["Log_Directory"] 
+                string logFolder = customLogFolder
+                    ?? ConfigurationManager.AppSettings["Log_Directory"]
                     ?? "Logs";
 
                 string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                string fullLogDirectory = Path.IsPathRooted(logFolder) 
-                    ? logFolder 
+                string fullLogDirectory = Path.IsPathRooted(logFolder)
+                    ? logFolder
                     : Path.Combine(baseDir, logFolder);
 
                 if (!Directory.Exists(fullLogDirectory))

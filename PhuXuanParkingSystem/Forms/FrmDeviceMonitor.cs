@@ -344,7 +344,7 @@ namespace PhuXuanParkingSystem.Forms
             {
                 DeviceType.PlateCamera => "📷 Camera Biển Số",
                 DeviceType.OverviewCamera => "📹 Camera Toàn Cảnh",
-                DeviceType.Controller => "🎛️ Controller Barrier (C3-200)",
+                DeviceType.Controller => "🎛️ Access Controller",
                 _ => "⚙️ Thiết Bị Khác"
             };
         }

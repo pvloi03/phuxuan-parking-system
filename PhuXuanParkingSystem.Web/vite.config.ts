@@ -11,8 +11,12 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
+    dedupe: ['react', 'react-dom', 'react-router-dom', 'zustand'],
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'zustand', '@tanstack/react-query'],
   },
   server: {
     port: 5173,

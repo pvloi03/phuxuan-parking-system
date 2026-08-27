@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Company } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -95,9 +96,10 @@ export function CompaniesPage() {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới công ty thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi thêm công ty: ' + (err?.response?.data?.message || err.message))
+      notify.error('Thêm mới công ty thất bại', err)
     },
   })
 
@@ -118,9 +120,10 @@ export function CompaniesPage() {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin công ty thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi cập nhật công ty: ' + (err?.response?.data?.message || err.message))
+      notify.error('Cập nhật công ty thất bại', err)
     },
   })
 
@@ -132,6 +135,10 @@ export function CompaniesPage() {
     onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
       setSelectedIds((prev) => prev.filter((item) => item !== deletedId))
+      notify.success('Đã chuyển công ty vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa công ty thất bại', err)
     },
   })
 
@@ -142,21 +149,25 @@ export function CompaniesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} công ty thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều công ty thất bại', err)
     },
   })
 
-  // Batch Import Mutation
+  // Batch Import Mutation - Gọi đúng endpoint /api/companies/batch
   const batchImportMutation = useMutation({
     mutationFn: async (companyList: Partial<Company>[]) => {
-      await apiClient.post('/companies/batch-import', companyList)
+      await apiClient.post('/companies/batch', companyList)
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['companies-list'] })
-      alert('Nhập danh sách công ty thành công!')
+      notify.success(`Nhập thành công ${variables?.length || 0} công ty từ file Excel!`)
     },
     onError: (err: any) => {
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
+      notify.error('Nhập file Excel thất bại', err)
     },
   })
 
@@ -205,7 +216,7 @@ export function CompaniesPage() {
   // Excel Handlers
   const handleExportExcel = () => {
     if (!items.length) {
-      alert('Không có dữ liệu công ty để xuất Excel.')
+      notify.warning('Không có dữ liệu công ty để xuất Excel.')
       return
     }
 
@@ -249,7 +260,7 @@ export function CompaniesPage() {
     try {
       const rawData = await parseExcelFile<any>(file)
       if (!rawData || rawData.length === 0) {
-        alert('File Excel không có dữ liệu.')
+        notify.warning('File Excel không có dữ liệu.')
         return
       }
 
@@ -262,11 +273,14 @@ export function CompaniesPage() {
         isActive: true,
       })).filter((c) => c.name)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi công ty hợp lệ trong file Excel.'); return }
+      if (!formattedData.length) {
+        notify.warning('Không tìm thấy bản ghi công ty hợp lệ trong file Excel.')
+        return
+      }
 
       batchImportMutation.mutate(formattedData as Company[])
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

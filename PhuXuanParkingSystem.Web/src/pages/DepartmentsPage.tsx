@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Department, Company } from '@/types'
+import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -119,9 +120,10 @@ export function DepartmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['departments-list'] })
       setIsCreateOpen(false)
       resetForm()
+      notify.success('Thêm mới phòng ban thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi thêm phòng ban: ' + (err?.response?.data?.message || err.message))
+      notify.error('Thêm mới phòng ban thất bại', err)
     },
   })
 
@@ -144,9 +146,10 @@ export function DepartmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['departments-list'] })
       setIsEditOpen(false)
       resetForm()
+      notify.success('Cập nhật thông tin phòng ban thành công!')
     },
     onError: (err: any) => {
-      alert('Lỗi cập nhật phòng ban: ' + (err?.response?.data?.message || err.message))
+      notify.error('Cập nhật phòng ban thất bại', err)
     },
   })
 
@@ -158,6 +161,10 @@ export function DepartmentsPage() {
     onSuccess: (_data, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['departments-list'] })
       setSelectedIds((prev) => prev.filter((item) => item !== deletedId))
+      notify.success('Đã chuyển phòng ban vào thùng rác.')
+    },
+    onError: (err: any) => {
+      notify.error('Xóa phòng ban thất bại', err)
     },
   })
 
@@ -168,21 +175,25 @@ export function DepartmentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments-list'] })
+      notify.success(`Đã xóa ${selectedIds.length} phòng ban thành công.`)
       setSelectedIds([])
+    },
+    onError: (err: any) => {
+      notify.error('Xóa nhiều phòng ban thất bại', err)
     },
   })
 
-  // Batch Import Mutation
+  // Batch Import Mutation - Gọi đúng endpoint /api/departments/batch
   const batchImportMutation = useMutation({
     mutationFn: async (deptList: Partial<Department>[]) => {
-      await apiClient.post('/departments/batch-import', deptList)
+      await apiClient.post('/departments/batch', deptList)
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['departments-list'] })
-      alert('Nhập danh sách phòng ban thành công!')
+      notify.success(`Nhập thành công ${variables?.length || 0} phòng ban từ file Excel!`)
     },
     onError: (err: any) => {
-      alert('Lỗi nhập Excel: ' + (err?.response?.data?.message || err.message))
+      notify.error('Nhập file Excel thất bại', err)
     },
   })
 
@@ -235,7 +246,7 @@ export function DepartmentsPage() {
   // Excel Handlers
   const handleExportExcel = () => {
     if (!items.length) {
-      alert('Không có dữ liệu phòng ban để xuất Excel.')
+      notify.warning('Không có dữ liệu phòng ban để xuất Excel.')
       return
     }
 
@@ -283,7 +294,7 @@ export function DepartmentsPage() {
     try {
       const rawData = await parseExcelFile<any>(file)
       if (!rawData || rawData.length === 0) {
-        alert('File Excel không có dữ liệu.')
+        notify.warning('File Excel không có dữ liệu.')
         return
       }
 
@@ -297,11 +308,14 @@ export function DepartmentsPage() {
         isActive: true,
       })).filter((d) => d.name)
 
-      if (!formattedData.length) { alert('Không tìm thấy bản ghi phòng ban hợp lệ trong file Excel.'); return }
+      if (!formattedData.length) {
+        notify.warning('Không tìm thấy bản ghi phòng ban hợp lệ trong file Excel.')
+        return
+      }
 
       batchImportMutation.mutate(formattedData as Department[])
     } catch (err: any) {
-      alert('Lỗi đọc file Excel: ' + err.message)
+      notify.error('Lỗi đọc file Excel', err)
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }

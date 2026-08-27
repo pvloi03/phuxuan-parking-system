@@ -5,7 +5,6 @@ using Microsoft.OpenApi.Models;
 using PhuXuanParkingSystem.Api.Hubs;
 using PhuXuanParkingSystem.Api.Middlewares;
 using PhuXuanParkingSystem.Models.Data;
-using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Repositories;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -46,12 +45,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// 3. Cấu hình CORS cho Frontend React (Vite: 5173, Next/CRA: 3000)
+// 3. Cấu hình CORS cho Frontend React (Hỗ trợ cả Localhost và toàn bộ dải IP mạng LAN)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173")
+        policy.SetIsOriginAllowed(origin => true) // Cho phép tất cả thiết bị/máy tính trong mạng LAN kết nối
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -147,24 +146,24 @@ app.MapControllers();
 app.MapHub<ParkingRealtimeHub>("/hubs/parking");
 
 // Tự động kiểm tra và gắn ảnh thực tế cho các phiên xe để Web Admin luôn xem được đầy đủ 4 ảnh
-try
-{
-    using var scope = app.Services.CreateScope();
-    var sessionRepo = scope.ServiceProvider.GetRequiredService<IRepository<ParkingSession>>();
-    var allSessions = await sessionRepo.FindAsync(s => !s.IsDeleted);
-    foreach (var s in allSessions)
-    {
-        if (s.InOverviewImagePath == null || s.InOverviewImagePath.IsEmpty || string.IsNullOrWhiteSpace(s.InOverviewImagePath.Path))
-        {
-            s.InOverviewImagePath = "2026-08-25/20260825_172833_366_MANUAL_LAN_VAO_panoramic.jpg";
-            s.InPlateImagePath = "2026-08-25/20260825_172833_366_MANUAL_LAN_VAO_plate.jpg";
-            s.OutOverviewImagePath = "2026-08-25/20260825_172813_901_RADAR_LAN_RA_panoramic.jpg";
-            s.OutPlateImagePath = "2026-08-25/20260825_172813_901_RADAR_LAN_RA_plate.jpg";
-            await sessionRepo.UpdateAsync(s);
-        }
-    }
-}
-catch { }
+//try
+//{
+//    using var scope = app.Services.CreateScope();
+//    var sessionRepo = scope.ServiceProvider.GetRequiredService<IRepository<ParkingSession>>();
+//    var allSessions = await sessionRepo.FindAsync(s => !s.IsDeleted);
+//    foreach (var s in allSessions)
+//    {
+//        if (s.InOverviewImagePath == null || s.InOverviewImagePath.IsEmpty || string.IsNullOrWhiteSpace(s.InOverviewImagePath.Path))
+//        {
+//            s.InOverviewImagePath = "2026-08-25/20260825_172833_366_MANUAL_LAN_VAO_panoramic.jpg";
+//            s.InPlateImagePath = "2026-08-25/20260825_172833_366_MANUAL_LAN_VAO_plate.jpg";
+//            s.OutOverviewImagePath = "2026-08-25/20260825_172813_901_RADAR_LAN_RA_panoramic.jpg";
+//            s.OutPlateImagePath = "2026-08-25/20260825_172813_901_RADAR_LAN_RA_plate.jpg";
+//            await sessionRepo.UpdateAsync(s);
+//        }
+//    }
+//}
+//catch { }
 
 app.Run();
 
