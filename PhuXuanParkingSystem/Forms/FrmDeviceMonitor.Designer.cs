@@ -53,6 +53,7 @@ namespace PhuXuanParkingSystem.Forms
             this.colLatency = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colLastHeartbeat = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colDetails = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colRestart = new System.Windows.Forms.DataGridViewButtonColumn();
             this.timerAutoCheck = new System.Windows.Forms.Timer(this.components);
             this.object_d707e60d_817d_41b4_834f_32184a011f04 = new System.Windows.Forms.Panel();
             this.object_0b722309_7b29_4322_943c_db2f925068ab = new System.Windows.Forms.Panel();
@@ -384,7 +385,8 @@ namespace PhuXuanParkingSystem.Forms
             this.colPort,
             this.colLatency,
             this.colLastHeartbeat,
-            this.colDetails});
+            this.colDetails,
+            this.colRestart});
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
             dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
             dataGridViewCellStyle2.Font = new System.Drawing.Font("Segoe UI", 9F);
@@ -409,6 +411,7 @@ namespace PhuXuanParkingSystem.Forms
             this.dgvDevices.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dgvDevices.Size = new System.Drawing.Size(1262, 446);
             this.dgvDevices.TabIndex = 3;
+            this.dgvDevices.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.DgvDevices_CellContentClick);
             // 
             // colStatus
             // 
@@ -465,15 +468,25 @@ namespace PhuXuanParkingSystem.Forms
             this.colLastHeartbeat.MinimumWidth = 8;
             this.colLastHeartbeat.Name = "colLastHeartbeat";
             this.colLastHeartbeat.ReadOnly = true;
-            // 
+            //
             // colDetails
-            // 
+            //
             this.colDetails.FillWeight = 150F;
             this.colDetails.HeaderText = "Chi Tiết Kết Nối";
             this.colDetails.MinimumWidth = 8;
             this.colDetails.Name = "colDetails";
             this.colDetails.ReadOnly = true;
-            // 
+            //
+            // colRestart
+            //
+            this.colRestart.FillWeight = 80F;
+            this.colRestart.HeaderText = "Khởi Động Lại";
+            this.colRestart.MinimumWidth = 8;
+            this.colRestart.Name = "colRestart";
+            this.colRestart.ReadOnly = true;
+            this.colRestart.Text = "🔄 Restart";
+            this.colRestart.UseColumnTextForButtonValue = true;
+            //
             // timerAutoCheck
             // 
             this.timerAutoCheck.Interval = 30000;
@@ -563,6 +576,7 @@ namespace PhuXuanParkingSystem.Forms
         private System.Windows.Forms.DataGridViewTextBoxColumn colLatency;
         private System.Windows.Forms.DataGridViewTextBoxColumn colLastHeartbeat;
         private System.Windows.Forms.DataGridViewTextBoxColumn colDetails;
+        private System.Windows.Forms.DataGridViewButtonColumn colRestart;
         private System.Windows.Forms.Panel panel1;
         private System.Windows.Forms.Panel object_d707e60d_817d_41b4_834f_32184a011f04;
         private System.Windows.Forms.Panel object_0b722309_7b29_4322_943c_db2f925068ab;

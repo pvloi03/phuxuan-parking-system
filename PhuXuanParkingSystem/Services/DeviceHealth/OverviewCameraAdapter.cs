@@ -44,5 +44,24 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             _cameraService.Logout();
             return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// Khởi động lại: Logout → TaskDelay → Login
+        /// </summary>
+        public async Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default)
+        {
+            _cameraService.Logout();
+            await Task.Delay(500, cancellationToken);
+
+            if (_cameraService.Config != null)
+            {
+                _cameraService.Config.Ip = device.IpAddress;
+                _cameraService.Config.Port = (ushort)device.Port;
+                _cameraService.Config.UserName = device.UserName ?? string.Empty;
+                _cameraService.Config.Password = device.Password ?? string.Empty;
+            }
+
+            return await _cameraService.LoginAsync(cancellationToken);
+        }
     }
 }

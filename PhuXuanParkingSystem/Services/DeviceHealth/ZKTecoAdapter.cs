@@ -38,5 +38,20 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         {
             return _controllerAdapter.DisconnectAsync();
         }
+
+        /// <summary>
+        /// Khởi động lại: Disconnect → TaskDelay → Connect
+        /// </summary>
+        public async Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default)
+        {
+            await _controllerAdapter.DisconnectAsync();
+            await Task.Delay(500, cancellationToken);
+
+            return await _controllerAdapter.ConnectAsync(
+                ipAddress: device.IpAddress,
+                port: device.Port,
+                password: device.Password,
+                cancellationToken: cancellationToken);
+        }
     }
 }

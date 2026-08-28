@@ -28,5 +28,14 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         /// Ngắt kết nối khỏi thiết bị
         /// </summary>
         Task DisconnectAsync();
+
+        /// <summary>
+        /// Khởi động lại kết nối: Disconnect → Wait → Reconnect
+        /// Dùng khi cần reset hardware connection
+        /// </summary>
+        /// <param name="device">Thông tin thiết bị từ MongoDB</param>
+        /// <param name="cancellationToken">Token hủy</param>
+        /// <returns>TRUE nếu restart thành công</returns>
+        Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default);
     }
 }

@@ -354,5 +354,85 @@ namespace PhuXuanParkingSystem.Forms
                 _ => "⚙️ Thiết Bị Khác"
             };
         }
+
+        private async void DgvDevices_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // Chỉ xử lý khi click vào cột Restart (colRestart)
+            if (e.ColumnIndex != colRestart.Index || e.RowIndex < 0) return;
+
+            var row = dgvDevices.Rows[e.RowIndex];
+            if (row.Tag is not Device device) return;
+
+            // Xác nhận trước khi restart
+            var confirmResult = MessageBox.Show(
+                $"Bạn có chắc muốn khởi động lại thiết bị?\n\n" +
+                $"Tên: {device.Name}\n" +
+                $"IP: {device.IpAddress}:{device.Port}\n" +
+                $"Loại: {GetDeviceTypeName(device.Type)}",
+                "Xác nhận Khởi Động Lại",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirmResult != DialogResult.Yes) return;
+
+            // Disable row và hiển thị trạng thái đang restart
+            row.Cells[colRestart.Index] = new DataGridViewTextBoxCell { Value = "⏳..." };
+            row.Cells[colRestart.Index].Style.BackColor = Color.FromArgb(230, 230, 230);
+            row.Cells[0].Value = "🟡 Đang restart...";
+            row.Cells[0].Style.ForeColor = Color.FromArgb(200, 140, 0);
+            SetStatus($"Đang khởi động lại thiết bị: {device.Name}...", true);
+
+            try
+            {
+                var adapter = _adapterFactory.GetAdapter(device);
+                var success = await adapter.RestartAsync(device);
+
+                if (success)
+                {
+                    row.Cells[0].Value = "🟢 Đã restart";
+                    row.Cells[0].Style.ForeColor = Color.FromArgb(40, 140, 70);
+                    row.Cells[8].Value = "Restart thành công";
+
+                    // Sync status lên MongoDB
+                    var pingResult = new DevicePingResult
+                    {
+                        Device = device,
+                        IsSuccess = true,
+                        LatencyMs = 0,
+                        Details = "Restart thành công",
+                        CheckedAt = DateTime.Now
+                    };
+                    await _healthService.SyncStatusToDbAsync(pingResult);
+
+                    SetStatus($"Khởi động lại thành công: {device.Name}", false);
+                }
+                else
+                {
+                    row.Cells[0].Value = "🔴 Restart thất bại";
+                    row.Cells[0].Style.ForeColor = Color.FromArgb(200, 40, 40);
+                    row.Cells[8].Value = "Không thể kết nối sau khi restart";
+
+                    SetStatus($"Khởi động lại thất bại: {device.Name}", false);
+                }
+            }
+            catch (Exception ex)
+            {
+                row.Cells[0].Value = "🔴 Lỗi restart";
+                row.Cells[0].Style.ForeColor = Color.FromArgb(200, 40, 40);
+                row.Cells[8].Value = $"Lỗi: {ex.Message}";
+                AppLogger.Error(ex, $"Lỗi restart thiết bị {device.Name}");
+                SetStatus($"Lỗi restart: {device.Name} - {ex.Message}", false);
+            }
+            finally
+            {
+                // Khôi phục button
+                var btnCell = new DataGridViewButtonCell
+                {
+                    Value = "🔄 Restart",
+                    UseColumnTextForButtonValue = true
+                };
+                row.Cells[colRestart.Index] = btnCell;
+            }
+        }
     }
 }

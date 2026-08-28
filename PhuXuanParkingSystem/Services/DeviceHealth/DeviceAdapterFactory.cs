@@ -238,5 +238,10 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         {
             return Task.CompletedTask;
         }
+
+        public Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
     }
 }
