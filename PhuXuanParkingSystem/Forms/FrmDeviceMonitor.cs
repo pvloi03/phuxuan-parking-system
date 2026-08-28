@@ -17,6 +17,7 @@ namespace PhuXuanParkingSystem.Forms
     {
         private readonly IDeviceHealthMonitorService _healthService;
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IDeviceAdapterFactory _adapterFactory;
 
         private List<Device> _devices = new();
         private readonly Dictionary<string, DevicePingResult> _latestResults = new();
@@ -31,19 +32,24 @@ namespace PhuXuanParkingSystem.Forms
                 ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IRepository<Device>>(Program.ServiceProvider) ?? new MongoRepository<Device>())
                 : new MongoRepository<Device>();
 
+            _adapterFactory = Program.ServiceProvider != null
+                ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDeviceAdapterFactory>(Program.ServiceProvider) ?? new DeviceAdapterFactory())
+                : new DeviceAdapterFactory();
+
             _healthService = Program.ServiceProvider != null
-                ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDeviceHealthMonitorService>(Program.ServiceProvider) ?? new DeviceHealthMonitorService(_deviceRepo))
-                : new DeviceHealthMonitorService(_deviceRepo);
+                ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IDeviceHealthMonitorService>(Program.ServiceProvider) ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory))
+                : new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
 
             // Đăng ký sự kiện từ service
             _healthService.OnDeviceChecked += HealthService_OnDeviceChecked;
         }
 
-        public FrmDeviceMonitor(IDeviceHealthMonitorService healthService, IRepository<Device> deviceRepo)
+        public FrmDeviceMonitor(IDeviceHealthMonitorService healthService, IRepository<Device> deviceRepo, IDeviceAdapterFactory adapterFactory)
         {
             InitializeComponent();
             _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
             _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
+            _adapterFactory = adapterFactory ?? throw new ArgumentNullException(nameof(adapterFactory));
 
             _healthService.OnDeviceChecked += HealthService_OnDeviceChecked;
         }

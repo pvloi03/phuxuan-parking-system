@@ -17,7 +17,21 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         public string? ErrorMessage { get; set; }
         public string Details { get; set; } = string.Empty;
 
-        public static DevicePingResult Success(Device device, long latencyMs, string details = "Kết nối thành công")
+        /// <summary>
+        /// Số lần retry đã thực hiện (0 = thành công ngay, >0 = cần retry)
+        /// </summary>
+        public int RetryCount { get; set; } = 0;
+
+        /// <summary>
+        /// TRUE = kết nối mới (first-time connect), FALSE = reconnect
+        /// </summary>
+        public bool WasReconnected { get; set; } = false;
+
+        public static DevicePingResult Success(
+            Device device,
+            long latencyMs,
+            string details = "Kết nối thành công",
+            int retryCount = 0)
         {
             return new DevicePingResult
             {
@@ -26,11 +40,13 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 Status = DeviceStatus.Connected,
                 LatencyMs = latencyMs,
                 CheckedAt = DateTime.Now,
-                Details = details
+                Details = details,
+                RetryCount = retryCount,
+                WasReconnected = retryCount > 0
             };
         }
 
-        public static DevicePingResult Fail(Device device, string error, long latencyMs = 0)
+        public static DevicePingResult Fail(Device device, string error, long latencyMs = 0, int retryCount = 0)
         {
             return new DevicePingResult
             {
@@ -40,7 +56,8 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 LatencyMs = latencyMs,
                 CheckedAt = DateTime.Now,
                 ErrorMessage = error,
-                Details = $"Mất kết nối: {error}"
+                Details = $"Mất kết nối: {error}",
+                RetryCount = retryCount
             };
         }
     }

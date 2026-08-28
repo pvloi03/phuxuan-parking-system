@@ -114,6 +114,7 @@ namespace PhuXuanParkingSystem
             services.AddScoped<Services.Parking.IParkingLaneService, Services.Parking.ParkingLaneService>();
 
             // Device Health Monitor Service (Giám sát thiết bị & đồng bộ Web Admin)
+            services.AddSingleton<Services.DeviceHealth.IDeviceAdapterFactory, Services.DeviceHealth.DeviceAdapterFactory>();
             services.AddSingleton<Services.DeviceHealth.IDeviceHealthMonitorService, Services.DeviceHealth.DeviceHealthMonitorService>();
 
             // Device Config Service (Nạp cấu hình động từ MongoDB + Reload khi Web Admin thay đổi)

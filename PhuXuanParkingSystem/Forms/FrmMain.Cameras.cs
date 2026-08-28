@@ -75,21 +75,34 @@ namespace PhuXuanParkingSystem.Forms
 
                 // Áp dụng cấu hình vào Camera Services
                 if (result.InPlateCamera != null)
+                {
                     ApplyDeviceToConfig(_inPlateCam.Config, result.InPlateCamera);
+                    _inPlateCamDeviceId = result.InPlateCamera.Id;
+                }
 
                 if (result.InOverviewCamera != null)
+                {
                     ApplyDeviceToConfig(_inOverviewCam.Config, result.InOverviewCamera);
+                    _inOverviewCamDeviceId = result.InOverviewCamera.Id;
+                }
 
                 if (result.OutPlateCamera != null)
+                {
                     ApplyDeviceToConfig(_outPlateCam.Config, result.OutPlateCamera);
+                    _outPlateCamDeviceId = result.OutPlateCamera.Id;
+                }
 
                 if (result.OutOverviewCamera != null)
+                {
                     ApplyDeviceToConfig(_outOverviewCam.Config, result.OutOverviewCamera);
+                    _outOverviewCamDeviceId = result.OutOverviewCamera.Id;
+                }
 
                 if (!string.IsNullOrEmpty(result.ControllerIp))
                 {
                     _controllerIp = result.ControllerIp ?? _controllerIp;
                     _controllerPort = result.ControllerPort > 0 ? result.ControllerPort : _controllerPort;
+                    _controllerDeviceId = result.Controller?.Id ?? string.Empty;
                 }
 
                 // Log chi tiết cấu hình

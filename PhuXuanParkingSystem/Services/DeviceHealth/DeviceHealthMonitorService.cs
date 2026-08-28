@@ -6,98 +6,155 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Services.DeviceHealth
 {
     /// <summary>
-    /// Triển khai dịch vụ giám sát tình trạng thiết bị phần cứng
-    /// Tự động kiểm tra Socket TCP, Ping ICMP và cập nhật trạng thái vào MongoDB để đồng bộ lên Web Admin
+    /// Dịch vụ giám sát tình trạng thiết bị phần cứng - Phiên bản tối ưu
+    ///
+    /// Luồng hoạt động:
+    /// 1. Priority 1: Check SDK State (IsConnected) - Single source of truth
+    /// 2. Priority 2: Nếu disconnected → Try reconnect với retry (3 lần, exponential backoff)
+    /// 3. Fire event AFTER return - tránh race condition
+    /// 4. Sync to MongoDB
+    ///
+    /// Responsibility Split:
+    /// - SDK lo: Low-level (socket, protocol, auth, auto-reconnect)
+    /// - Our Code lo: High-level (monitoring, retry logic, sync, notification)
     /// </summary>
     public class DeviceHealthMonitorService : IDeviceHealthMonitorService
     {
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IDeviceAdapterFactory _adapterFactory;
+
+        // Retry configuration
+        private const int MAX_RETRIES = 3;
+        private const int BASE_DELAY_MS = 100; // Exponential backoff: 100ms, 200ms, 400ms
 
         public event EventHandler<DevicePingResult>? OnDeviceChecked;
 
-        public DeviceHealthMonitorService(IRepository<Device> deviceRepo)
+        public DeviceHealthMonitorService(
+            IRepository<Device> deviceRepo,
+            IDeviceAdapterFactory adapterFactory)
         {
             _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
+            _adapterFactory = adapterFactory ?? throw new ArgumentNullException(nameof(adapterFactory));
         }
 
-        public async Task<DevicePingResult> PingDeviceAsync(Device device, int timeoutMs = 2000, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Kiểm tra kết nối thiết bị với hybrid approach
+        ///
+        /// 1. Check SDK State (Priority 1) - SDK đã auto-reconnect
+        /// 2. If disconnected → Try reconnect (Priority 2) với retry logic
+        /// </summary>
+        public async Task<DevicePingResult> PingDeviceAsync(
+            Device device,
+            int timeoutMs = 2000,
+            CancellationToken cancellationToken = default)
         {
             if (device == null) throw new ArgumentNullException(nameof(device));
 
             if (string.IsNullOrWhiteSpace(device.IpAddress))
             {
-                var r = DevicePingResult.Fail(device, "Địa chỉ IP không hợp lệ");
-                OnDeviceChecked?.Invoke(this, r);
-                return r;
+                var result = DevicePingResult.Fail(device, "Địa chỉ IP không hợp lệ", 0);
+                OnDeviceChecked?.Invoke(this, result);
+                return result;
             }
 
             var sw = Stopwatch.StartNew();
+            var adapter = _adapterFactory.GetAdapter(device);
 
-            // 1. Thử kết nối TCP Socket tới Port của Camera (Hikvision 8000, NST 3000...)
-            // Lưu ý: Bỏ qua Controller (C3-200) vì thiết bị này chỉ cho phép 1 kết nối duy nhất và sẽ bị ngắt session Pull SDK nếu có TcpClient khác mở vào port 4370
-            if (device.Port > 0 && device.Type != DeviceType.Controller)
+            // =========================================================================
+            // PRIORITY 1: CHECK SDK STATE
+            // =========================================================================
+            // SDK đã handle auto-reconnect nếu có cable hiccup
+            // Nếu IsConnected = true → Device online
+            if (adapter.IsConnected)
             {
+                sw.Stop();
+                AppLogger.Debug($"[HealthCheck] {device.Name} SDK Connected ({device.IpAddress})");
+
+                var successResult = DevicePingResult.Success(
+                    device,
+                    sw.ElapsedMilliseconds,
+                    $"SDK Connected (auto-recovered)");
+
+                // Fire event AFTER return - tránh race condition
+                OnDeviceChecked?.Invoke(this, successResult);
+                return successResult;
+            }
+
+            // =========================================================================
+            // PRIORITY 2: TRY RECONNECT WITH RETRY
+            // =========================================================================
+            // Device disconnected → Thử reconnect với retry logic
+            // Dùng exponential backoff để tránh spam device
+            AppLogger.Information($"[HealthCheck] {device.Name} SDK Disconnected. Thử reconnect...");
+
+            int successfulRetryCount = 0;
+
+            for (int retry = 0; retry < MAX_RETRIES; retry++)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                AppLogger.Debug($"[HealthCheck] {device.Name} reconnect lần {retry + 1}/{MAX_RETRIES}");
+
                 try
                 {
-                    using var tcpClient = new TcpClient();
-                    var connectTask = tcpClient.ConnectAsync(device.IpAddress, device.Port);
-                    var timeoutTask = Task.Delay(timeoutMs, cancellationToken);
+                    bool connected = await adapter.ConnectAsync(device, cancellationToken);
 
-                    var completedTask = await Task.WhenAny(connectTask, timeoutTask);
-                    sw.Stop();
-
-                    if (completedTask == connectTask && tcpClient.Connected)
+                    if (connected)
                     {
-                        var successResult = DevicePingResult.Success(device, sw.ElapsedMilliseconds, $"TCP Port {device.Port} phản hồi OK ({sw.ElapsedMilliseconds}ms)");
+                        sw.Stop();
+                        successfulRetryCount = retry + 1;
+                        AppLogger.Information($"[HealthCheck] {device.Name} reconnect thành công (lần {successfulRetryCount})");
+
+                        var successResult = DevicePingResult.Success(
+                            device,
+                            sw.ElapsedMilliseconds,
+                            $"Reconnected thành công (lần {successfulRetryCount})",
+                            retryCount: successfulRetryCount);
+
                         OnDeviceChecked?.Invoke(this, successResult);
                         return successResult;
                     }
                 }
                 catch (Exception ex)
                 {
-                    AppLogger.Debug($"[Socket Check] {device.Name} ({device.IpAddress}:{device.Port}) lỗi: {ex.Message}");
+                    AppLogger.Warning($"[HealthCheck] {device.Name} reconnect lần {retry + 1} lỗi: {ex.Message}");
+                }
+
+                // Exponential backoff: 100ms, 200ms, 400ms
+                if (retry < MAX_RETRIES - 1)
+                {
+                    int delayMs = BASE_DELAY_MS * (int)Math.Pow(2, retry);
+                    await Task.Delay(delayMs, cancellationToken);
                 }
             }
 
-            // 2. Fallback sang ICMP Ping nếu kiểm tra Port TCP chưa thành công
-            try
-            {
-                using var pinger = new Ping();
-                var pingReply = await pinger.SendPingAsync(device.IpAddress, timeoutMs);
-                sw.Stop();
+            // =========================================================================
+            // ALL RETRIES FAILED
+            // =========================================================================
+            sw.Stop();
+            AppLogger.Warning($"[HealthCheck] {device.Name} kết nối thất bại sau {MAX_RETRIES} lần thử");
 
-                if (pingReply.Status == IPStatus.Success)
-                {
-                    long latency = pingReply.RoundtripTime > 0 ? pingReply.RoundtripTime : sw.ElapsedMilliseconds;
-                    var pingSuccess = DevicePingResult.Success(device, latency, $"Ping ICMP phản hồi OK ({latency}ms)");
-                    OnDeviceChecked?.Invoke(this, pingSuccess);
-                    return pingSuccess;
-                }
-                else
-                {
-                    var pingFail = DevicePingResult.Fail(device, $"Ping thất bại: {pingReply.Status}", sw.ElapsedMilliseconds);
-                    OnDeviceChecked?.Invoke(this, pingFail);
-                    return pingFail;
-                }
-            }
-            catch (Exception ex)
-            {
-                sw.Stop();
-                var failResult = DevicePingResult.Fail(device, ex.Message, sw.ElapsedMilliseconds);
-                OnDeviceChecked?.Invoke(this, failResult);
-                return failResult;
-            }
+            var failResult = DevicePingResult.Fail(
+                device,
+                $"Kết nối thất bại sau {MAX_RETRIES} lần thử",
+                sw.ElapsedMilliseconds,
+                retryCount: MAX_RETRIES);
+
+            OnDeviceChecked?.Invoke(this, failResult);
+            return failResult;
         }
 
-        public async Task<IReadOnlyList<DevicePingResult>> CheckAllAndSyncAsync(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Kiểm tra toàn bộ thiết bị và sync vào MongoDB
+        /// </summary>
+        public async Task<IReadOnlyList<DevicePingResult>> CheckAllAndSyncAsync(
+            CancellationToken cancellationToken = default)
         {
             var results = new List<DevicePingResult>();
 
@@ -106,14 +163,17 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted, cancellationToken);
                 if (devices == null || devices.Count == 0)
                 {
+                    AppLogger.Debug("[DeviceHealth] Không có thiết bị nào để kiểm tra");
                     return results;
                 }
+
+                AppLogger.Information($"[DeviceHealth] Bắt đầu kiểm tra {devices.Count} thiết bị...");
 
                 // Kiểm tra song song đồng thời tất cả thiết bị
                 var checkTasks = devices.Select(d => PingDeviceAsync(d, 2000, cancellationToken)).ToList();
                 var pingResults = await Task.WhenAll(checkTasks);
 
-                // Đồng bộ trạng thái vào MongoDB
+                // Sync trạng thái vào MongoDB
                 foreach (var res in pingResults)
                 {
                     results.Add(res);
@@ -121,26 +181,33 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 }
 
                 int onlineCount = results.Count(r => r.IsSuccess);
-                AppLogger.Information($"[DeviceHealth] Đã kiểm tra {results.Count} thiết bị: {onlineCount} Online, {results.Count - onlineCount} Offline.");
+                AppLogger.Information($"[DeviceHealth] Hoàn thành: {onlineCount}/{results.Count} thiết bị Online");
             }
             catch (Exception ex)
             {
-                AppLogger.Error(ex, "Lỗi kiểm tra danh sách thiết bị và đồng bộ CSDL");
+                AppLogger.Error(ex, "[DeviceHealth] Lỗi kiểm tra danh sách thiết bị");
             }
 
             return results;
         }
 
-        public async Task SyncStatusToDbAsync(DevicePingResult result, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Đồng bộ trạng thái thiết bị vào MongoDB
+        /// </summary>
+        public async Task SyncStatusToDbAsync(
+            DevicePingResult result,
+            CancellationToken cancellationToken = default)
         {
             if (result?.Device == null) return;
 
             try
             {
                 var dev = result.Device;
+
                 if (result.IsSuccess)
                 {
                     dev.MarkConnected();
+                    dev.ErrorMessage = null; // Clear error
                 }
                 else
                 {
@@ -149,10 +216,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 }
 
                 await _deviceRepo.UpdateAsync(dev, cancellationToken);
+                AppLogger.Debug($"[DeviceHealth] Sync {dev.Name}: {result.Status}");
             }
             catch (Exception ex)
             {
-                AppLogger.Warning($"Lỗi đồng bộ trạng thái thiết bị '{result.Device.Name}' vào MongoDB: {ex.Message}");
+                AppLogger.Warning($"[DeviceHealth] Lỗi sync '{result.Device.Name}': {ex.Message}");
             }
         }
     }

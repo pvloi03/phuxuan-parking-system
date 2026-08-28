@@ -36,7 +36,15 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IRepository<Lane> _laneRepo;
         private readonly IDeviceHealthMonitorService _deviceHealthService;
         private readonly IDeviceConfigService _deviceConfigService = null!;
+        private readonly IDeviceAdapterFactory _adapterFactory;
         private readonly LicenseManager _licenseManager;
+
+        // Device IDs cho Health Monitor
+        private string _inPlateCamDeviceId = string.Empty;
+        private string _outPlateCamDeviceId = string.Empty;
+        private string _inOverviewCamDeviceId = string.Empty;
+        private string _outOverviewCamDeviceId = string.Empty;
+        private string _controllerDeviceId = string.Empty;
 
         private string _captureDir = "";
         private string _controllerIp = "192.168.1.202";
@@ -63,7 +71,8 @@ namespace PhuXuanParkingSystem.Forms
                 _anprService = Program.ServiceProvider.GetService<IPlateRecognitionService>() ?? new SimpleLprAnprService();
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
                 _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
-                _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo);
+                _adapterFactory = Program.ServiceProvider.GetService<IDeviceAdapterFactory>() ?? new DeviceAdapterFactory();
+                _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
                 _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             }
             else
@@ -78,7 +87,8 @@ namespace PhuXuanParkingSystem.Forms
                 _anprService = new SimpleLprAnprService();
                 _deviceRepo = new MongoRepository<Device>();
                 _laneRepo = new MongoRepository<Lane>();
-                _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo);
+                _adapterFactory = new DeviceAdapterFactory();
+                _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
                 _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             }
 
@@ -94,7 +104,8 @@ namespace PhuXuanParkingSystem.Forms
             IPlateRecognitionService anprService,
             IRepository<Device> deviceRepo,
             IRepository<Lane>? laneRepo = null,
-            IDeviceHealthMonitorService? deviceHealthService = null)
+            IDeviceHealthMonitorService? deviceHealthService = null,
+            IDeviceAdapterFactory? adapterFactory = null)
         {
             InitializeComponent();
 
@@ -103,7 +114,8 @@ namespace PhuXuanParkingSystem.Forms
             _anprService = anprService ?? new SimpleLprAnprService();
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
             _laneRepo = laneRepo ?? new MongoRepository<Lane>();
-            _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo);
+            _adapterFactory = adapterFactory ?? new DeviceAdapterFactory();
+            _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
             _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
@@ -203,11 +215,46 @@ namespace PhuXuanParkingSystem.Forms
 
             await AutoConnectAllAsync();
 
+            // Đăng ký adapters với factory để DeviceHealthMonitor sử dụng
+            RegisterDeviceAdapters();
+
             // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
             StartDeviceSyncBackgroundWorker();
 
             // Bắt đầu giám sát thay đổi cấu hình từ Web Admin mỗi 5 phút
             StartConfigMonitoring();
+        }
+
+        /// <summary>
+        /// Đăng ký device adapters với factory để HealthMonitor sử dụng
+        /// </summary>
+        private void RegisterDeviceAdapters()
+        {
+            try
+            {
+                if (_adapterFactory is DeviceAdapterFactory factory)
+                {
+                    // Register cameras với device IDs
+                    factory.RegisterCameras(
+                        _inPlateCam,
+                        _outPlateCam,
+                        _inOverviewCam,
+                        _outOverviewCam,
+                        _inPlateCamDeviceId,
+                        _outPlateCamDeviceId,
+                        _inOverviewCamDeviceId,
+                        _outOverviewCamDeviceId);
+
+                    // Register controller với device ID
+                    factory.RegisterController(_controller, _controllerDeviceId);
+
+                    AppLogger.Information("[FrmMain] Đã đăng ký device adapters với factory");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"[FrmMain] Lỗi đăng ký device adapters: {ex.Message}");
+            }
         }
 
         private void StartDeviceSyncBackgroundWorker()
@@ -284,8 +331,8 @@ namespace PhuXuanParkingSystem.Forms
             try
             {
                 var frm = Program.ServiceProvider != null
-                    ? (ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo))
-                    : new FrmDeviceMonitor(_deviceHealthService, _deviceRepo);
+                    ? (ServiceProviderServiceExtensions.GetService<FrmDeviceMonitor>(Program.ServiceProvider) ?? new FrmDeviceMonitor(_deviceHealthService, _deviceRepo, _adapterFactory))
+                    : new FrmDeviceMonitor(_deviceHealthService, _deviceRepo, _adapterFactory);
 
                 frm.ShowDialog(this);
             }
