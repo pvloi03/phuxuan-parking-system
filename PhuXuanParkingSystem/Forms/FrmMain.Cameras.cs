@@ -34,11 +34,13 @@ namespace PhuXuanParkingSystem.Forms
         private readonly Pen _penNormalBorder = new(Color.FromArgb(50, 55, 60), 1);
         private readonly Pen _penConnectingBorder = new(Color.FromArgb(0, 123, 255), 2);
         private readonly Pen _penErrorBorder = new(Color.FromArgb(220, 53, 69), 3);
+        private readonly Pen _penStreamingBorder = new(Color.FromArgb(40, 167, 69), 2); // Green
         private readonly SolidBrush _brushConnectingBg = new(Color.FromArgb(26, 30, 35));
         private readonly SolidBrush _brushConnectingText = new(Color.FromArgb(100, 180, 255));
         private readonly SolidBrush _brushErrorBg = new(Color.FromArgb(20, 22, 25));
         private readonly SolidBrush _brushErrorText = new(Color.FromArgb(235, 75, 75));
         private readonly SolidBrush _brushSubText = new(Color.FromArgb(180, 190, 200));
+        private readonly SolidBrush _brushStreamingText = new(Color.FromArgb(40, 167, 69)); // Green
 
         private void LoadConfigurations()
         {
@@ -158,21 +160,22 @@ namespace PhuXuanParkingSystem.Forms
 
                 await Task.WhenAll(inPltTask, inOvwTask, outPltTask, outOvwTask, ctrlTask);
 
-                _inPlateState = inPltTask.Result ? DeviceConnectionState.Connected : DeviceConnectionState.Failed;
-                _inOverviewState = inOvwTask.Result ? DeviceConnectionState.Connected : DeviceConnectionState.Failed;
-                _outPlateState = outPltTask.Result ? DeviceConnectionState.Connected : DeviceConnectionState.Failed;
-                _outOverviewState = outOvwTask.Result ? DeviceConnectionState.Connected : DeviceConnectionState.Failed;
+                _inPlateState = inPltTask.Result ? DeviceConnectionState.Streaming : DeviceConnectionState.Error;
+                _inOverviewState = inOvwTask.Result ? DeviceConnectionState.Streaming : DeviceConnectionState.Error;
+                _outPlateState = outPltTask.Result ? DeviceConnectionState.Streaming : DeviceConnectionState.Error;
+                _outOverviewState = outOvwTask.Result ? DeviceConnectionState.Streaming : DeviceConnectionState.Error;
                 bool ctrlOk = ctrlTask.Result;
 
-                if (_inPlateState == DeviceConnectionState.Connected) _inPlateCam.StartPreview(pnlInPlateVideo.Handle);
-                if (_inOverviewState == DeviceConnectionState.Connected) _inOverviewCam.StartPreview(pnlInOverviewVideo.Handle);
-                if (_outPlateState == DeviceConnectionState.Connected) _outPlateCam.StartPreview(pnlOutPlateVideo.Handle);
-                if (_outOverviewState == DeviceConnectionState.Connected) _outOverviewCam.StartPreview(pnlOutOverviewVideo.Handle);
+                // Start preview cho cameras
+                if (inPltTask.Result) _inPlateCam.StartPreview(pnlInPlateVideo.Handle);
+                if (inOvwTask.Result) _inOverviewCam.StartPreview(pnlInOverviewVideo.Handle);
+                if (outPltTask.Result) _outPlateCam.StartPreview(pnlOutPlateVideo.Handle);
+                if (outOvwTask.Result) _outOverviewCam.StartPreview(pnlOutOverviewVideo.Handle);
 
                 InvalidateCameraPanels();
 
-                bool inAllOk = _inPlateState == DeviceConnectionState.Connected && _inOverviewState == DeviceConnectionState.Connected;
-                bool outAllOk = _outPlateState == DeviceConnectionState.Connected && _outOverviewState == DeviceConnectionState.Connected;
+                bool inAllOk = _inPlateState == DeviceConnectionState.Streaming && _inOverviewState == DeviceConnectionState.Streaming;
+                bool outAllOk = _outPlateState == DeviceConnectionState.Streaming && _outOverviewState == DeviceConnectionState.Streaming;
 
                 string inStatus = inAllOk ? "Làn Vào: Sẵn sàng" : "Làn Vào: Có Camera Mất Tín Hiệu";
                 string outStatus = outAllOk ? "Làn Ra: Sẵn sàng" : "Làn Ra: Có Camera Mất Tín Hiệu";
@@ -183,10 +186,10 @@ namespace PhuXuanParkingSystem.Forms
             }
             catch (Exception ex)
             {
-                _inPlateState = DeviceConnectionState.Failed;
-                _inOverviewState = DeviceConnectionState.Failed;
-                _outPlateState = DeviceConnectionState.Failed;
-                _outOverviewState = DeviceConnectionState.Failed;
+                _inPlateState = DeviceConnectionState.Error;
+                _inOverviewState = DeviceConnectionState.Error;
+                _outPlateState = DeviceConnectionState.Error;
+                _outOverviewState = DeviceConnectionState.Error;
                 InvalidateCameraPanels();
 
                 SetHeaderStatus($"Lỗi kết nối: {ex.Message}");
@@ -230,46 +233,81 @@ namespace PhuXuanParkingSystem.Forms
 
         private void DrawVideoPanelStatus(Panel pnl, DeviceConnectionState state, string camTitle, string? ip, PaintEventArgs e)
         {
-            if (state == DeviceConnectionState.Connected)
-            {
-                e.Graphics.DrawRectangle(_penNormalBorder, 0, 0, pnl.Width - 1, pnl.Height - 1);
-                return;
-            }
-
             string subtitle = $"{camTitle} ({ip ?? "IP trống"})";
 
-            if (state == DeviceConnectionState.Connecting)
+            switch (state)
             {
-                e.Graphics.FillRectangle(_brushConnectingBg, 0, 0, pnl.Width, pnl.Height);
-                e.Graphics.DrawRectangle(_penConnectingBorder, 1, 1, pnl.Width - 3, pnl.Height - 3);
+                case DeviceConnectionState.Disconnected:
+                    // Không hiển thị gì - panel trống
+                    return;
 
-                string title = "🔄 ĐANG KẾT NỐI...";
-                var szTitle = e.Graphics.MeasureString(title, _fontBoldStatus);
-                var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+                case DeviceConnectionState.Connecting:
+                    DrawConnectingStatus(pnl, subtitle, e);
+                    return;
 
-                float startY = (pnl.Height - (szTitle.Height + szSub.Height + 6)) / 2;
-                float xTitle = (pnl.Width - szTitle.Width) / 2;
-                float xSub = (pnl.Width - szSub.Width) / 2;
+                case DeviceConnectionState.Connected:
+                    // Border nhẹ - đã kết nối nhưng chưa streaming
+                    e.Graphics.DrawRectangle(_penNormalBorder, 0, 0, pnl.Width - 1, pnl.Height - 1);
+                    return;
 
-                e.Graphics.DrawString(title, _fontBoldStatus, _brushConnectingText, xTitle, startY);
-                e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, startY + szTitle.Height + 6);
+                case DeviceConnectionState.Streaming:
+                    // Border xanh + chỉ báo đang streaming
+                    e.Graphics.DrawRectangle(_penStreamingBorder, 0, 0, pnl.Width - 1, pnl.Height - 1);
+                    DrawStreamingIndicator(pnl, subtitle, e);
+                    return;
+
+                case DeviceConnectionState.Error:
+                    DrawErrorStatus(pnl, subtitle, e);
+                    return;
             }
-            else
-            {
-                e.Graphics.FillRectangle(_brushErrorBg, 0, 0, pnl.Width, pnl.Height);
-                e.Graphics.DrawRectangle(_penErrorBorder, 1, 1, pnl.Width - 3, pnl.Height - 3);
+        }
 
-                string title = "❌ KHÔNG KẾT NỐI ĐƯỢC";
-                var szTitle = e.Graphics.MeasureString(title, _fontBoldStatus);
-                var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+        private void DrawConnectingStatus(Panel pnl, string subtitle, PaintEventArgs e)
+        {
+            e.Graphics.FillRectangle(_brushConnectingBg, 0, 0, pnl.Width, pnl.Height);
+            e.Graphics.DrawRectangle(_penConnectingBorder, 1, 1, pnl.Width - 3, pnl.Height - 3);
 
-                float startY = (pnl.Height - (szTitle.Height + szSub.Height + 6)) / 2;
-                float xTitle = (pnl.Width - szTitle.Width) / 2;
-                float xSub = (pnl.Width - szSub.Width) / 2;
+            string title = "🔄 ĐANG KẾT NỐI...";
+            var szTitle = e.Graphics.MeasureString(title, _fontBoldStatus);
+            var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
 
-                e.Graphics.DrawString(title, _fontBoldStatus, _brushErrorText, xTitle, startY);
-                e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, startY + szTitle.Height + 6);
-            }
+            float startY = (pnl.Height - (szTitle.Height + szSub.Height + 6)) / 2;
+            float xTitle = (pnl.Width - szTitle.Width) / 2;
+            float xSub = (pnl.Width - szSub.Width) / 2;
+
+            e.Graphics.DrawString(title, _fontBoldStatus, _brushConnectingText, xTitle, startY);
+            e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, startY + szTitle.Height + 6);
+        }
+
+        private void DrawStreamingIndicator(Panel pnl, string subtitle, PaintEventArgs e)
+        {
+            // Small green dot + "LIVE" text in corner
+            string title = "● LIVE";
+            var szTitle = e.Graphics.MeasureString(title, _fontSubStatus);
+            e.Graphics.DrawString(title, _fontSubStatus, _brushStreamingText, 8, 8);
+
+            // Small subtitle at bottom
+            var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+            float xSub = (pnl.Width - szSub.Width) / 2;
+            float ySub = pnl.Height - szSub.Height - 8;
+            e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, ySub);
+        }
+
+        private void DrawErrorStatus(Panel pnl, string subtitle, PaintEventArgs e)
+        {
+            e.Graphics.FillRectangle(_brushErrorBg, 0, 0, pnl.Width, pnl.Height);
+            e.Graphics.DrawRectangle(_penErrorBorder, 1, 1, pnl.Width - 3, pnl.Height - 3);
+
+            string title = "❌ MẤT KẾT NỐI";
+            var szTitle = e.Graphics.MeasureString(title, _fontBoldStatus);
+            var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+
+            float startY = (pnl.Height - (szTitle.Height + szSub.Height + 6)) / 2;
+            float xTitle = (pnl.Width - szTitle.Width) / 2;
+            float xSub = (pnl.Width - szSub.Width) / 2;
+
+            e.Graphics.DrawString(title, _fontBoldStatus, _brushErrorText, xTitle, startY);
+            e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, startY + szTitle.Height + 6);
         }
 
         private void CleanupCameras()
@@ -286,11 +324,13 @@ namespace PhuXuanParkingSystem.Forms
             _penNormalBorder.Dispose();
             _penConnectingBorder.Dispose();
             _penErrorBorder.Dispose();
+            _penStreamingBorder.Dispose();
             _brushConnectingBg.Dispose();
             _brushConnectingText.Dispose();
             _brushErrorBg.Dispose();
             _brushErrorText.Dispose();
             _brushSubText.Dispose();
+            _brushStreamingText.Dispose();
         }
     }
 }

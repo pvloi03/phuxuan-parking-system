@@ -228,6 +228,12 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         }
 
         public bool IsConnected => false;
+        public bool IsStreaming => false;
+
+        public Task<bool> PingAsync(int timeoutMs = 2000, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
 
         public Task<bool> ConnectAsync(Device device, CancellationToken cancellationToken = default)
         {
@@ -243,5 +249,9 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         {
             return Task.FromResult(false);
         }
+
+#pragma warning disable CS0067
+        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
+#pragma warning restore CS0067
     }
 }

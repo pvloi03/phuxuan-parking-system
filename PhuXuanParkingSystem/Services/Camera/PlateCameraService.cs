@@ -1,8 +1,8 @@
-﻿using PhuXuanParkingSystem.Services.Notification;
-using PhuXuanParkingSystem.Services.Logging;
+﻿using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.SDK.NST;
+using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Notification;
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +29,17 @@ namespace PhuXuanParkingSystem.Services.Camera
         public CameraConfig Config { get; set; } = new();
 
         public bool IsLoggedIn { get; private set; }
+
+        /// <summary>
+        /// TRUE = đang streaming video
+        /// </summary>
+        public bool IsStreaming { get; private set; }
+
+        /// <summary>
+        /// Event khi trạng thái kết nối thay đổi
+        /// Dùng cho DeviceHealthManager sync với UI
+        /// </summary>
+        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
 
 
         public PlateCameraService()
@@ -70,14 +81,13 @@ namespace PhuXuanParkingSystem.Services.Camera
                         return false;
                     }
 
-                    int errCode = 0;
                     _handle = CHISDK.HI_SDK_LoginExt(
                         Config.Ip,
                         Config.UserName ?? "",
                         Config.Password ?? "",
                         Config.Port,
                         5000,
-                        out errCode);
+                        out int errCode);
 
                     IsLoggedIn = _handle > 0;
 
@@ -87,6 +97,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                         CHISDK.HI_SDK_SetReconnect(_handle, 5000);
 
                         AppNotificationService.NotifySuccess(NotificationCategory.Camera, "Camera Biển Số", $"Đã kết nối Camera Biển Số ({Config.Ip}:{Config.Port}) thành công.", Config.Ip);
+                        OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Connected);
                         return true;
                     }
 
@@ -127,6 +138,8 @@ namespace PhuXuanParkingSystem.Services.Camera
                 else
                 {
                     _isPreviewing = true;
+                    IsStreaming = true;
+                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Streaming);
                 }
 
                 return success;
@@ -145,8 +158,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     if (!IsLoggedIn || _handle <= 0) return null;
 
                     // Cách 1: Chụp trực tiếp vào buffer bộ nhớ
-                    int imageSize = 0;
-                    int ret = CHISDK.HI_SDK_SnapJpeg(_handle, _captureBuffer, CaptureBufferSize, out imageSize);
+                    int ret = CHISDK.HI_SDK_SnapJpeg(_handle, _captureBuffer, CaptureBufferSize, out int imageSize);
 
                     if (ret == CHISDK.HI_SUCCESS && imageSize > 0)
                     {
@@ -221,6 +233,8 @@ namespace PhuXuanParkingSystem.Services.Camera
                     }
                     catch { }
                     _isPreviewing = false;
+                    IsStreaming = false;
+                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
                 }
             }
         }
@@ -233,11 +247,19 @@ namespace PhuXuanParkingSystem.Services.Camera
                 {
                     try
                     {
+                        CHISDK.HI_SDK_StopRealPlay(_handle);
+                    }
+                    catch { }
+
+                    try
+                    {
                         CHISDK.HI_SDK_Logout(_handle);
                     }
                     catch { }
                     _handle = 0;
                     IsLoggedIn = false;
+                    IsStreaming = false;
+                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
                 }
             }
         }

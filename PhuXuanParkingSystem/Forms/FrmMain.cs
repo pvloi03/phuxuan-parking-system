@@ -1,8 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using PhuXuanParkingSystem.Licensing;
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
+using PhuXuanParkingSystem.Services.Camera;
+using PhuXuanParkingSystem.Services.Controller;
 using PhuXuanParkingSystem.Services.DeviceConfig;
 using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.License;
@@ -15,12 +18,6 @@ using System.Windows.Forms;
 
 namespace PhuXuanParkingSystem.Forms
 {
-    public enum DeviceConnectionState
-    {
-        Connecting,
-        Connected,
-        Failed
-    }
 
     /// <summary>
     /// Giao diện chính Hệ Thống Kiểm Soát Bãi Xe (WinForms Presentation Layer)
@@ -37,6 +34,7 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IDeviceHealthMonitorService _deviceHealthService;
         private readonly IDeviceConfigService _deviceConfigService = null!;
         private readonly IDeviceAdapterFactory _adapterFactory;
+        private readonly DeviceHealthManager _deviceHealthManager = new DeviceHealthManager();
         private readonly LicenseManager _licenseManager;
 
         // Device IDs cho Health Monitor
@@ -213,7 +211,16 @@ namespace PhuXuanParkingSystem.Forms
             // Kiểm tra và thực thi bản quyền phần mềm
             await CheckAndEnforceLicenseAsync();
 
+            // Đăng ký event handler TRƯỚC KHI kết nối - tránh miss events
+            _deviceHealthManager.OnStateChanged += DeviceHealthManager_OnStateChanged;
+
             await AutoConnectAllAsync();
+
+            // Đăng ký devices với DeviceHealthManager SAU KHI kết nối thành công
+            RegisterDevicesWithHealthManager();
+
+            // Bắt đầu health check định kỳ (30 giây)
+            _deviceHealthManager.StartHealthCheck(TimeSpan.FromSeconds(30));
 
             // Đăng ký adapters với factory để DeviceHealthMonitor sử dụng
             RegisterDeviceAdapters();
@@ -223,6 +230,209 @@ namespace PhuXuanParkingSystem.Forms
 
             // Bắt đầu giám sát thay đổi cấu hình từ Web Admin mỗi 5 phút
             StartConfigMonitoring();
+        }
+
+        /// <summary>
+        /// Xử lý sự kiện thay đổi trạng thái từ DeviceHealthManager
+        /// </summary>
+        private void DeviceHealthManager_OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => DeviceHealthManager_OnStateChanged(sender, e)));
+                return;
+            }
+
+            AppLogger.Debug($"[FrmMain] Device state changed: {e.DeviceId} {e.OldState} → {e.NewState}");
+
+            // Cập nhật UI state tương ứng
+            UpdateCameraStateFromDeviceId(e.DeviceId, e.NewState);
+
+            // Invalidate panel nếu là camera
+            InvalidateCameraPanelByDeviceId(e.DeviceId);
+
+            // Cập nhật header status
+            UpdateHeaderStatusFromAllStates();
+        }
+
+        /// <summary>
+        /// Map DeviceId → Camera state variable
+        /// </summary>
+        private void UpdateCameraStateFromDeviceId(string deviceId, DeviceConnectionState newState)
+        {
+            if (deviceId == _inPlateCamDeviceId)
+                _inPlateState = newState;
+            else if (deviceId == _outPlateCamDeviceId)
+                _outPlateState = newState;
+            else if (deviceId == _inOverviewCamDeviceId)
+                _inOverviewState = newState;
+            else if (deviceId == _outOverviewCamDeviceId)
+                _outOverviewState = newState;
+        }
+
+        /// <summary>
+        /// Invalidate panel tương ứng với device
+        /// </summary>
+        private void InvalidateCameraPanelByDeviceId(string deviceId)
+        {
+            if (deviceId == _inPlateCamDeviceId)
+                pnlInPlateVideo.Invalidate();
+            else if (deviceId == _outPlateCamDeviceId)
+                pnlOutPlateVideo.Invalidate();
+            else if (deviceId == _inOverviewCamDeviceId)
+                pnlInOverviewVideo.Invalidate();
+            else if (deviceId == _outOverviewCamDeviceId)
+                pnlOutOverviewVideo.Invalidate();
+        }
+
+        /// <summary>
+        /// Đăng ký các device đã kết nối với DeviceHealthManager để theo dõi
+        /// Đăng ký trực tiếp từ các service instances đã có
+        /// </summary>
+        private void RegisterDevicesWithHealthManager()
+        {
+            try
+            {
+                // Tạo Device entity từ camera service config
+                var inPlateDevice = CreateDeviceFromCameraConfig(_inPlateCam, "InPlateCam", DeviceType.PlateCamera, _inPlateCamDeviceId);
+                var outPlateDevice = CreateDeviceFromCameraConfig(_outPlateCam, "OutPlateCam", DeviceType.PlateCamera, _outPlateCamDeviceId);
+                var inOvwDevice = CreateDeviceFromCameraConfig(_inOverviewCam, "InOverviewCam", DeviceType.OverviewCamera, _inOverviewCamDeviceId);
+                var outOvwDevice = CreateDeviceFromCameraConfig(_outOverviewCam, "OutOverviewCam", DeviceType.OverviewCamera, _outOverviewCamDeviceId);
+
+                // Tạo Device entity cho Controller
+                var controllerDevice = new Device
+                {
+                    Id = _controllerDeviceId,
+                    Code = "C3-200-01",
+                    Name = "Bộ Điều Khiển C3-200",
+                    Type = DeviceType.Controller,
+                    IpAddress = _controllerIp,
+                    Port = _controllerPort
+                };
+
+                // Đăng ký cameras
+                if (!string.IsNullOrEmpty(_inPlateCamDeviceId) && inPlateDevice != null)
+                    _deviceHealthManager.RegisterDevice(_inPlateCamDeviceId, inPlateDevice, new PlateCameraAdapter(_inPlateCam), pnlInPlateVideo.Handle);
+
+                if (!string.IsNullOrEmpty(_outPlateCamDeviceId) && outPlateDevice != null)
+                    _deviceHealthManager.RegisterDevice(_outPlateCamDeviceId, outPlateDevice, new PlateCameraAdapter(_outPlateCam), pnlOutPlateVideo.Handle);
+
+                if (!string.IsNullOrEmpty(_inOverviewCamDeviceId) && inOvwDevice != null)
+                    _deviceHealthManager.RegisterDevice(_inOverviewCamDeviceId, inOvwDevice, new OverviewCameraAdapter(_inOverviewCam), pnlInOverviewVideo.Handle);
+
+                if (!string.IsNullOrEmpty(_outOverviewCamDeviceId) && outOvwDevice != null)
+                    _deviceHealthManager.RegisterDevice(_outOverviewCamDeviceId, outOvwDevice, new OverviewCameraAdapter(_outOverviewCam), pnlOutOverviewVideo.Handle);
+
+                // Đăng ký Controller
+                if (!string.IsNullOrEmpty(_controllerDeviceId))
+                    _deviceHealthManager.RegisterDevice(_controllerDeviceId, controllerDevice, new ZKTecoAdapter(_controller));
+
+                AppLogger.Information("[FrmMain] Đã đăng ký devices với DeviceHealthManager");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"[FrmMain] Lỗi đăng ký devices với DeviceHealthManager: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Tạo Device entity từ CameraService config
+        /// </summary>
+        private Device? CreateDeviceFromCameraConfig(PlateCameraService camService, string code, DeviceType type, string deviceId)
+        {
+            if (camService?.Config == null || string.IsNullOrEmpty(camService.Config.Ip))
+                return null;
+
+            return new Device
+            {
+                Id = deviceId,
+                Code = code,
+                Name = $"{type} ({camService.Config.Ip})",
+                Type = type,
+                IpAddress = camService.Config.Ip,
+                Port = camService.Config.Port,
+                UserName = camService.Config.UserName,
+                Password = camService.Config.Password
+            };
+        }
+
+        /// <summary>
+        /// Tạo Device entity từ CameraService config
+        /// </summary>
+        private Device? CreateDeviceFromCameraConfig(OverviewCameraService camService, string code, DeviceType type, string deviceId)
+        {
+            if (camService?.Config == null || string.IsNullOrEmpty(camService.Config.Ip))
+                return null;
+
+            return new Device
+            {
+                Id = deviceId,
+                Code = code,
+                Name = $"{type} ({camService.Config.Ip})",
+                Type = type,
+                IpAddress = camService.Config.Ip,
+                Port = camService.Config.Port,
+                UserName = camService.Config.UserName,
+                Password = camService.Config.Password
+            };
+        }
+
+        /// <summary>
+        /// Đăng ký một device với DeviceHealthManager
+        /// </summary>
+        private void RegisterSingleDeviceWithHealthManager(Device device)
+        {
+            if (device == null) return;
+
+            var adapter = GetAdapterForDevice(device);
+            if (adapter == null) return;
+
+            // Lấy preview handle nếu là camera
+            IntPtr? previewHandle = null;
+            if (device.Type == DeviceType.PlateCamera)
+            {
+                if (device.Id == _inPlateCamDeviceId)
+                    previewHandle = pnlInPlateVideo.Handle;
+                else if (device.Id == _outPlateCamDeviceId)
+                    previewHandle = pnlOutPlateVideo.Handle;
+            }
+            else if (device.Type == DeviceType.OverviewCamera)
+            {
+                if (device.Id == _inOverviewCamDeviceId)
+                    previewHandle = pnlInOverviewVideo.Handle;
+                else if (device.Id == _outOverviewCamDeviceId)
+                    previewHandle = pnlOutOverviewVideo.Handle;
+            }
+
+            _deviceHealthManager.RegisterDevice(device.Id, device, adapter, previewHandle);
+        }
+
+        /// <summary>
+        /// Lấy adapter phù hợp cho device
+        /// </summary>
+        private IDeviceAdapter? GetAdapterForDevice(Device device)
+        {
+            switch (device.Type)
+            {
+                case DeviceType.PlateCamera:
+                    if (device.Id == _inPlateCamDeviceId)
+                        return new PlateCameraAdapter(_inPlateCam);
+                    if (device.Id == _outPlateCamDeviceId)
+                        return new PlateCameraAdapter(_outPlateCam);
+                    break;
+
+                case DeviceType.OverviewCamera:
+                    if (device.Id == _inOverviewCamDeviceId)
+                        return new OverviewCameraAdapter(_inOverviewCam);
+                    if (device.Id == _outOverviewCamDeviceId)
+                        return new OverviewCameraAdapter(_outOverviewCam);
+                    break;
+
+                case DeviceType.Controller:
+                    return new ZKTecoAdapter(_controller);
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -255,6 +465,25 @@ namespace PhuXuanParkingSystem.Forms
             {
                 AppLogger.Warning($"[FrmMain] Lỗi đăng ký device adapters: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Cập nhật header status dựa trên trạng thái của tất cả cameras
+        /// </summary>
+        private void UpdateHeaderStatusFromAllStates()
+        {
+            bool inPlateOk = _inPlateState == DeviceConnectionState.Connected || _inPlateState == DeviceConnectionState.Streaming;
+            bool inOvwOk = _inOverviewState == DeviceConnectionState.Connected || _inOverviewState == DeviceConnectionState.Streaming;
+            bool outPlateOk = _outPlateState == DeviceConnectionState.Connected || _outPlateState == DeviceConnectionState.Streaming;
+            bool outOvwOk = _outOverviewState == DeviceConnectionState.Connected || _outOverviewState == DeviceConnectionState.Streaming;
+
+            bool inAllOk = inPlateOk && inOvwOk;
+            bool outAllOk = outPlateOk && outOvwOk;
+
+            string inStatus = inAllOk ? "Làn Vào: ✅" : "Làn Vào: ❌";
+            string outStatus = outAllOk ? "Làn Ra: ✅" : "Làn Ra: ❌";
+
+            SetHeaderStatus($"{inStatus}  |  {outStatus}");
         }
 
         private void StartDeviceSyncBackgroundWorker()

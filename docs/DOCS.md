@@ -1,4 +1,4 @@
-﻿# TÀI LIỆU KỸ THUẬT HỆ THỐNG QUẢN LÝ BÃI XE THÁI THỤY
+﻿# TÀI LIỆU KỸ THUẬT HỆ THỐNG
 **PhuXuanParkingSystem** — Hệ thống Kiểm soát Xe Thông minh (1 Làn Vào - 1 Làn Ra - 4 Camera - 1 Controller - MongoDB)
 
 ---

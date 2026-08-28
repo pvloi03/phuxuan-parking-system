@@ -1,5 +1,7 @@
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Controller;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,13 +16,33 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
         public ZKTecoAdapter(ZKTecoDeviceAdapter controllerAdapter)
         {
-            _controllerAdapter = controllerAdapter ?? throw new System.ArgumentNullException(nameof(controllerAdapter));
+            _controllerAdapter = controllerAdapter ?? throw new ArgumentNullException(nameof(controllerAdapter));
+            _controllerAdapter.OnConnectionStateChanged += (s, state) =>
+                OnConnectionStateChanged?.Invoke(this, state);
         }
 
         /// <summary>
         /// Trạng thái kết nối SDK: _handle != IntPtr.Zero
         /// </summary>
         public bool IsConnected => _controllerAdapter.IsConnected;
+
+        /// <summary>
+        /// TRUE = đang nhận log từ controller
+        /// </summary>
+        public bool IsStreaming => _controllerAdapter.IsStreaming;
+
+        /// <summary>
+        /// Event khi trạng thái kết nối thay đổi
+        /// </summary>
+        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
+
+        /// <summary>
+        /// Ping TCP đến controller IP:Port
+        /// </summary>
+        public Task<bool> PingAsync(int timeoutMs = 2000, CancellationToken cancellationToken = default)
+        {
+            return _controllerAdapter.PingAsync(timeoutMs, cancellationToken);
+        }
 
         /// <summary>
         /// Thử kết nối/reconnect tới Controller ZKTeco

@@ -39,6 +39,8 @@
 | **LaneDirection** | `In`, `Out`, `Bidirectional` | Chiều làn |
 | **DeviceType** | `PlateCamera=1`, `OverviewCamera=2`, `Controller=3` | Loại thiết bị |
 | **DeviceStatus** | `Connected`, `Disconnected`, `Error` | Trạng thái kết nối |
+| **DeviceConnectionState** | `Disconnected`, `Connecting`, `Connected`, `Streaming`, `Error` | Trạng thái kết nối & streaming của thiết bị (WinForms UI layer) |
+| **HealthCheckCycle** | Vòng đời kiểm tra thiết bị: Init → Check → Sync State → Retry (nếu fail) → Notify UI | Quản lý trạng thái thiết bị |
 | **UserRole** | `SuperAdmin`, `Manager`, `Operator` | Phân quyền |
 
 ---
@@ -58,6 +60,42 @@
 1. **DeviceType Controller** có cần phân biệt ZKTeco C3-200 với Relay đơn giản không? Hiện tại gộp chung.
 2. **Contractor** có cần liên kết ngược với Persons không? (Hiện chỉ có ContractorId trong Person)
 3. **Lane.TriggerAuxPort** có cần hỗ trợ nhiều cổng Aux không, hay chỉ 1 là đủ?
+
+---
+
+## Device Health Architecture (WinForms Layer) ✅ ĐÃ THIẾT KẾ
+
+### Separation of Concerns
+
+| Layer | Responsibility | Examples |
+|-------|---------------|----------|
+| **SDK Layer** | Low-level native calls | Init, Connect, LiveView, Disconnect, Cleanup |
+| **Application Layer** | High-level orchestration | Connection state, Health check, Retry logic, UI sync |
+
+### SDK Responsibilities (LOW-LEVEL)
+- Khởi tạo Init
+- Kết nối / Đăng nhập (Login)
+- LiveView hoặc nhận log (RealPlay/Preview)
+- Logout / Hủy LiveView
+- Cleanup
+
+### Application Responsibilities (HIGH-LEVEL)
+- Trả trạng thái khi có sự cố
+- Reconnect logic (tùy SDK có hỗ trợ auto-reconnect hay không)
+- Sync trạng thái với UI
+- Đảm bảo LiveView đồng bộ với Connection State
+
+### DeviceConnectionState Machine
+```
+Disconnected → (Connect) → Connecting → (Success) → Connected → (StartPreview) → Streaming
+     ↑                              ↓
+     └── (Error/Fail) ← ← ← ← ← ← ┘
+```
+
+### LiveView Sync Rule
+- **LiveView chỉ bắt đầu khi** `ConnectionState == Connected`
+- **LiveView dừng khi** `ConnectionState != Connected`
+- Khi SDK reconnect thành công → UI nhận event → Start LiveView lại
 
 ---
 

@@ -1,7 +1,9 @@
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.SDK.ZKTeco;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
 using System;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,6 +12,7 @@ namespace PhuXuanParkingSystem.Services.Controller
 {
     /// <summary>
     /// Adapter kết nối và lắng nghe sự kiện từ Bộ điều khiển ZKTeco C3-200 qua Pull SDK
+    /// Implements IDeviceAdapter cho DeviceHealthManager
     /// </summary>
     public class ZKTecoDeviceAdapter : IDisposable
     {
@@ -26,8 +29,37 @@ namespace PhuXuanParkingSystem.Services.Controller
 
         public event EventHandler<AuxTriggerEventArgs>? OnAuxInputTriggered;
 
+        /// <summary>
+        /// TRUE = đang nhận log từ controller (ReadLog đang chạy)
+        /// </summary>
+        public bool IsStreaming => _listeningTask != null && !_listeningTask.IsCanceled && !_listeningTask.IsFaulted;
+
+        /// <summary>
+        /// Event khi trạng thái kết nối thay đổi
+        /// </summary>
+        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
 
         public bool IsConnected => _handle != IntPtr.Zero;
+
+        /// <summary>
+        /// Ping TCP đến controller IP:Port
+        /// </summary>
+        public async Task<bool> PingAsync(int timeoutMs = 2000, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var client = new TcpClient();
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(timeoutMs);
+
+                await client.ConnectAsync(_lastIp, _lastPort);
+                return client.Connected;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         /// <summary>
         /// Kết nối tới bộ điều khiển ZKTeco qua giao thức TCP
@@ -60,6 +92,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                     {
                         StartListening();
                         AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Bộ Điều Khiển ZKTeco", $"Đã kết nối C3-200 ({ipAddress}:{port}) thành công.", ipAddress);
+                        OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Connected);
                         return true;
                     }
 
@@ -95,6 +128,7 @@ namespace PhuXuanParkingSystem.Services.Controller
             }
 
             _lastRawLog = string.Empty;
+            OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
         }
 
         private void StartListening()

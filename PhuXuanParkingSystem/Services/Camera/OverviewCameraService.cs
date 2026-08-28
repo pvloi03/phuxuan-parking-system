@@ -1,9 +1,8 @@
-﻿using PhuXuanParkingSystem.Services.Notification;
+﻿using CHCNetSDK_Library;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Logging;
-using CHCNetSDK_Library;
+using PhuXuanParkingSystem.Services.Notification;
 using System;
-using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -31,6 +30,17 @@ namespace PhuXuanParkingSystem.Services.Camera
         public CameraConfig Config { get; set; } = new();
 
         public bool IsLoggedIn { get; private set; }
+
+        /// <summary>
+        /// TRUE = đang streaming video
+        /// </summary>
+        public bool IsStreaming { get; private set; }
+
+        /// <summary>
+        /// Event khi trạng thái kết nối thay đổi
+        /// Dùng cho DeviceHealthManager sync với UI
+        /// </summary>
+        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
 
 
         public OverviewCameraService()
@@ -100,6 +110,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     if (IsLoggedIn)
                     {
                         AppNotificationService.NotifySuccess(NotificationCategory.Camera, "Camera Toàn Cảnh", $"Đã kết nối Camera Toàn Cảnh ({Config.Ip}:{Config.Port}) thành công.", Config.Ip);
+                        OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Connected);
                         return true;
                     }
 
@@ -152,6 +163,11 @@ namespace PhuXuanParkingSystem.Services.Camera
                     AppLogger.Error($"[Hikvision {Config?.Ip}] Preview thất bại. Error={errorCode}", "Hikvision");
                     AppNotificationService.NotifyError(NotificationCategory.Camera, "Camera Toàn Cảnh", $"Mở luồng Preview Camera Toàn Cảnh ({Config?.Ip}) thất bại. Mã lỗi: {errorCode}", Config?.Ip);
                 }
+                else
+                {
+                    IsStreaming = true;
+                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Streaming);
+                }
 
                 return success;
             }
@@ -170,7 +186,7 @@ namespace PhuXuanParkingSystem.Services.Camera
 
                     var jpegPara = new CHCNetSDK.NET_DVR_JPEGPARA
                     {
-                        wPicQuality = 0, // Chất lượng cao nhất
+                        wPicQuality = 2, // Chất lượng cao nhất
                         wPicSize = 0xff  // Giữ nguyên độ phân giải
                     };
 
@@ -255,6 +271,8 @@ namespace PhuXuanParkingSystem.Services.Camera
                 {
                     CHCNetSDK.NET_DVR_StopRealPlay(_realHandle);
                     _realHandle = -1;
+                    IsStreaming = false;
+                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
                 }
             }
         }
@@ -265,6 +283,13 @@ namespace PhuXuanParkingSystem.Services.Camera
             {
                 if (_userId >= 0)
                 {
+                    // Stop preview first if running
+                    if (_realHandle >= 0)
+                    {
+                        CHCNetSDK.NET_DVR_StopRealPlay(_realHandle);
+                        _realHandle = -1;
+                    }
+
                     try
                     {
                         CHCNetSDK.NET_DVR_Logout(_userId);
@@ -272,6 +297,8 @@ namespace PhuXuanParkingSystem.Services.Camera
                     catch { }
                     _userId = -1;
                     IsLoggedIn = false;
+                    IsStreaming = false;
+                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
                 }
             }
         }

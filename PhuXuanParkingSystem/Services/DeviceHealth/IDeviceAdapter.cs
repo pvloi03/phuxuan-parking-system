@@ -1,4 +1,6 @@
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,6 +17,20 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         /// TRUE = thiết bị đã login/connect thành công với SDK
         /// </summary>
         bool IsConnected { get; }
+
+        /// <summary>
+        /// TRUE = đang streaming video hoặc nhận log (Controller)
+        /// </summary>
+        bool IsStreaming { get; }
+
+        /// <summary>
+        /// Ping TCP đến IP:Port của thiết bị
+        /// Dùng cho health check - không trust SDK callbacks
+        /// </summary>
+        /// <param name="timeoutMs">Thời gian timeout (mặc định 2000ms)</param>
+        /// <param name="cancellationToken">Token hủy</param>
+        /// <returns>TRUE nếu kết nối TCP thành công</returns>
+        Task<bool> PingAsync(int timeoutMs = 2000, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Thử kết nối hoặc reconnect tới thiết bị qua SDK
@@ -37,5 +53,10 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         /// <param name="cancellationToken">Token hủy</param>
         /// <returns>TRUE nếu restart thành công</returns>
         Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Event khi trạng thái kết nối thay đổi (Connected, Disconnected, Streaming, Error)
+        /// </summary>
+        event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
     }
 }
