@@ -22,6 +22,7 @@
 | **[Task 019](task-013-to-019-system-upgrade-plan.md)** | Hệ Thống Phân Quyền Đa Tầng (RBAC) | ✅ **Hoàn thành** | 3 cấp vai trò: Super Admin, Manager, Operator. JWT Claims + Middleware + Frontend UI Permissions. |
 | **[Task 020](task-020-device-status-monitor-winform-sync.md)** | Giám Sát Tình Trạng Thiết Bị WinForms | ✅ **Hoàn thành** | Màn hình `FrmDeviceMonitor` + `DeviceHealthMonitorService` kiểm tra TCP/Ping, đồng bộ trạng thái lên Web Admin. Phím tắt F9. |
 | **[Task 021](task-021-dynamic-lane-device-config-sync.md)** | Nạp Cấu Hình Động Từ MongoDB | ✅ **Hoàn thành** | Đọc cấu hình Camera/Controller trực tiếp từ MongoDB theo Làn (`Lane`) → Thiết bị (`Device`). Loại bỏ hardcode App.config. |
+| **[Task 022](task-022-license-key-system.md)** | Hệ Thống Bản Quyền Phần Mềm | ✅ **Hoàn thành** | RSA-3072 License Key System với Hardware Fingerprint, WinForms LicenseTool, Footer Status, Web Admin LicensePage. 93/93 tests passed. |
 
 ---
 
