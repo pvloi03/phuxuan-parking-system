@@ -4,7 +4,7 @@
     {
         public string ConnectionType { get; set; } = "TCP"; // "TCP" or "RS485"
 
-        public string Ip { get; set; } = "192.168.1.202";
+        public string Ip { get; set; } = "";
 
         public int Port { get; set; } = 4370;
 

@@ -91,7 +91,7 @@ namespace PhuXuanParkingSystem.Services.Controller
 
                             if (!string.IsNullOrWhiteSpace(rawData))
                             {
-                                string[] lines = rawData.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                                string[] lines = rawData.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries);
                                 foreach (var line in lines)
                                 {
                                     var logEvt = ZKTecoLogEvent.Parse(line);
