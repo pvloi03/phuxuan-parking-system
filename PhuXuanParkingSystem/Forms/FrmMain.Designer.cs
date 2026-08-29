@@ -744,7 +744,7 @@ namespace PhuXuanParkingSystem.Forms
             // lblFooterLicenseSpring
             // 
             this.lblFooterLicenseSpring.Name = "lblFooterLicenseSpring";
-            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(700, 25);
+            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(676, 25);
             this.lblFooterLicenseSpring.Spring = true;
             // 
             // lblFooterMachineCode
@@ -752,15 +752,15 @@ namespace PhuXuanParkingSystem.Forms
             this.lblFooterMachineCode.Font = new System.Drawing.Font("Consolas", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblFooterMachineCode.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblFooterMachineCode.Name = "lblFooterMachineCode";
-            this.lblFooterMachineCode.Size = new System.Drawing.Size(180, 25);
+            this.lblFooterMachineCode.Size = new System.Drawing.Size(189, 25);
             this.lblFooterMachineCode.Text = "Mã Máy: PX-0000-0000";
             // 
             // lblFooterLicense
             // 
-            this.lblFooterLicense.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblFooterLicense.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblFooterLicense.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.lblFooterLicense.Name = "lblFooterLicense";
-            this.lblFooterLicense.Size = new System.Drawing.Size(260, 25);
+            this.lblFooterLicense.Size = new System.Drawing.Size(352, 25);
             this.lblFooterLicense.Text = "🛡️ Thời gian sử dụng: Đang kiểm tra...";
             this.lblFooterLicense.DoubleClick += new System.EventHandler(this.LblFooterLicense_DoubleClick);
             // 

@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using PhuXuanParkingSystem.Services.Controller;
 using System;
 using Xunit;
@@ -12,7 +12,7 @@ namespace PhuXuanParkingSystem.Tests.Services
         {
             // Arrange
             // Time,Pin,CardNo,DoorOrAuxId,EventType,InOutState,VerifyMode
-            string rawCsv = "2026-08-25 08:30:00,0,0,1,220,0,0";
+            string rawCsv = "2026-08-25 08:30:00,0,0,1,221,0,0";
 
             // Act
             var evt = ZKTecoLogEvent.Parse(rawCsv);
@@ -20,7 +20,7 @@ namespace PhuXuanParkingSystem.Tests.Services
             // Assert
             evt.Should().NotBeNull();
             evt!.DoorOrAuxId.Should().Be(1);
-            evt.EventType.Should().Be(220); // 220 = AUX radar activated
+            evt.EventType.Should().Be(221); // 221 = AUX radar activated (Có xe)
             evt.IsRadarAuxEvent.Should().BeTrue();
             evt.IsVehicleDetected.Should().BeTrue();
             evt.InOutState.Should().Be(0); // 0 = In
@@ -33,7 +33,7 @@ namespace PhuXuanParkingSystem.Tests.Services
         public void Parse_VehicleEnteringLaneOut_ShouldParseCorrectly()
         {
             // Arrange
-            string rawCsv = "2026-08-25 08:35:10,0,0,2,220,1,0";
+            string rawCsv = "2026-08-25 08:35:10,0,0,2,221,1,0";
 
             // Act
             var evt = ZKTecoLogEvent.Parse(rawCsv);
@@ -41,7 +41,7 @@ namespace PhuXuanParkingSystem.Tests.Services
             // Assert
             evt.Should().NotBeNull();
             evt!.DoorOrAuxId.Should().Be(2);
-            evt.EventType.Should().Be(220);
+            evt.EventType.Should().Be(221);
             evt.IsRadarAuxEvent.Should().BeTrue();
             evt.IsVehicleDetected.Should().BeTrue();
             evt.InOutState.Should().Be(1); // 1 = Out
@@ -52,16 +52,16 @@ namespace PhuXuanParkingSystem.Tests.Services
         public void Parse_RadarDeactivatedEvent_ShouldRecognizeRadarAuxEvent()
         {
             // Arrange
-            string rawCsv = "2026-08-25 08:35:15,0,0,1,221,0,0"; // 221 = Radar ngắt (Xe đã qua)
+            string rawCsv = "2026-08-25 08:35:15,0,0,1,220,0,0"; // 220 = Radar ngắt (Xe đã ra khỏi vùng quét)
 
             // Act
             var evt = ZKTecoLogEvent.Parse(rawCsv);
 
             // Assert
             evt.Should().NotBeNull();
-            evt!.EventType.Should().Be(221);
+            evt!.EventType.Should().Be(220);
             evt.IsRadarAuxEvent.Should().BeTrue();
-            evt.IsVehicleDetected.Should().BeFalse(); // 221 is not new vehicle entry trigger
+            evt.IsVehicleDetected.Should().BeFalse(); // 220 is not new vehicle entry trigger
         }
 
         [Theory]

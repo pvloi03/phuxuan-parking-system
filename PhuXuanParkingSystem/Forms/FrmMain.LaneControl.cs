@@ -11,13 +11,13 @@ namespace PhuXuanParkingSystem.Forms
 {
     public partial class FrmMain
     {
-        // ── 1 Controller ZKTeco C3-200 dùng chung ───────────────────────────
+        // ── 1 Access Controller dùng chung ───────────────────────────
         private readonly ZKTecoDeviceAdapter _controller = new();
 
         // ── Chống rung Radar Debounce ─────────────────────────────────────────
         private DateTime _lastInRadarTriggerTime = DateTime.MinValue;
         private DateTime _lastOutRadarTriggerTime = DateTime.MinValue;
-        private const int RADAR_DEBOUNCE_MS = 3000;
+        private const int RADAR_DEBOUNCE_MS = 1500;
 
         #region Xử Lý Sự Kiện Radar AUX (Controller Realtime)
 
@@ -48,8 +48,6 @@ namespace PhuXuanParkingSystem.Forms
                     lblInStatusVal.Text = "🟢Xe đang đi qua";
                     lblInStatusVal.ForeColor = Color.SeaGreen;
                     lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
-
-                    _ = CaptureInLaneAsync("RADAR_LAN_VAO");
                 }
                 else
                 {
@@ -76,8 +74,6 @@ namespace PhuXuanParkingSystem.Forms
                     lblOutStatusVal.Text = "🔴 Phát hiện xe ra (Radar kích hoạt)";
                     lblOutStatusVal.ForeColor = Color.SeaGreen;
                     lblOutTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
-
-                    _ = CaptureOutLaneAsync("RADAR_LAN_RA");
                 }
                 else
                 {
@@ -97,7 +93,7 @@ namespace PhuXuanParkingSystem.Forms
                 return;
             }
 
-            SetFooterStatus($"[Controller C3-200] {message}");
+            SetFooterStatus($"[Access Controller] {message}");
         }
 
         #endregion
@@ -129,7 +125,16 @@ namespace PhuXuanParkingSystem.Forms
 
                 AppLogger.Information($"[LÀN VÀO] Kết quả chụp ảnh: Plate={plateOk} ({filePlate}), Overview={ovwOk} ({fileOverview})", "LaneControl");
 
-                if (ovwOk) DisplayCapturedImage(picInOverview, fileOverview);
+                if (ovwOk)
+                {
+                    try
+                    {
+                        byte[] ovwBytes = File.ReadAllBytes(fileOverview);
+                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picInOverview, ovwBytes)));
+                        else SetPictureBoxImage(picInOverview, ovwBytes);
+                    }
+                    catch { }
+                }
 
                 PlateRecognitionResult? anprResult = null;
                 if (plateOk)
@@ -148,19 +153,34 @@ namespace PhuXuanParkingSystem.Forms
                 }
                 else if (plateOk)
                 {
-                    DisplayCapturedImage(picInPlate, filePlate);
+                    try
+                    {
+                        byte[] pltBytes = File.ReadAllBytes(filePlate);
+                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picInPlate, pltBytes)));
+                        else SetPictureBoxImage(picInPlate, pltBytes);
+                    }
+                    catch { }
                 }
 
-                var res = await _parkingLaneService.ProcessInLaneAsync(anprResult, triggerSource, filePlate, fileOverview);
+                void UpdateInUi()
+                {
+                    lblInTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+                    if (anprResult != null && anprResult.IsSuccess)
+                    {
+                        txtInPlate.Text = anprResult.FormattedPlate;
+                        lblInStatusVal.Text = "🟢 Đã nhận diện biển số";
+                        lblInStatusVal.ForeColor = Color.SeaGreen;
+                    }
+                    else
+                    {
+                        txtInPlate.Text = plateOk ? "Không đọc được" : "";
+                        lblInStatusVal.Text = plateOk ? "⚪ Không đọc được biển" : "❌ Camera biển số lỗi";
+                        lblInStatusVal.ForeColor = Color.FromArgb(200, 120, 30);
+                    }
+                }
 
-                if (InvokeRequired)
-                {
-                    BeginInvoke(new Action(() => BindInLaneResultToUi(res)));
-                }
-                else
-                {
-                    BindInLaneResultToUi(res);
-                }
+                if (InvokeRequired) BeginInvoke(new Action(UpdateInUi));
+                else UpdateInUi();
 
                 SetFooterStatus($"📸 Đã chụp và xử lý LÀN VÀO lúc {DateTime.Now:HH:mm:ss.fff}");
             }
@@ -169,26 +189,6 @@ namespace PhuXuanParkingSystem.Forms
                 AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Vào: {ex.Message}", "LaneControl");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Vào: {ex.Message}");
             }
-        }
-
-        private void BindInLaneResultToUi(Services.Parking.LaneProcessResult res)
-        {
-            lblInTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-            if (!string.IsNullOrEmpty(res.DisplayPlate))
-            {
-                txtInPlate.Text = res.DisplayPlate;
-            }
-            lblInStatusVal.Text = res.StatusText;
-            lblInStatusVal.ForeColor = res.StatusColor;
-
-            if (res.IsIgnored)
-            {
-                return;
-            }
-
-            lblInOwnerVal.Text = res.OwnerName;
-            lblInDeptVal.Text = res.DepartmentName;
-            lblInTypeVal.Text = res.VehicleType == Models.Enums.VehicleType.Car ? "Ô tô" : "Xe máy";
         }
 
         private async Task CaptureOutLaneAsync(string triggerSource)
@@ -216,7 +216,16 @@ namespace PhuXuanParkingSystem.Forms
 
                 AppLogger.Information($"[LÀN RA] Kết quả chụp ảnh: Plate={plateOk} ({filePlate}), Overview={ovwOk} ({fileOverview})", "LaneControl");
 
-                if (ovwOk) DisplayCapturedImage(picOutOverview, fileOverview);
+                if (ovwOk)
+                {
+                    try
+                    {
+                        byte[] ovwBytes = File.ReadAllBytes(fileOverview);
+                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picOutOverview, ovwBytes)));
+                        else SetPictureBoxImage(picOutOverview, ovwBytes);
+                    }
+                    catch { }
+                }
 
                 PlateRecognitionResult? anprResult = null;
                 if (plateOk)
@@ -235,19 +244,34 @@ namespace PhuXuanParkingSystem.Forms
                 }
                 else if (plateOk)
                 {
-                    DisplayCapturedImage(picOutPlate, filePlate);
+                    try
+                    {
+                        byte[] pltBytes = File.ReadAllBytes(filePlate);
+                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picOutPlate, pltBytes)));
+                        else SetPictureBoxImage(picOutPlate, pltBytes);
+                    }
+                    catch { }
                 }
 
-                var res = await _parkingLaneService.ProcessOutLaneAsync(anprResult, triggerSource, filePlate, fileOverview);
+                void UpdateOutUi()
+                {
+                    lblOutTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+                    if (anprResult != null && anprResult.IsSuccess)
+                    {
+                        txtOutPlate.Text = anprResult.FormattedPlate;
+                        lblOutStatusVal.Text = "🔴 Đã nhận diện biển số ra";
+                        lblOutStatusVal.ForeColor = Color.SeaGreen;
+                    }
+                    else
+                    {
+                        txtOutPlate.Text = plateOk ? "Không đọc được" : "";
+                        lblOutStatusVal.Text = plateOk ? "⚪ Không đọc được biển" : "❌ Camera biển số lỗi";
+                        lblOutStatusVal.ForeColor = Color.FromArgb(200, 120, 30);
+                    }
+                }
 
-                if (InvokeRequired)
-                {
-                    BeginInvoke(new Action(() => BindOutLaneResultToUi(res)));
-                }
-                else
-                {
-                    BindOutLaneResultToUi(res);
-                }
+                if (InvokeRequired) BeginInvoke(new Action(UpdateOutUi));
+                else UpdateOutUi();
 
                 SetFooterStatus($"📸 Đã chụp và xử lý LÀN RA lúc {DateTime.Now:HH:mm:ss.fff}");
             }
@@ -256,26 +280,6 @@ namespace PhuXuanParkingSystem.Forms
                 AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Ra: {ex.Message}", "LaneControl");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Ra: {ex.Message}");
             }
-        }
-
-        private void BindOutLaneResultToUi(Services.Parking.LaneProcessResult res)
-        {
-            lblOutTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-            if (!string.IsNullOrEmpty(res.DisplayPlate))
-            {
-                txtOutPlate.Text = res.DisplayPlate;
-            }
-            lblOutStatusVal.Text = res.StatusText;
-            lblOutStatusVal.ForeColor = res.StatusColor;
-
-            if (res.IsIgnored)
-            {
-                return;
-            }
-
-            lblOutOwnerVal.Text = res.OwnerName;
-            lblOutDeptVal.Text = res.DepartmentName;
-            lblOutTypeVal.Text = res.VehicleType == Models.Enums.VehicleType.Car ? "Ô tô" : "Xe máy";
         }
 
         private void DisplayCapturedImage(PictureBox picBox, string filePath)

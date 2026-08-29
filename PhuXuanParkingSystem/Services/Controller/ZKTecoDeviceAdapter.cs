@@ -1,5 +1,7 @@
+using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.SDK.ZKTeco;
+using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
 using System;
@@ -11,21 +13,21 @@ using System.Threading.Tasks;
 namespace PhuXuanParkingSystem.Services.Controller
 {
     /// <summary>
-    /// Adapter kết nối và lắng nghe sự kiện từ Bộ điều khiển ZKTeco C3-200 qua Pull SDK
+    /// Adapter kết nối và lắng nghe sự kiện từ Bộ điều khiển trung tâm (Access Controller) qua giao thức TCP
     /// Implements IDeviceAdapter cho DeviceHealthManager
     /// </summary>
-    public class ZKTecoDeviceAdapter : IDisposable
+    public class ZKTecoDeviceAdapter : IDeviceAdapter, IDisposable
     {
         private IntPtr _handle = IntPtr.Zero;
         private readonly object _lockObj = new();
         private CancellationTokenSource? _listeningCts;
         private Task? _listeningTask;
         private bool _isDisposed;
-        private string _lastRawLog = string.Empty;
 
         private string _lastIp = "192.168.1.202";
         private int _lastPort = 4370;
         private string? _lastPassword;
+        private DateTime _drainUntil = DateTime.MinValue;
 
         public event EventHandler<AuxTriggerEventArgs>? OnAuxInputTriggered;
 
@@ -37,7 +39,7 @@ namespace PhuXuanParkingSystem.Services.Controller
         /// <summary>
         /// Event khi trạng thái kết nối thay đổi
         /// </summary>
-        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
+        public event EventHandler<DeviceStatus>? OnConnectionStateChanged;
 
         public bool IsConnected => _handle != IntPtr.Zero;
 
@@ -52,8 +54,15 @@ namespace PhuXuanParkingSystem.Services.Controller
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(timeoutMs);
 
-                await client.ConnectAsync(_lastIp, _lastPort);
-                return client.Connected;
+                var connectTask = client.ConnectAsync(_lastIp, _lastPort);
+                var delayTask = Task.Delay(timeoutMs, cts.Token);
+                var completedTask = await Task.WhenAny(connectTask, delayTask);
+
+                if (completedTask == connectTask && client.Connected)
+                {
+                    return true;
+                }
+                return false;
             }
             catch
             {
@@ -62,7 +71,7 @@ namespace PhuXuanParkingSystem.Services.Controller
         }
 
         /// <summary>
-        /// Kết nối tới bộ điều khiển ZKTeco qua giao thức TCP
+        /// Kết nối tới bộ điều khiển trung tâm qua giao thức TCP
         /// </summary>
         public Task<bool> ConnectAsync(
             string ipAddress = "192.168.1.202",
@@ -70,37 +79,56 @@ namespace PhuXuanParkingSystem.Services.Controller
             string? password = null,
             CancellationToken cancellationToken = default)
         {
-            _lastIp = ipAddress;
-            _lastPort = port;
-            _lastPassword = password;
-
             return Task.Run(() =>
             {
                 lock (_lockObj)
                 {
+                    if (IsConnected && _lastIp == ipAddress && _lastPort == port && _lastPassword == password)
+                    {
+                        return true;
+                    }
+
                     if (IsConnected)
                     {
                         DisconnectInternal();
                     }
 
+                    _lastIp = ipAddress;
+                    _lastPort = port;
+                    _lastPassword = password;
+
                     var pwd = password ?? string.Empty;
-                    var connectParams = $"protocol=TCP,ipaddress={ipAddress.Trim()},port={port},timeout=4000,passwd={pwd}";
+                    var connectParams = $"protocol=TCP,ipaddress={ipAddress.Trim()},port={port},timeout=5000,passwd={pwd}";
 
                     _handle = ZKTecoPullSDK.Connect(connectParams);
 
                     if (_handle != IntPtr.Zero)
                     {
+                        _drainUntil = DateTime.Now.AddSeconds(1.5);
                         StartListening();
-                        AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Bộ Điều Khiển ZKTeco", $"Đã kết nối C3-200 ({ipAddress}:{port}) thành công.", ipAddress);
-                        OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Connected);
+                        AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Access Controller", $"Đã kết nối Access Controller ({ipAddress}:{port}) thành công.", ipAddress);
+                        OnConnectionStateChanged?.Invoke(this, DeviceStatus.Connected);
                         return true;
                     }
 
                     int errCode = ZKTecoPullSDK.PullLastError();
-                    AppLogger.Warning($"[ZKTeco Controller] Kết nối thất bại ({ipAddress}:{port}), Mã lỗi: {errCode}");
+                    AppLogger.Warning($"[Access Controller] Kết nối thất bại ({ipAddress}:{port}), Mã lỗi: {errCode}");
                     return false;
                 }
             }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Kết nối tới Controller dựa trên cấu hình Device entity từ MongoDB
+        /// </summary>
+        public Task<bool> ConnectAsync(Device device, CancellationToken cancellationToken = default)
+        {
+            if (device == null) return Task.FromResult(false);
+            return ConnectAsync(
+                ipAddress: device.IpAddress,
+                port: device.Port,
+                password: device.Password,
+                cancellationToken: cancellationToken);
         }
 
         /// <summary>
@@ -108,14 +136,32 @@ namespace PhuXuanParkingSystem.Services.Controller
         /// </summary>
         public Task DisconnectAsync()
         {
-            return Task.Run(() =>
+            lock (_lockObj)
             {
-                lock (_lockObj)
-                {
-                    DisconnectInternal();
-                }
-            });
+                DisconnectInternal();
+            }
+            return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// Khởi động lại kết nối thiết bị
+        /// </summary>
+        public async Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default)
+        {
+            await DisconnectAsync().ConfigureAwait(false);
+            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+            return await ConnectAsync(device, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Controller không có màn hình preview
+        /// </summary>
+        public bool StartPreview(IntPtr windowHandle) => true;
+
+        /// <summary>
+        /// Dừng preview (no-op cho Controller)
+        /// </summary>
+        public void StopPreview() { }
 
         private void DisconnectInternal()
         {
@@ -127,8 +173,7 @@ namespace PhuXuanParkingSystem.Services.Controller
                 _handle = IntPtr.Zero;
             }
 
-            _lastRawLog = string.Empty;
-            OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
+            OnConnectionStateChanged?.Invoke(this, DeviceStatus.Disconnected);
         }
 
         private void StartListening()
@@ -159,13 +204,13 @@ namespace PhuXuanParkingSystem.Services.Controller
         }
 
         /// <summary>
-        /// Vòng lặp ngầm (truly async, không block thread) đọc Real-time Log từ ZKTeco Controller.
+        /// Vòng lặp ngầm đọc Real-time Log từ Access Controller.
         /// Tự động phục hồi kết nối nếu socket bị ngắt ngầm.
         /// </summary>
         private async Task ListenLoopAsync(CancellationToken cancellationToken)
         {
-            var buffer = new byte[256];
-            const int bufferSize = 256;
+            const int bufferSize = 64 * 1024; // 64KB buffer
+            var buffer = new byte[bufferSize];
             int consecutiveErrors = 0;
 
             while (!cancellationToken.IsCancellationRequested && IsConnected)
@@ -183,11 +228,12 @@ namespace PhuXuanParkingSystem.Services.Controller
                     if (result >= 0)
                     {
                         consecutiveErrors = 0;
-                        var rawString = Encoding.Default.GetString(buffer).Trim('\0');
+                        int nullIdx = Array.IndexOf(buffer, (byte)0);
+                        int validBytes = nullIdx >= 0 ? nullIdx : buffer.Length;
+                        var rawString = validBytes > 0 ? Encoding.Default.GetString(buffer, 0, validBytes) : string.Empty;
 
                         if (!string.IsNullOrWhiteSpace(rawString))
                         {
-                            // Tách từng dòng log nếu buffer chứa nhiều sự kiện liên tiếp
                             var lines = rawString.Split(["\r\n", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries);
                             foreach (var line in lines)
                             {
@@ -199,12 +245,18 @@ namespace PhuXuanParkingSystem.Services.Controller
                             }
                         }
                     }
+                    else if (result == -2)
+                    {
+                        // Mã -2: Hàng đợi log rỗng (không có sự kiện mới)
+                        consecutiveErrors = 0;
+                    }
                     else
                     {
+                        // Lỗi kết nối thực sự từ SDK
                         consecutiveErrors++;
-                        if (consecutiveErrors >= 5) // Lỗi liên tiếp 5 chu kỳ (~1s) -> socket bị rớt -> Reconnect
+                        if (consecutiveErrors >= 5) // Lỗi liên tiếp 5 chu kỳ (~1s) -> Reconnect
                         {
-                            AppLogger.Warning($"[ZKTeco Controller] Mất kết nối realtime (GetRTLog code={result}). Đang tự động kết nối lại...");
+                            AppLogger.Warning($"[Access Controller] Mất kết nối realtime (GetRTLog code={result}). Đang tự động kết nối lại...");
                             lock (_lockObj)
                             {
                                 if (_handle != IntPtr.Zero)
@@ -213,14 +265,14 @@ namespace PhuXuanParkingSystem.Services.Controller
                                     _handle = IntPtr.Zero;
                                 }
                                 var pwd = _lastPassword ?? string.Empty;
-                                var connectParams = $"protocol=TCP,ipaddress={_lastIp.Trim()},port={_lastPort},timeout=4000,passwd={pwd}";
+                                var connectParams = $"protocol=TCP,ipaddress={_lastIp.Trim()},port={_lastPort},timeout=5000,passwd={pwd}";
                                 _handle = ZKTecoPullSDK.Connect(connectParams);
                             }
 
                             if (_handle != IntPtr.Zero)
                             {
                                 consecutiveErrors = 0;
-                                AppLogger.Information($"[ZKTeco Controller] Đã tự động phục hồi kết nối C3-200 ({_lastIp}:{_lastPort}) thành công!");
+                                AppLogger.Information($"[Access Controller] Đã tự động phục hồi kết nối ({_lastIp}:{_lastPort}) thành công!");
                             }
                             else
                             {
@@ -228,23 +280,17 @@ namespace PhuXuanParkingSystem.Services.Controller
                             }
                         }
                     }
+
+                    await Task.Delay(200, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
-                    AppLogger.Debug($"[ZKTeco ListenLoop Warning] {ex.Message}");
+                    AppLogger.Debug($"[Access Controller ListenLoop Warning] {ex.Message}");
                 }
-
-                // TaskCompletionSource pattern:
-                // - Không block thread (truly async)
-                // - Không ném TaskCanceledException
-                // - Thoát ngay lập tức khi token bị Cancel mà không phải chờ hết 200ms
-                var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-                using (cancellationToken.Register(static state => ((TaskCompletionSource<bool>)state!).TrySetResult(true), tcs))
-                {
-                    await Task.WhenAny(Task.Delay(200), tcs.Task);
-                }
-
-                if (cancellationToken.IsCancellationRequested) break;
             }
         }
 
@@ -257,19 +303,33 @@ namespace PhuXuanParkingSystem.Services.Controller
         {
             if (string.IsNullOrWhiteSpace(rawLog)) return;
 
-            AppLogger.Information($"[ZKTeco RTLog] Nhận chuỗi log từ C3-200: {rawLog}", "ZKTecoController");
-
             var parts = rawLog.Split(',');
             if (parts.Length < 5)
             {
-                AppLogger.Warning($"[ZKTeco RTLog] Bỏ qua log không đủ 5 trường: {rawLog}", "ZKTecoController");
+                AppLogger.Warning($"[Access Controller RTLog] Bỏ qua log không đủ 5 trường: {rawLog}", "AccessController");
                 return;
             }
+
+            // Nếu Bit 4 là 255 -> Đây là bản ghi trạng thái Door/Alarm status, không phải realtime event
+            if (parts[4].Trim() == "255")
+            {
+                AppLogger.Debug($"[Access Controller RTLog] Nhận gói tin trạng thái định kỳ Door/Alarm (Bit4=255): {rawLog}");
+                return;
+            }
+
+            // Xả các bản ghi cũ trong bộ đệm controller trong 1.5 giây đầu sau khi kết nối
+            if (DateTime.Now < _drainUntil)
+            {
+                AppLogger.Information($"[Access Controller RTLog] Xả sự kiện tồn đọng lúc khởi động: {rawLog}");
+                return;
+            }
+
+            AppLogger.Information($"[Access Controller RTLog] Nhận chuỗi sự kiện: {rawLog}", "AccessController");
 
             // Cột DoorID / AuxID (index 3): 1 = Làn Vào, 2 = Làn Ra
             if (!int.TryParse(parts[3].Trim(), out var portIndex) || (portIndex != 1 && portIndex != 2))
             {
-                AppLogger.Debug($"[ZKTeco RTLog] Cổng không thuộc Làn 1 hoặc 2 (Port={parts[3]}): {rawLog}");
+                AppLogger.Debug($"[Access Controller RTLog] Cổng không thuộc Làn 1 hoặc 2 (Port={parts[3]}): {rawLog}");
                 return;
             }
 
@@ -284,22 +344,16 @@ namespace PhuXuanParkingSystem.Services.Controller
             // 220: HẾT XE / ĐÃ QUA (Active = false)
             bool isActive = eventType == 221 || eventType == 25 || eventType == 1;
 
-            if (portIndex == 1)
+            var (category, title, message) = (portIndex, isActive) switch
             {
-                if (isActive)
-                    AppNotificationService.NotifyInfo(NotificationCategory.LaneIn, "Phát hiện xe vào", "Cảm biến Radar Làn Vào phát hiện có xe đến.", rawLog);
-                else
-                    AppNotificationService.NotifyInfo(NotificationCategory.LaneIn, "Xe đã qua cổng vào", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Vào.", rawLog);
-            }
-            else if (portIndex == 2)
-            {
-                if (isActive)
-                    AppNotificationService.NotifyInfo(NotificationCategory.LaneOut, "Phát hiện xe ra", "Cảm biến Radar Làn Ra phát hiện có xe đến.", rawLog);
-                else
-                    AppNotificationService.NotifyInfo(NotificationCategory.LaneOut, "Xe đã qua cổng ra", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Ra.", rawLog);
-            }
+                (1, true) => (NotificationCategory.LaneIn, "Phát hiện xe vào", "Cảm biến Radar Làn Vào phát hiện có xe đến."),
+                (1, false) => (NotificationCategory.LaneIn, "Xe đã qua cổng vào", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Vào."),
+                (2, true) => (NotificationCategory.LaneOut, "Phát hiện xe ra", "Cảm biến Radar Làn Ra phát hiện có xe đến."),
+                _ => (NotificationCategory.LaneOut, "Xe đã qua cổng ra", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Ra.")
+            };
+            AppNotificationService.NotifyInfo(category, title, message, rawLog);
 
-            AppLogger.Information($"[ZKTeco Trigger] Phát sự kiện OnAuxInputTriggered: Làn {portIndex} (Aux {portIndex}), IsActive={isActive}, EventType={eventType}");
+            AppLogger.Information($"[Access Controller Trigger] Phát sự kiện OnAuxInputTriggered: Làn {portIndex} (Aux {portIndex}), IsActive={isActive}, EventType={eventType}");
 
             OnAuxInputTriggered?.Invoke(this, new AuxTriggerEventArgs(
                 auxPort: portIndex,
@@ -321,3 +375,4 @@ namespace PhuXuanParkingSystem.Services.Controller
         }
     }
 }
+

@@ -9,38 +9,24 @@ using System.Threading.Tasks;
 namespace PhuXuanParkingSystem.Services.DeviceHealth
 {
     /// <summary>
-    /// Adapter cho Camera Biển Số (NST SDK)
-    /// Implements IDeviceAdapter cho DeviceHealthManager
+    /// Adapter dùng chung cho tất cả các loại camera triển khai ICameraService
     /// </summary>
-    public class PlateCameraAdapter : IDeviceAdapter
+    public class CameraDeviceAdapter : IDeviceAdapter
     {
-        private readonly PlateCameraService _cameraService;
+        private readonly ICameraService _cameraService;
 
-        public PlateCameraAdapter(PlateCameraService cameraService)
+        public CameraDeviceAdapter(ICameraService cameraService)
         {
             _cameraService = cameraService ?? throw new ArgumentNullException(nameof(cameraService));
             _cameraService.OnConnectionStateChanged += (s, state) =>
                 OnConnectionStateChanged?.Invoke(this, state);
         }
 
-        /// <summary>
-        /// Trạng thái kết nối SDK
-        /// </summary>
         public bool IsConnected => _cameraService.IsLoggedIn;
-
-        /// <summary>
-        /// TRUE = đang streaming video
-        /// </summary>
         public bool IsStreaming => _cameraService.IsStreaming;
 
-        /// <summary>
-        /// Event khi trạng thái kết nối thay đổi
-        /// </summary>
-        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
+        public event EventHandler<DeviceStatus>? OnConnectionStateChanged;
 
-        /// <summary>
-        /// Ping TCP đến camera IP:Port
-        /// </summary>
         public async Task<bool> PingAsync(int timeoutMs = 2000, CancellationToken cancellationToken = default)
         {
             if (_cameraService.Config == null || string.IsNullOrEmpty(_cameraService.Config.Ip))
@@ -52,8 +38,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(timeoutMs);
 
-                await client.ConnectAsync(_cameraService.Config.Ip, _cameraService.Config.Port);
-                return client.Connected;
+                var connectTask = client.ConnectAsync(_cameraService.Config.Ip, _cameraService.Config.Port);
+                var delayTask = Task.Delay(timeoutMs, cts.Token);
+                var completed = await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false);
+
+                return completed == connectTask && client.Connected;
             }
             catch
             {
@@ -61,21 +50,10 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             }
         }
 
-        /// <summary>
-        /// Thử kết nối/reconnect tới Camera Biển Số
-        /// </summary>
         public async Task<bool> ConnectAsync(Device device, CancellationToken cancellationToken = default)
         {
-            // Cập nhật config từ device entity
-            if (_cameraService.Config != null)
-            {
-                _cameraService.Config.Ip = device.IpAddress;
-                _cameraService.Config.Port = (ushort)device.Port;
-                _cameraService.Config.UserName = device.UserName ?? string.Empty;
-                _cameraService.Config.Password = device.Password ?? string.Empty;
-            }
-
-            return await _cameraService.LoginAsync(cancellationToken);
+            ApplyDeviceConfig(device);
+            return await _cameraService.LoginAsync(cancellationToken).ConfigureAwait(false);
         }
 
         public Task DisconnectAsync()
@@ -84,23 +62,43 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             return Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Khởi động lại: Logout → TaskDelay → Login
-        /// </summary>
         public async Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default)
         {
             _cameraService.Logout();
-            await Task.Delay(500, cancellationToken);
+            await Task.Delay(500, cancellationToken).ConfigureAwait(false);
+            ApplyDeviceConfig(device);
+            return await _cameraService.LoginAsync(cancellationToken).ConfigureAwait(false);
+        }
 
-            if (_cameraService.Config != null)
+        public bool StartPreview(IntPtr windowHandle) => _cameraService.StartPreview(windowHandle);
+
+        public void StopPreview() => _cameraService.StopPreview();
+
+        private void ApplyDeviceConfig(Device device)
+        {
+            if (_cameraService.Config != null && device != null)
             {
                 _cameraService.Config.Ip = device.IpAddress;
                 _cameraService.Config.Port = (ushort)device.Port;
                 _cameraService.Config.UserName = device.UserName ?? string.Empty;
                 _cameraService.Config.Password = device.Password ?? string.Empty;
             }
-
-            return await _cameraService.LoginAsync(cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Alias tương thích ngược cho Camera Biển Số
+    /// </summary>
+    public class PlateCameraAdapter : CameraDeviceAdapter
+    {
+        public PlateCameraAdapter(ICameraService cameraService) : base(cameraService) { }
+    }
+
+    /// <summary>
+    /// Alias tương thích ngược cho Camera Toàn Cảnh
+    /// </summary>
+    public class OverviewCameraAdapter : CameraDeviceAdapter
+    {
+        public OverviewCameraAdapter(ICameraService cameraService) : base(cameraService) { }
     }
 }

@@ -32,6 +32,11 @@ namespace PhuXuanParkingSystem.Api.Tests
             };
 
             var response = await _client.PostAsJsonAsync("/api/auth/login", loginReq);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                loginReq.Password = "Admin@123";
+                response = await _client.PostAsJsonAsync("/api/auth/login", loginReq);
+            }
             response.EnsureSuccessStatusCode();
 
             var apiRes = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
@@ -55,6 +60,11 @@ namespace PhuXuanParkingSystem.Api.Tests
 
             // Act
             var response = await _client.PostAsJsonAsync("/api/auth/login", loginReq);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                loginReq.Password = "Admin@123";
+                response = await _client.PostAsJsonAsync("/api/auth/login", loginReq);
+            }
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.OK);

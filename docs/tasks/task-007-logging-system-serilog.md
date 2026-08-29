@@ -1,4 +1,4 @@
-﻿# Task 007: Xây Dựng Hệ Thống Logging Bất Đồng Bộ (Serilog & Global Exception Handler)
+# Task 007: Xây Dựng Hệ Thống Logging Bất Đồng Bộ (Serilog & Global Exception Handler)
 
 ## 1. Mục Tiêu
 Triển khai hệ thống Logging chuyên nghiệp với **Serilog** cho `PhuXuanParkingSystem`:
@@ -16,7 +16,7 @@ Triển khai hệ thống Logging chuyên nghiệp với **Serilog** cho `PhuXua
   - `Logging Infrastructure`: Tạo `AppLogger.cs` quản lý cấu hình Serilog, khởi tạo Rolling File Sink, Live UI Event Sink.
   - `App.config`: Bổ sung cấu hình `LogLevel` (mặc định: `Warning`), `Log_Path` (`Logs/app-.log`), `Log_RetainedDays` (`30`).
   - `Global Exception Handlers`: Tích hợp trong `Program.cs` (`Application.ThreadException`, `AppDomain.CurrentDomain.UnhandledException`, `TaskScheduler.UnobservedTaskException`).
-  - `Service Integration`: Thay thế `Debug.WriteLine` trong `ZKTecoControllerService`, `OverviewCameraService`, `PlateCameraService`, `MongoRepository` bằng `AppLogger`.
+  - `Service Integration`: Thay thế `Debug.WriteLine` trong `ZKTecoDeviceAdapter`, `OverviewCameraService`, `PlateCameraService`, `MongoRepository` bằng `AppLogger`.
   - `Unit Tests`: Viết bộ kiểm thử kiểm chứng cấu hình Logger và cơ chế ghi log trong `tests/PhuXuanParkingSystem.Tests/Logging/LoggingTests.cs`.
 
 ## 3. Checklist Tiến Độ

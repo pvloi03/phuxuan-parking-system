@@ -1,4 +1,4 @@
-﻿using CHCNetSDK_Library;
+using CHCNetSDK_Library;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
@@ -14,7 +14,7 @@ namespace PhuXuanParkingSystem.Services.Camera
     /// Service kết nối và điều khiển Camera Toàn Cảnh (HikVision SDK)
     /// Đã tối ưu hóa hiệu năng, xử lý không khóa file và chụp ảnh tốc độ cao
     /// </summary>
-    public class OverviewCameraService : IDisposable
+    public class OverviewCameraService : ICameraService
     {
         private static readonly object _sdkLock = new();
         private static volatile bool _sdkInitialized = false;
@@ -22,7 +22,7 @@ namespace PhuXuanParkingSystem.Services.Camera
         private const uint CaptureBufferSize = 3 * 1024 * 1024; // 3MB
 
         private readonly object _lockObj = new();
-        private readonly byte[] _captureBuffer = new byte[CaptureBufferSize];
+        private readonly SemaphoreSlim _captureSemaphore = new(1, 1);
 
         private int _userId = -1;
         private int _realHandle = -1;
@@ -40,7 +40,7 @@ namespace PhuXuanParkingSystem.Services.Camera
         /// Event khi trạng thái kết nối thay đổi
         /// Dùng cho DeviceHealthManager sync với UI
         /// </summary>
-        public event EventHandler<DeviceConnectionState>? OnConnectionStateChanged;
+        public event EventHandler<DeviceStatus>? OnConnectionStateChanged;
 
 
         public OverviewCameraService()
@@ -110,7 +110,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     if (IsLoggedIn)
                     {
                         AppNotificationService.NotifySuccess(NotificationCategory.Camera, "Camera Toàn Cảnh", $"Đã kết nối Camera Toàn Cảnh ({Config.Ip}:{Config.Port}) thành công.", Config.Ip);
-                        OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Connected);
+                        OnConnectionStateChanged?.Invoke(this, DeviceStatus.Connected);
                         return true;
                     }
 
@@ -145,6 +145,17 @@ namespace PhuXuanParkingSystem.Services.Camera
                     return false;
                 }
 
+                if (_realHandle >= 0)
+                {
+                    try
+                    {
+                        CHCNetSDK.NET_DVR_StopRealPlay(_realHandle);
+                    }
+                    catch { }
+                    _realHandle = -1;
+                    IsStreaming = false;
+                }
+
                 var previewInfo = new CHCNetSDK.NET_DVR_PREVIEWINFO
                 {
                     hPlayWnd = windowHandle,
@@ -166,7 +177,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                 else
                 {
                     IsStreaming = true;
-                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Streaming);
+                    OnConnectionStateChanged?.Invoke(this, DeviceStatus.Streaming);
                 }
 
                 return success;
@@ -175,63 +186,88 @@ namespace PhuXuanParkingSystem.Services.Camera
 
         /// <summary>
         /// Chụp ảnh Snapshot trả về mảng byte JPEG siêu nhanh từ Native SDK (không tạo Bitmap)
+        /// Sử dụng SemaphoreSlim để serialize các yêu cầu chụp và ngăn ngừa xung đột SDK handle
         /// </summary>
-        public Task<byte[]?> CaptureSnapshotAsync(CancellationToken cancellationToken = default)
+        public async Task<byte[]?> CaptureSnapshotAsync(CancellationToken cancellationToken = default)
         {
-            return Task.Run<byte[]?>(() =>
+            // Chờ semaphore với timeout 5 giây để tránh deadlock
+            if (!await _captureSemaphore.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken))
             {
-                lock (_lockObj)
+                AppLogger.Warning($"[DEBUG-hik] [Hikvision {Config?.Ip}] Timeout chờ capture semaphore (5s).", "Hikvision");
+                return null;
+            }
+
+            try
+            {
+                return await Task.Run<byte[]?>(() =>
                 {
-                    if (!IsLoggedIn || _userId < 0) return null;
-
-                    var jpegPara = new CHCNetSDK.NET_DVR_JPEGPARA
+                    lock (_lockObj)
                     {
-                        wPicQuality = 2, // Chất lượng cao nhất
-                        wPicSize = 0xff  // Giữ nguyên độ phân giải
-                    };
-
-                    uint imageSizeRet = 0;
-                    bool isSuccess = CHCNetSDK.NET_DVR_CaptureJPEGPicture_NEW(
-                        _userId,
-                        1,
-                        ref jpegPara,
-                        _captureBuffer,
-                        CaptureBufferSize,
-                        ref imageSizeRet);
-
-                    if (isSuccess && imageSizeRet > 0)
-                    {
-                        var result = new byte[imageSizeRet];
-                        Buffer.BlockCopy(_captureBuffer, 0, result, 0, (int)imageSizeRet);
-                        return result;
-                    }
-
-                    // Fallback: Chụp trực tiếp từ RealPlay handle nếu cần
-                    if (_realHandle >= 0)
-                    {
-                        string tempFile = Path.Combine(Path.GetTempPath(), $"hik_snap_{Guid.NewGuid():N}.bmp");
-                        try
+                        if (!IsLoggedIn || _userId < 0)
                         {
-                            if (CHCNetSDK.NET_DVR_CapturePicture(_realHandle, tempFile) && File.Exists(tempFile))
+                            AppLogger.Warning($"[DEBUG-hik] [Hikvision {Config?.Ip}] Bỏ qua capture: Camera chưa login hoặc UserId không hợp lệ (IsLoggedIn={IsLoggedIn}, UserId={_userId}).", "Hikvision");
+                            return null;
+                        }
+
+                        // Local buffer riêng cho mỗi lần gọi chụp, tránh race condition / buffer corruption
+                        byte[] localBuffer = new byte[CaptureBufferSize];
+
+                        var jpegPara = new CHCNetSDK.NET_DVR_JPEGPARA
+                        {
+                            wPicQuality = 2, // Chất lượng cao nhất
+                            wPicSize = 0xff  // Giữ nguyên độ phân giải
+                        };
+
+                        uint imageSizeRet = 0;
+                        bool isSuccess = CHCNetSDK.NET_DVR_CaptureJPEGPicture_NEW(
+                            _userId,
+                            1,
+                            ref jpegPara,
+                            localBuffer,
+                            CaptureBufferSize,
+                            ref imageSizeRet);
+
+                        if (isSuccess && imageSizeRet > 0)
+                        {
+                            var result = new byte[imageSizeRet];
+                            Buffer.BlockCopy(localBuffer, 0, result, 0, (int)imageSizeRet);
+                            return result;
+                        }
+
+                        // Fallback: Chụp trực tiếp từ RealPlay handle nếu cần
+                        if (_realHandle >= 0)
+                        {
+                            string tempFile = Path.Combine(Path.GetTempPath(), $"hik_snap_{Guid.NewGuid():N}.bmp");
+                            try
                             {
-                                return File.ReadAllBytes(tempFile);
+                                if (CHCNetSDK.NET_DVR_CapturePicture(_realHandle, tempFile) && File.Exists(tempFile))
+                                {
+                                    return File.ReadAllBytes(tempFile);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                AppLogger.Error(ex, $"[DEBUG-hik] [Hikvision {Config?.Ip}] Lỗi fallback chụp RealPlay handle: {ex.Message}", "Hikvision");
+                            }
+                            finally
+                            {
+                                if (File.Exists(tempFile))
+                                {
+                                    try { File.Delete(tempFile); } catch { }
+                                }
                             }
                         }
-                        catch { }
-                        finally
-                        {
-                            if (File.Exists(tempFile))
-                            {
-                                try { File.Delete(tempFile); } catch { }
-                            }
-                        }
-                    }
 
-                    uint errorCode = CHCNetSDK.NET_DVR_GetLastError();
-                    AppLogger.Error($"[Hikvision {Config?.Ip}] Capture thất bại. Error={errorCode}", "Hikvision");
-                    return null;
-                }
-            }, cancellationToken);
+                        uint errorCode = CHCNetSDK.NET_DVR_GetLastError();
+                        AppLogger.Error($"[DEBUG-hik] [Hikvision {Config?.Ip}] Capture thất bại. ErrorCode={errorCode}, isSuccess={isSuccess}, imageSizeRet={imageSizeRet}", "Hikvision");
+                        return null;
+                    }
+                }, cancellationToken);
+            }
+            finally
+            {
+                _captureSemaphore.Release();
+            }
         }
 
         /// <summary>
@@ -239,28 +275,8 @@ namespace PhuXuanParkingSystem.Services.Camera
         /// </summary>
         public async Task<bool> CaptureToFileAsync(string filePath, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                string? dir = Path.GetDirectoryName(filePath);
-                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-                {
-                    Directory.CreateDirectory(dir);
-                }
-
-                var bytes = await CaptureSnapshotAsync(cancellationToken);
-                if (bytes != null && bytes.Length > 0)
-                {
-                    using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, true);
-                    await fs.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Error(ex, $"[Hikvision CaptureToFileAsync Error] {ex.Message}", "Hikvision");
-            }
-
-            return false;
+            var bytes = await CaptureSnapshotAsync(cancellationToken);
+            return await CameraCaptureHelper.SaveBytesToFileAsync(bytes, filePath, "DEBUG-hik", "Hikvision", cancellationToken);
         }
 
         public void StopPreview()
@@ -272,7 +288,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     CHCNetSDK.NET_DVR_StopRealPlay(_realHandle);
                     _realHandle = -1;
                     IsStreaming = false;
-                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
+                    OnConnectionStateChanged?.Invoke(this, IsLoggedIn ? DeviceStatus.Connected : DeviceStatus.Disconnected);
                 }
             }
         }
@@ -298,7 +314,7 @@ namespace PhuXuanParkingSystem.Services.Camera
                     _userId = -1;
                     IsLoggedIn = false;
                     IsStreaming = false;
-                    OnConnectionStateChanged?.Invoke(this, DeviceConnectionState.Disconnected);
+                    OnConnectionStateChanged?.Invoke(this, DeviceStatus.Disconnected);
                 }
             }
         }
@@ -307,6 +323,7 @@ namespace PhuXuanParkingSystem.Services.Camera
         {
             StopPreview();
             Logout();
+            _captureSemaphore.Dispose();
             GC.SuppressFinalize(this);
         }
 

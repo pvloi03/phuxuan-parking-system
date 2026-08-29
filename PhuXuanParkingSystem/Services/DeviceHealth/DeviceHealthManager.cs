@@ -4,6 +4,7 @@ using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,11 +16,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
     public class DeviceStateChangedEventArgs : EventArgs
     {
         public string DeviceId { get; }
-        public DeviceConnectionState OldState { get; }
-        public DeviceConnectionState NewState { get; }
+        public DeviceStatus OldState { get; }
+        public DeviceStatus NewState { get; }
         public DateTime Timestamp { get; }
 
-        public DeviceStateChangedEventArgs(string deviceId, DeviceConnectionState oldState, DeviceConnectionState newState)
+        public DeviceStateChangedEventArgs(string deviceId, DeviceStatus oldState, DeviceStatus newState)
         {
             DeviceId = deviceId;
             OldState = oldState;
@@ -36,7 +37,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         /// <summary>
         /// Lấy trạng thái hiện tại của một device
         /// </summary>
-        DeviceConnectionState GetState(string deviceId);
+        DeviceStatus GetState(string deviceId);
 
         /// <summary>
         /// Kiểm tra device có đang streaming không
@@ -47,6 +48,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         /// Lấy device entity theo ID
         /// </summary>
         Device? GetDevice(string deviceId);
+
+        /// <summary>
+        /// Lấy danh sách tất cả các devices đang được quản lý
+        /// </summary>
+        IEnumerable<Device> GetAllDevices();
 
         /// <summary>
         /// Event khi trạng thái device thay đổi
@@ -62,6 +68,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         /// Hủy đăng ký device
         /// </summary>
         void UnregisterDevice(string deviceId);
+
+        /// <summary>
+        /// Xóa toàn bộ danh sách devices đang quản lý
+        /// </summary>
+        void ClearAllDevices();
 
         /// <summary>
         /// Kết nối một device
@@ -130,7 +141,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             public Device Device { get; }
             public IDeviceAdapter Adapter { get; }
             public IntPtr? PreviewHandle { get; }
-            public DeviceConnectionState State { get; set; } = DeviceConnectionState.Disconnected;
+            public DeviceStatus State { get; set; } = DeviceStatus.Disconnected;
             public int RetryCount { get; set; } = 0;
             public DateTime LastPingTime { get; set; } = DateTime.MinValue;
 
@@ -139,12 +150,16 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 Device = device;
                 Adapter = adapter;
                 PreviewHandle = previewHandle;
+                if (adapter.IsConnected)
+                {
+                    State = adapter.IsStreaming ? DeviceStatus.Streaming : DeviceStatus.Connected;
+                }
             }
         }
 
-        public DeviceConnectionState GetState(string deviceId)
+        public DeviceStatus GetState(string deviceId)
         {
-            return _devices.TryGetValue(deviceId, out var info) ? info.State : DeviceConnectionState.Disconnected;
+            return _devices.TryGetValue(deviceId, out var info) ? info.State : DeviceStatus.Disconnected;
         }
 
         public bool IsStreaming(string deviceId)
@@ -156,6 +171,8 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         {
             return _devices.TryGetValue(deviceId, out var info) ? info.Device : null;
         }
+
+        public IEnumerable<Device> GetAllDevices() => _devices.Values.Select(v => v.Device);
 
         public void RegisterDevice(string deviceId, Device device, IDeviceAdapter adapter, IntPtr? previewHandle = null)
         {
@@ -179,6 +196,12 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             }
         }
 
+        public void ClearAllDevices()
+        {
+            _devices.Clear();
+            AppLogger.Information("[DeviceHealth] Cleared all registered devices.");
+        }
+
         public async Task<bool> ConnectAsync(string deviceId, CancellationToken ct = default)
         {
             if (!_devices.TryGetValue(deviceId, out var info))
@@ -187,7 +210,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 return false;
             }
 
-            SetState(deviceId, DeviceConnectionState.Connecting);
+            SetState(deviceId, DeviceStatus.Connecting);
 
             try
             {
@@ -195,13 +218,17 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
                 if (success)
                 {
-                    SetState(deviceId, DeviceConnectionState.Connected);
+                    SetState(deviceId, DeviceStatus.Connected);
+                    if (info.PreviewHandle.HasValue && info.PreviewHandle.Value != IntPtr.Zero)
+                    {
+                        StartPreview(deviceId, info);
+                    }
                     AppLogger.Information($"[DeviceHealth] Connected: {info.Device.Name} ({deviceId})");
                     return true;
                 }
                 else
                 {
-                    SetState(deviceId, DeviceConnectionState.Error);
+                    SetState(deviceId, DeviceStatus.Error);
                     AppLogger.Warning($"[DeviceHealth] Connect failed: {info.Device.Name} ({deviceId})");
                     return false;
                 }
@@ -209,7 +236,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             catch (Exception ex)
             {
                 AppLogger.Error(ex, $"[DeviceHealth] Connect exception: {info.Device.Name} ({deviceId})");
-                SetState(deviceId, DeviceConnectionState.Error);
+                SetState(deviceId, DeviceStatus.Error);
                 return false;
             }
         }
@@ -222,7 +249,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             try
             {
                 await info.Adapter.DisconnectAsync();
-                SetState(deviceId, DeviceConnectionState.Disconnected);
+                SetState(deviceId, DeviceStatus.Disconnected);
                 AppLogger.Information($"[DeviceHealth] Disconnected: {info.Device.Name} ({deviceId})");
             }
             catch (Exception ex)
@@ -244,13 +271,17 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
                 if (success)
                 {
-                    SetState(deviceId, DeviceConnectionState.Connected);
+                    SetState(deviceId, DeviceStatus.Connected);
+                    if (info.PreviewHandle.HasValue && info.PreviewHandle.Value != IntPtr.Zero)
+                    {
+                        StartPreview(deviceId, info);
+                    }
                     AppLogger.Information($"[DeviceHealth] Restart success: {info.Device.Name} ({deviceId})");
                     return true;
                 }
                 else
                 {
-                    SetState(deviceId, DeviceConnectionState.Error);
+                    SetState(deviceId, DeviceStatus.Error);
                     AppLogger.Warning($"[DeviceHealth] Restart failed: {info.Device.Name} ({deviceId})");
                     return false;
                 }
@@ -258,30 +289,16 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             catch (Exception ex)
             {
                 AppLogger.Error(ex, $"[DeviceHealth] Restart exception: {info.Device.Name} ({deviceId})");
-                SetState(deviceId, DeviceConnectionState.Error);
+                SetState(deviceId, DeviceStatus.Error);
                 return false;
             }
         }
 
-        public async Task ConnectAllAsync(CancellationToken ct = default)
-        {
-            var tasks = new List<Task>();
-            foreach (var kvp in _devices)
-            {
-                tasks.Add(ConnectAsync(kvp.Key, ct));
-            }
-            await Task.WhenAll(tasks);
-        }
+        public Task ConnectAllAsync(CancellationToken ct = default) =>
+            Task.WhenAll(_devices.Keys.Select(id => ConnectAsync(id, ct)));
 
-        public async Task DisconnectAllAsync()
-        {
-            var tasks = new List<Task>();
-            foreach (var kvp in _devices)
-            {
-                tasks.Add(DisconnectAsync(kvp.Key));
-            }
-            await Task.WhenAll(tasks);
-        }
+        public Task DisconnectAllAsync() =>
+            Task.WhenAll(_devices.Keys.Select(DisconnectAsync));
 
         public void StartHealthCheck(TimeSpan interval)
         {
@@ -332,24 +349,24 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         private async Task HandleDeviceAliveAsync(string deviceId, DeviceHealthInfo info)
         {
             // Device vừa online hoặc đang online
-            if (info.State == DeviceConnectionState.Disconnected ||
-                info.State == DeviceConnectionState.Error)
+            if (info.State == DeviceStatus.Disconnected ||
+                info.State == DeviceStatus.Error)
             {
                 // Device vừa phục hồi → thử reconnect
                 info.RetryCount = 0;
                 await TryReconnectAsync(deviceId, info);
             }
-            else if (info.State == DeviceConnectionState.Connected && !info.Adapter.IsStreaming)
+            else if (info.State == DeviceStatus.Connected && !info.Adapter.IsStreaming)
             {
                 // Đã connect nhưng chưa stream → start preview
-                await StartPreviewAsync(deviceId, info);
+                StartPreview(deviceId, info);
             }
         }
 
         private async Task HandleDeviceDeadAsync(string deviceId, DeviceHealthInfo info)
         {
-            if (info.State == DeviceConnectionState.Connected ||
-                info.State == DeviceConnectionState.Streaming)
+            if (info.State == DeviceStatus.Connected ||
+                info.State == DeviceStatus.Streaming)
             {
                 // Device vừa mất kết nối → retry với backoff
                 await RetryWithBackoffAsync(deviceId, info);
@@ -358,7 +375,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
         private async Task TryReconnectAsync(string deviceId, DeviceHealthInfo info)
         {
-            SetState(deviceId, DeviceConnectionState.Connecting);
+            SetState(deviceId, DeviceStatus.Connecting);
 
             try
             {
@@ -366,17 +383,20 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
                 if (success)
                 {
-                    SetState(deviceId, DeviceConnectionState.Connected);
-                    await StartPreviewAsync(deviceId, info);
+                    SetState(deviceId, DeviceStatus.Connected);
+                    if (info.PreviewHandle.HasValue && info.PreviewHandle.Value != IntPtr.Zero)
+                    {
+                        StartPreview(deviceId, info);
+                    }
                 }
                 else
                 {
-                    SetState(deviceId, DeviceConnectionState.Error);
+                    SetState(deviceId, DeviceStatus.Error);
                 }
             }
             catch
             {
-                SetState(deviceId, DeviceConnectionState.Error);
+                SetState(deviceId, DeviceStatus.Error);
             }
         }
 
@@ -405,21 +425,31 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
             // All retries failed
             info.RetryCount = 0;
-            SetState(deviceId, DeviceConnectionState.Error);
+            SetState(deviceId, DeviceStatus.Error);
             AppLogger.Warning($"[DeviceHealth] Device offline after {MAX_RETRIES} retries: {info.Device.Name}");
         }
 
-        private async Task StartPreviewAsync(string deviceId, DeviceHealthInfo info)
+        private void StartPreview(string deviceId, DeviceHealthInfo info)
         {
-            // TODO: Implement start preview based on device type
-            // For now, just set streaming state if adapter supports it
-            if (info.Adapter.IsConnected)
+            if (info.Adapter.IsConnected && info.PreviewHandle.HasValue && info.PreviewHandle.Value != IntPtr.Zero)
             {
-                AppLogger.Debug($"[DeviceHealth] Device ready to stream: {info.Device.Name}");
+                AppLogger.Information($"[DeviceHealth] Starting preview for device: {info.Device.Name} ({deviceId})");
+                bool success = info.Adapter.StartPreview(info.PreviewHandle.Value);
+                if (success)
+                {
+                    SetState(deviceId, DeviceStatus.Streaming);
+                }
+            }
+            else if (info.Adapter.IsConnected && (!info.PreviewHandle.HasValue || info.PreviewHandle.Value == IntPtr.Zero))
+            {
+                if (info.Adapter.IsStreaming)
+                {
+                    SetState(deviceId, DeviceStatus.Streaming);
+                }
             }
         }
 
-        private void OnAdapterStateChanged(string deviceId, DeviceConnectionState newState)
+        private void OnAdapterStateChanged(string deviceId, DeviceStatus newState)
         {
             if (_devices.TryGetValue(deviceId, out var info))
             {
@@ -432,7 +462,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             }
         }
 
-        private void SetState(string deviceId, DeviceConnectionState newState)
+        private void SetState(string deviceId, DeviceStatus newState)
         {
             if (_devices.TryGetValue(deviceId, out var info))
             {
@@ -458,3 +488,4 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         }
     }
 }
+

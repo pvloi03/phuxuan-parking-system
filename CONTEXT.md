@@ -38,8 +38,7 @@
 | **PersonType** | `Employee`, `Contractor`, `Visitor`, `VIP`, `Other` | Loại người dùng |
 | **LaneDirection** | `In`, `Out`, `Bidirectional` | Chiều làn |
 | **DeviceType** | `PlateCamera=1`, `OverviewCamera=2`, `Controller=3` | Loại thiết bị |
-| **DeviceStatus** | `Connected`, `Disconnected`, `Error` | Trạng thái kết nối |
-| **DeviceConnectionState** | `Disconnected`, `Connecting`, `Connected`, `Streaming`, `Error` | Trạng thái kết nối & streaming của thiết bị (WinForms UI layer) |
+| **DeviceStatus** | `Connected=1`, `Disconnected=2`, `Error=3`, `Maintenance=4`, `Connecting=5`, `Streaming=6` | Trạng thái kết nối & streaming chuẩn của thiết bị (dùng chung cho Domain, DB, UI và Web) |
 | **HealthCheckCycle** | Vòng đời kiểm tra thiết bị: Init → Check → Sync State → Retry (nếu fail) → Notify UI | Quản lý trạng thái thiết bị |
 | **UserRole** | `SuperAdmin`, `Manager`, `Operator` | Phân quyền |
 
@@ -85,7 +84,7 @@
 - Sync trạng thái với UI
 - Đảm bảo LiveView đồng bộ với Connection State
 
-### DeviceConnectionState Machine
+### DeviceStatus State Machine
 ```
 Disconnected → (Connect) → Connecting → (Success) → Connected → (StartPreview) → Streaming
      ↑                              ↓

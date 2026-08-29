@@ -151,7 +151,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         }
 
         /// <summary>
-        /// Kiểm tra toàn bộ thiết bị và sync vào MongoDB
+        /// Kiểm tra toàn bộ thiết bị đang active và sync vào MongoDB
         /// </summary>
         public async Task<IReadOnlyList<DevicePingResult>> CheckAllAndSyncAsync(
             CancellationToken cancellationToken = default)
@@ -160,14 +160,14 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
             try
             {
-                var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted, cancellationToken);
+                var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted && d.IsActive, cancellationToken);
                 if (devices == null || devices.Count == 0)
                 {
-                    AppLogger.Debug("[DeviceHealth] Không có thiết bị nào để kiểm tra");
+                    AppLogger.Debug("[DeviceHealth] Không có thiết bị nào đang hoạt động để kiểm tra");
                     return results;
                 }
 
-                AppLogger.Information($"[DeviceHealth] Bắt đầu kiểm tra {devices.Count} thiết bị...");
+                AppLogger.Information($"[DeviceHealth] Bắt đầu kiểm tra {devices.Count} thiết bị đang hoạt động...");
 
                 // Kiểm tra song song đồng thời tất cả thiết bị
                 var checkTasks = devices.Select(d => PingDeviceAsync(d, 2000, cancellationToken)).ToList();
@@ -192,31 +192,33 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         }
 
         /// <summary>
-        /// Đồng bộ trạng thái thiết bị vào MongoDB
+        /// Đồng bộ trạng thái thiết bị vào MongoDB (lấy bản ghi mới nhất từ DB để không ghi đè cấu hình vừa cập nhật từ Web Admin)
         /// </summary>
         public async Task SyncStatusToDbAsync(
             DevicePingResult result,
             CancellationToken cancellationToken = default)
         {
-            if (result?.Device == null) return;
+            if (result?.Device == null || string.IsNullOrWhiteSpace(result.Device.Id)) return;
 
             try
             {
-                var dev = result.Device;
+                // Nạp bản ghi mới nhất từ MongoDB để giữ nguyên các thay đổi IP, Port, Username, Pass vừa sửa trên Web Admin
+                var freshDev = await _deviceRepo.GetByIdAsync(result.Device.Id, cancellationToken);
+                if (freshDev == null) return;
 
                 if (result.IsSuccess)
                 {
-                    dev.MarkConnected();
-                    dev.ErrorMessage = null; // Clear error
+                    freshDev.MarkConnected();
+                    freshDev.ErrorMessage = null; // Clear error
                 }
                 else
                 {
-                    dev.MarkDisconnected();
-                    dev.ErrorMessage = result.ErrorMessage;
+                    freshDev.MarkDisconnected();
+                    freshDev.ErrorMessage = result.ErrorMessage;
                 }
 
-                await _deviceRepo.UpdateAsync(dev, cancellationToken);
-                AppLogger.Debug($"[DeviceHealth] Sync {dev.Name}: {result.Status}");
+                await _deviceRepo.UpdateAsync(freshDev, cancellationToken);
+                AppLogger.Debug($"[DeviceHealth] Sync {freshDev.Name}: {result.Status}");
             }
             catch (Exception ex)
             {

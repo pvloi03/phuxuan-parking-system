@@ -1,4 +1,4 @@
-﻿# TÀI LIỆU KỸ THUẬT HỆ THỐNG
+# TÀI LIỆU KỸ THUẬT HỆ THỐNG
 **PhuXuanParkingSystem** — Hệ thống Kiểm soát Xe Thông minh (1 Làn Vào - 1 Làn Ra - 4 Camera - 1 Controller - MongoDB)
 
 ---
@@ -133,8 +133,9 @@ PhuXuanParkingSystem/
 │   │   │   ├── OverviewCameraService.cs # Service Camera Toàn Cảnh (Hikvision)
 │   │   │   └── PlateCameraService.cs    # Service Camera Biển Số (NST)
 │   │   └── Controller/
-│       ├── AuxTriggerEventArgs.cs        # Model sự kiện Radar (AuxPort, IsActive, Time)
-│       └── ZKTecoDeviceAdapter.cs        # Adapter kết nối & đọc log Controller
+│   │       ├── AuxTriggerEventArgs.cs        # Model sự kiện Radar (AuxPort, IsActive, Time)
+│   │       ├── ZKTecoLogEvent.cs             # Model & Parser giải mã chuỗi RTLog từ Controller
+│   │       └── ZKTecoDeviceAdapter.cs        # Adapter kết nối & đọc log Controller
 ├── FrmMain.cs                            # Form giao diện chính & Xử lý nghiệp vụ
 ├── FrmMain.Designer.cs                   # Thiết kế bố cục giao diện WinForms
 ├── App.config                            # File cấu hình tập trung IP, Port, DB

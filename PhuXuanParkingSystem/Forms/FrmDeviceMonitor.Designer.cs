@@ -47,6 +47,7 @@ namespace PhuXuanParkingSystem.Forms
             this.dgvDevices = new System.Windows.Forms.DataGridView();
             this.colStatus = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colType = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colCode = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colName = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colIp = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colPort = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -380,6 +381,7 @@ namespace PhuXuanParkingSystem.Forms
             this.dgvDevices.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.colStatus,
             this.colType,
+            this.colCode,
             this.colName,
             this.colIp,
             this.colPort,
@@ -429,6 +431,14 @@ namespace PhuXuanParkingSystem.Forms
             this.colType.Name = "colType";
             this.colType.ReadOnly = true;
             // 
+            // colCode
+            // 
+            this.colCode.FillWeight = 90F;
+            this.colCode.HeaderText = "Mã Thiết Bị";
+            this.colCode.MinimumWidth = 8;
+            this.colCode.Name = "colCode";
+            this.colCode.ReadOnly = true;
+            // 
             // colName
             // 
             this.colName.FillWeight = 150F;
@@ -468,17 +478,17 @@ namespace PhuXuanParkingSystem.Forms
             this.colLastHeartbeat.MinimumWidth = 8;
             this.colLastHeartbeat.Name = "colLastHeartbeat";
             this.colLastHeartbeat.ReadOnly = true;
-            //
+            // 
             // colDetails
-            //
+            // 
             this.colDetails.FillWeight = 150F;
             this.colDetails.HeaderText = "Chi Tiết Kết Nối";
             this.colDetails.MinimumWidth = 8;
             this.colDetails.Name = "colDetails";
             this.colDetails.ReadOnly = true;
-            //
+            // 
             // colRestart
-            //
+            // 
             this.colRestart.FillWeight = 80F;
             this.colRestart.HeaderText = "Khởi Động Lại";
             this.colRestart.MinimumWidth = 8;
@@ -486,7 +496,7 @@ namespace PhuXuanParkingSystem.Forms
             this.colRestart.ReadOnly = true;
             this.colRestart.Text = "🔄 Restart";
             this.colRestart.UseColumnTextForButtonValue = true;
-            //
+            // 
             // timerAutoCheck
             // 
             this.timerAutoCheck.Interval = 30000;
@@ -570,6 +580,7 @@ namespace PhuXuanParkingSystem.Forms
         private System.Windows.Forms.Timer timerAutoCheck;
         private System.Windows.Forms.DataGridViewTextBoxColumn colStatus;
         private System.Windows.Forms.DataGridViewTextBoxColumn colType;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colCode;
         private System.Windows.Forms.DataGridViewTextBoxColumn colName;
         private System.Windows.Forms.DataGridViewTextBoxColumn colIp;
         private System.Windows.Forms.DataGridViewTextBoxColumn colPort;

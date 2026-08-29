@@ -11,9 +11,17 @@ export interface SessionFilterParams {
   pageSize?: number
 }
 
+export interface DashboardFilterParams {
+  period?: 'today' | 'month' | 'year' | 'custom'
+  fromDate?: string
+  toDate?: string
+}
+
 export const parkingService = {
-  getMetrics: async (): Promise<DashboardMetrics> => {
-    const res = await apiClient.get<ApiResponse<DashboardMetrics>>('/dashboard/metrics')
+  getMetrics: async (params: DashboardFilterParams = {}): Promise<DashboardMetrics> => {
+    const res = await apiClient.get<ApiResponse<DashboardMetrics>>('/dashboard/metrics', {
+      params,
+    })
     return res.data.data
   },
 

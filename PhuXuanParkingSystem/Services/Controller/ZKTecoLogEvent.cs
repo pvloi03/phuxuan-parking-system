@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 
 namespace PhuXuanParkingSystem.Services.Controller
@@ -27,9 +27,9 @@ namespace PhuXuanParkingSystem.Services.Controller
         public bool IsRadarAuxEvent => EventType == 220 || EventType == 221 || EventType == 25 || EventType == 1 || EventType == 4;
 
         /// <summary>
-        /// Phát hiện xe vào vùng quét radar
+        /// Phát hiện xe vào vùng quét radar (221 = Aux In Shorted / Có xe)
         /// </summary>
-        public bool IsVehicleDetected => EventType == 220 || EventType == 25 || EventType == 1;
+        public bool IsVehicleDetected => EventType == 221 || EventType == 25 || EventType == 1;
 
         public string EventDescription => GetEventDescription(EventType);
 
@@ -80,25 +80,14 @@ namespace PhuXuanParkingSystem.Services.Controller
             return evt;
         }
 
-        private static string GetEventDescription(int eventType)
+        private static string GetEventDescription(int eventType) => eventType switch
         {
-            return eventType switch
-            {
-                220 => "📡 Cảm biến Radar AUX kích hoạt (Phát hiện xe vào)",
-                221 => "📡 Cảm biến Radar AUX ngắt (Xe đã qua)",
-                25 => "📡 Tín hiệu báo động AUX Input",
-                1 => "📡 Kích hoạt cảm biến ngõ vào",
-                4 => "Trạng thái cảm biến cửa",
-                0 => "Quẹt thẻ hợp lệ (Normal Verify)",
-                20 => "Thẻ không có quyền",
-                21 => "Thẻ chưa đăng ký",
-                22 => "Thời gian không hợp lệ",
-                23 => "Mã PIN không đúng",
-                27 => "Cửa bị mở cưỡng bức",
-                100 => "Trạng thái bình thường",
-                101 => "Thời gian chờ quá hạn",
-                _ => $"Sự kiện #{eventType}"
-            };
-        }
+            221 => "📡 Cảm biến Radar AUX kích hoạt (Có xe trong vùng quét)",
+            220 => "📡 Cảm biến Radar AUX ngắt (Xe đã ra khỏi vùng quét)",
+            25 => "📡 Tín hiệu báo động AUX Input",
+            1 => "📡 Kích hoạt cảm biến ngõ vào",
+            4 => "Trạng thái cảm biến cửa",
+            _ => $"Sự kiện #{eventType}"
+        };
     }
 }

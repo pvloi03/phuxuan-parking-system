@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 
 namespace PhuXuanParkingSystem.Services.Controller
 {
     /// <summary>
-    /// Event arguments khi cảm biến Radar (Cổng Aux In trên C3-200) thay đổi trạng thái
+    /// Event arguments khi cảm biến Radar (Cổng Aux In trên Access Controller) thay đổi trạng thái
     /// </summary>
     public class AuxTriggerEventArgs(int auxPort, bool isActive, DateTime triggerTime, string? rawLog = null) : EventArgs
     {

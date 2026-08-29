@@ -12,7 +12,7 @@ export type UserRole = 'Admin' | 'Manager' | 'Operator' | 'Security' | 'Viewer'
 export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'VIP' | 'Other'
 
 export type DeviceType = 'PlateCamera' | 'OverviewCamera' | 'Controller'
-export type DeviceStatus = 'Connected' | 'Disconnected' | 'Error' | 'Maintenance'
+export type DeviceStatus = 'Connected' | 'Disconnected' | 'Error' | 'Maintenance' | 'Connecting' | 'Streaming'
 
 export interface ImageStoragePathDto {
   path: string
@@ -185,12 +185,26 @@ export interface HourlyTraffic {
   outCount: number
 }
 
+export interface TrafficDataPoint {
+  label: string
+  inCount: number
+  outCount: number
+}
+
+export type DashboardPeriod = 'today' | 'month' | 'year' | 'custom'
+
 export interface DashboardMetrics {
   activeVehiclesCount: number
-  todayInCount: number
-  todayOutCount: number
-  todayUnmatchedOutCount: number
-  hourlyTraffic: HourlyTraffic[]
+  periodInCount: number
+  periodOutCount: number
+  periodUnmatchedOutCount: number
+  periodLabel: string
+  periodType: DashboardPeriod
+  trafficChart: TrafficDataPoint[]
+  todayInCount?: number
+  todayOutCount?: number
+  todayUnmatchedOutCount?: number
+  hourlyTraffic?: HourlyTraffic[]
 }
 
 // --- VIETNAMESE LOCALIZATION HELPERS ---
@@ -222,6 +236,8 @@ export const getDeviceStatusLabel = (status?: DeviceStatus | number | string) =>
   if (status === 'Disconnected' || status === 2) return 'Mất kết nối (Offline)'
   if (status === 'Error' || status === 3) return 'Lỗi tín hiệu'
   if (status === 'Maintenance' || status === 4) return 'Đang bảo trì'
+  if (status === 'Connecting' || status === 5) return 'Đang kết nối...'
+  if (status === 'Streaming' || status === 6) return 'Đang phát luồng (Live)'
   return 'Chưa xác định'
 }
 
