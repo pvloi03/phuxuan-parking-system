@@ -14,10 +14,37 @@ namespace PhuXuanParkingSystem.Api.DTOs
     public class DashboardMetricsDto
     {
         public int ActiveVehiclesCount { get; set; }
-        public int TodayInCount { get; set; }
-        public int TodayOutCount { get; set; }
-        public int TodayUnmatchedOutCount { get; set; }
+        public int PeriodInCount { get; set; }
+        public int PeriodOutCount { get; set; }
+        public int PeriodUnmatchedOutCount { get; set; }
+        public string PeriodLabel { get; set; } = "Hôm Nay";
+        public string PeriodType { get; set; } = "today";
+        public List<TrafficDataPointDto> TrafficChart { get; set; } = new();
+
+        // Thuộc tính tương thích ngược
+        public int TodayInCount
+        {
+            get => PeriodInCount;
+            set => PeriodInCount = value;
+        }
+        public int TodayOutCount
+        {
+            get => PeriodOutCount;
+            set => PeriodOutCount = value;
+        }
+        public int TodayUnmatchedOutCount
+        {
+            get => PeriodUnmatchedOutCount;
+            set => PeriodUnmatchedOutCount = value;
+        }
         public List<HourlyTrafficDto> HourlyTraffic { get; set; } = new();
+    }
+
+    public class TrafficDataPointDto
+    {
+        public string Label { get; set; } = string.Empty;
+        public int InCount { get; set; }
+        public int OutCount { get; set; }
     }
 
     public class HourlyTrafficDto

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace PhuXuanParkingSystem.Services.Notification
 {
@@ -44,7 +44,7 @@ namespace PhuXuanParkingSystem.Services.Notification
         Camera,
 
         /// <summary>
-        /// Bộ điều khiển Controller ZKTeco C3-200 / Cảm biến Radar
+        /// Bộ điều khiển trung tâm (Access Controller) / Cảm biến Radar
         /// </summary>
         Controller,
 

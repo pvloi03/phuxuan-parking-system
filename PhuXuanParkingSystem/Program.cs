@@ -110,15 +110,12 @@ namespace PhuXuanParkingSystem
             // ANPR License Plate Recognition Service (SimpleLPR3 x86 Engine)
             services.AddSingleton<Services.Anpr.IPlateRecognitionService, Services.Anpr.SimpleLprAnprService>();
 
-            // Business Coordinator Service (Điều phối nghiệp vụ làn xe vào/ra)
-            services.AddScoped<Services.Parking.IParkingLaneService, Services.Parking.ParkingLaneService>();
-
             // Device Health Monitor Service (Giám sát thiết bị & đồng bộ Web Admin)
-            services.AddSingleton<Services.DeviceHealth.IDeviceAdapterFactory, Services.DeviceHealth.DeviceAdapterFactory>();
-            services.AddSingleton<Services.DeviceHealth.IDeviceHealthMonitorService, Services.DeviceHealth.DeviceHealthMonitorService>();
+            services.AddSingleton<Services.Devices.Health.IDeviceAdapterFactory, Services.Devices.Health.DeviceAdapterFactory>();
+            services.AddSingleton<Services.Devices.Health.IDeviceHealthMonitorService, Services.Devices.Health.DeviceHealthMonitorService>();
 
             // Device Config Service (Nạp cấu hình động từ MongoDB + Reload khi Web Admin thay đổi)
-            services.AddSingleton<Services.DeviceConfig.IDeviceConfigService, Services.DeviceConfig.DeviceConfigService>();
+            services.AddSingleton<Services.Devices.Config.IDeviceConfigService, Services.Devices.Config.DeviceConfigService>();
 
             // Forms
             services.AddTransient<FrmMain>();

@@ -1,8 +1,8 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using System;
 
-namespace PhuXuanParkingSystem.Services.DeviceHealth
+namespace PhuXuanParkingSystem.Services.Devices.Health
 {
     /// <summary>
     /// Kết quả kiểm tra kết nối & sức khỏe của một thiết bị phần cứng
@@ -16,24 +16,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         public DateTime CheckedAt { get; set; } = DateTime.Now;
         public string? ErrorMessage { get; set; }
         public string Details { get; set; } = string.Empty;
+        public int RetryCount { get; set; }
+        public bool WasReconnected { get; set; }
 
-        /// <summary>
-        /// Số lần retry đã thực hiện (0 = thành công ngay, >0 = cần retry)
-        /// </summary>
-        public int RetryCount { get; set; } = 0;
-
-        /// <summary>
-        /// TRUE = kết nối mới (first-time connect), FALSE = reconnect
-        /// </summary>
-        public bool WasReconnected { get; set; } = false;
-
-        public static DevicePingResult Success(
-            Device device,
-            long latencyMs,
-            string details = "Kết nối thành công",
-            int retryCount = 0)
-        {
-            return new DevicePingResult
+        public static DevicePingResult Success(Device device, long latencyMs, string details = "Kết nối thành công", int retryCount = 0) =>
+            new()
             {
                 Device = device,
                 IsSuccess = true,
@@ -44,11 +31,9 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 RetryCount = retryCount,
                 WasReconnected = retryCount > 0
             };
-        }
 
-        public static DevicePingResult Fail(Device device, string error, long latencyMs = 0, int retryCount = 0)
-        {
-            return new DevicePingResult
+        public static DevicePingResult Fail(Device device, string error, long latencyMs = 0, int retryCount = 0) =>
+            new()
             {
                 Device = device,
                 IsSuccess = false,
@@ -59,6 +44,24 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 Details = $"Mất kết nối: {error}",
                 RetryCount = retryCount
             };
+    }
+
+    /// <summary>
+    /// Event arguments cho thay đổi trạng thái thiết bị
+    /// </summary>
+    public class DeviceStateChangedEventArgs : EventArgs
+    {
+        public string DeviceId { get; }
+        public DeviceStatus OldState { get; }
+        public DeviceStatus NewState { get; }
+        public DateTime Timestamp { get; }
+
+        public DeviceStateChangedEventArgs(string deviceId, DeviceStatus oldState, DeviceStatus newState)
+        {
+            DeviceId = deviceId;
+            OldState = oldState;
+            NewState = newState;
+            Timestamp = DateTime.Now;
         }
     }
 }

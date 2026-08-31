@@ -1,26 +1,25 @@
 using Microsoft.Extensions.DependencyInjection;
 using PhuXuanParkingSystem.Licensing;
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
-using PhuXuanParkingSystem.Services.DeviceConfig;
-using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Camera;
+using PhuXuanParkingSystem.Services.Devices.Config;
+using PhuXuanParkingSystem.Services.Devices.Health;
+using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.License;
 using PhuXuanParkingSystem.Services.Logging;
-using PhuXuanParkingSystem.Services.Parking;
 using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace PhuXuanParkingSystem.Forms
 {
-    public enum DeviceConnectionState
-    {
-        Connecting,
-        Connected,
-        Failed
-    }
 
     /// <summary>
     /// Giao diện chính Hệ Thống Kiểm Soát Bãi Xe (WinForms Presentation Layer)
@@ -30,7 +29,6 @@ namespace PhuXuanParkingSystem.Forms
     public partial class FrmMain : Form
     {
         // ── Dịch vụ Nghiệp vụ & Thiết bị ─────────────────────────────────────
-        private readonly IParkingLaneService _parkingLaneService;
         private readonly IPlateRecognitionService _anprService;
         private readonly IRepository<Device> _deviceRepo;
         private readonly IRepository<Lane> _laneRepo;
@@ -39,18 +37,21 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IDeviceAdapterFactory _adapterFactory;
         private readonly LicenseManager _licenseManager;
 
-        // Device IDs cho Health Monitor
-        private string _inPlateCamDeviceId = string.Empty;
-        private string _outPlateCamDeviceId = string.Empty;
-        private string _inOverviewCamDeviceId = string.Empty;
-        private string _outOverviewCamDeviceId = string.Empty;
-        private string _controllerDeviceId = string.Empty;
+        // ── Quản lý Thiết bị & Camera Slots động (Mở rộng cho N thiết bị/làn) ──
+        private readonly Dictionary<string, Device> _activeDevices = new();
+        private readonly Dictionary<string, CameraSlot> _deviceIdToSlotMap = new();
+        private readonly Dictionary<CameraSlot, DeviceStatus> _slotStates = new()
+        {
+            [CameraSlot.InPlate] = DeviceStatus.Disconnected,
+            [CameraSlot.InOverview] = DeviceStatus.Disconnected,
+            [CameraSlot.OutPlate] = DeviceStatus.Disconnected,
+            [CameraSlot.OutOverview] = DeviceStatus.Disconnected
+        };
 
         private string _captureDir = "";
         private string _controllerIp = "192.168.1.202";
         private int _controllerPort = 4370;
         private readonly object _lockDebounce = new();
-        private Timer? _deviceSyncTimer;
 
         public FrmMain()
         {
@@ -60,14 +61,6 @@ namespace PhuXuanParkingSystem.Forms
 
             if (Program.ServiceProvider != null)
             {
-                _parkingLaneService = Program.ServiceProvider.GetService<IParkingLaneService>()
-                    ?? new ParkingLaneService(
-                        new MongoRepository<ParkingSession>(),
-                        new MongoRepository<Vehicle>(),
-                        new MongoRepository<Person>(),
-                        new MongoRepository<Department>(),
-                        new MongoRepository<Company>(),
-                        new MongoRepository<Contractor>());
                 _anprService = Program.ServiceProvider.GetService<IPlateRecognitionService>() ?? new SimpleLprAnprService();
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
                 _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
@@ -77,13 +70,6 @@ namespace PhuXuanParkingSystem.Forms
             }
             else
             {
-                _parkingLaneService = new ParkingLaneService(
-                    new MongoRepository<ParkingSession>(),
-                    new MongoRepository<Vehicle>(),
-                    new MongoRepository<Person>(),
-                    new MongoRepository<Department>(),
-                    new MongoRepository<Company>(),
-                    new MongoRepository<Contractor>());
                 _anprService = new SimpleLprAnprService();
                 _deviceRepo = new MongoRepository<Device>();
                 _laneRepo = new MongoRepository<Lane>();
@@ -100,7 +86,6 @@ namespace PhuXuanParkingSystem.Forms
         }
 
         public FrmMain(
-            IParkingLaneService parkingLaneService,
             IPlateRecognitionService anprService,
             IRepository<Device> deviceRepo,
             IRepository<Lane>? laneRepo = null,
@@ -110,13 +95,13 @@ namespace PhuXuanParkingSystem.Forms
             InitializeComponent();
 
             _licenseManager = new LicenseManager(new MongoRepository<LicenseInfo>());
-            _parkingLaneService = parkingLaneService ?? throw new ArgumentNullException(nameof(parkingLaneService));
             _anprService = anprService ?? new SimpleLprAnprService();
             _deviceRepo = deviceRepo ?? new MongoRepository<Device>();
             _laneRepo = laneRepo ?? new MongoRepository<Lane>();
             _adapterFactory = adapterFactory ?? new DeviceAdapterFactory();
             _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
             _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
+            _deviceConfigService.OnConfigChanged += DeviceConfigService_OnConfigChanged;
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
             KeyPreview = true;
@@ -125,6 +110,56 @@ namespace PhuXuanParkingSystem.Forms
         private void FrmMain_Load(object sender, EventArgs e)
         {
             lblFooterMachineCode.Text = $"Mã Máy: {HardwareFingerprint.GetMachineCode()}";
+
+            // Hiệu ứng Hover, Click và đổi màu/con trỏ chuột cho thanh Footer Status
+            lblFooterStatus.DoubleClickEnabled = true;
+            lblFooterStatus.MouseEnter += (s, ev) =>
+            {
+                statusStrip.Cursor = Cursors.Hand;
+                lblFooterStatus.Font = new Font(lblFooterStatus.Font, FontStyle.Bold | FontStyle.Underline);
+                lblFooterStatus.BackColor = Color.FromArgb(220, 230, 245);
+            };
+            lblFooterStatus.MouseLeave += (s, ev) =>
+            {
+                statusStrip.Cursor = Cursors.Default;
+                lblFooterStatus.Font = new Font(lblFooterStatus.Font, FontStyle.Bold);
+                lblFooterStatus.BackColor = Color.Transparent;
+            };
+            lblFooterStatus.MouseDown += (s, ev) =>
+            {
+                lblFooterStatus.BackColor = Color.FromArgb(195, 215, 240);
+            };
+            lblFooterStatus.MouseUp += (s, ev) =>
+            {
+                lblFooterStatus.BackColor = Color.FromArgb(220, 230, 245);
+            };
+            lblFooterStatus.Click += (s, ev) => OpenDeviceMonitor();
+            lblFooterStatus.DoubleClick += (s, ev) => OpenDeviceMonitor();
+
+            // Hiệu ứng Hover, Click và đổi màu/con trỏ chuột cho thanh Header System Status
+            Color headerOriginalColor = lblSystemStatus.ForeColor;
+            lblSystemStatus.Cursor = Cursors.Hand;
+            lblSystemStatus.MouseEnter += (s, ev) =>
+            {
+                headerOriginalColor = lblSystemStatus.ForeColor;
+                lblSystemStatus.ForeColor = Color.FromArgb(255, 255, 150);
+                lblSystemStatus.Font = new Font(lblSystemStatus.Font, FontStyle.Underline);
+            };
+            lblSystemStatus.MouseLeave += (s, ev) =>
+            {
+                lblSystemStatus.ForeColor = headerOriginalColor;
+                lblSystemStatus.Font = new Font(lblSystemStatus.Font, FontStyle.Regular);
+            };
+            lblSystemStatus.MouseDown += (s, ev) =>
+            {
+                lblSystemStatus.ForeColor = Color.FromArgb(255, 200, 60);
+            };
+            lblSystemStatus.MouseUp += (s, ev) =>
+            {
+                lblSystemStatus.ForeColor = Color.FromArgb(255, 255, 150);
+            };
+            lblSystemStatus.Click += (s, ev) => OpenDeviceMonitor();
+            lblSystemStatus.DoubleClick += (s, ev) => OpenDeviceMonitor();
 
             LoadConfigurations();
             UpdateClock();
@@ -213,16 +248,52 @@ namespace PhuXuanParkingSystem.Forms
             // Kiểm tra và thực thi bản quyền phần mềm
             await CheckAndEnforceLicenseAsync();
 
+            // Đăng ký event handler TRƯỚC KHI kết nối - tránh miss events
+            _deviceHealthService.OnStateChanged += DeviceHealthService_OnStateChanged;
+
             await AutoConnectAllAsync();
 
             // Đăng ký adapters với factory để DeviceHealthMonitor sử dụng
             RegisterDeviceAdapters();
 
-            // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
-            StartDeviceSyncBackgroundWorker();
+            // Bắt đầu health check định kỳ (30 giây) và tự động đồng bộ MongoDB
+            _deviceHealthService.StartHealthCheck(TimeSpan.FromSeconds(30));
 
             // Bắt đầu giám sát thay đổi cấu hình từ Web Admin mỗi 5 phút
             StartConfigMonitoring();
+        }
+
+        /// <summary>
+        /// Xử lý sự kiện thay đổi trạng thái từ DeviceHealthMonitorService
+        /// </summary>
+        private void DeviceHealthService_OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => DeviceHealthService_OnStateChanged(sender, e)));
+                return;
+            }
+
+            AppLogger.Debug($"[FrmMain] Device state changed: {e.DeviceId} {e.OldState} → {e.NewState}");
+
+            // Cập nhật trạng thái Slot nếu thiết bị là Camera
+            if (_deviceIdToSlotMap.TryGetValue(e.DeviceId, out var slot))
+            {
+                _slotStates[slot] = e.NewState;
+                var cam = GetCameraService(slot);
+                var panel = GetCameraPanel(slot);
+
+                // Nếu vừa chuyển sang Connected và chưa Streaming, tự động kích hoạt lại Stream
+                if (e.NewState == DeviceStatus.Connected && !cam.IsStreaming && cam.IsLoggedIn)
+                {
+                    cam.StartPreview(panel.Handle);
+                }
+
+                panel.Invalidate();
+            }
+
+            // Cập nhật header & footer status từ DeviceHealthService
+            UpdateHeaderStatusFromAllStates();
         }
 
         /// <summary>
@@ -234,20 +305,23 @@ namespace PhuXuanParkingSystem.Forms
             {
                 if (_adapterFactory is DeviceAdapterFactory factory)
                 {
-                    // Register cameras với device IDs
+                    string inPlateId = _deviceIdToSlotMap.FirstOrDefault(x => x.Value == CameraSlot.InPlate).Key ?? string.Empty;
+                    string outPlateId = _deviceIdToSlotMap.FirstOrDefault(x => x.Value == CameraSlot.OutPlate).Key ?? string.Empty;
+                    string inOvwId = _deviceIdToSlotMap.FirstOrDefault(x => x.Value == CameraSlot.InOverview).Key ?? string.Empty;
+                    string outOvwId = _deviceIdToSlotMap.FirstOrDefault(x => x.Value == CameraSlot.OutOverview).Key ?? string.Empty;
+                    string controllerId = _activeDevices.Values.FirstOrDefault(d => d.Type == DeviceType.Controller)?.Id ?? string.Empty;
+
                     factory.RegisterCameras(
                         _inPlateCam,
                         _outPlateCam,
                         _inOverviewCam,
                         _outOverviewCam,
-                        _inPlateCamDeviceId,
-                        _outPlateCamDeviceId,
-                        _inOverviewCamDeviceId,
-                        _outOverviewCamDeviceId);
+                        inPlateId,
+                        outPlateId,
+                        inOvwId,
+                        outOvwId);
 
-                    // Register controller với device ID
-                    factory.RegisterController(_controller, _controllerDeviceId);
-
+                    factory.RegisterController(_controller, controllerId);
                     AppLogger.Information("[FrmMain] Đã đăng ký device adapters với factory");
                 }
             }
@@ -257,26 +331,65 @@ namespace PhuXuanParkingSystem.Forms
             }
         }
 
-        private void StartDeviceSyncBackgroundWorker()
+        /// <summary>
+        /// Cập nhật header và footer status dựa trên trạng thái của tất cả cameras và Controller
+        /// </summary>
+        private void UpdateHeaderStatusFromAllStates()
         {
-            try
-            {
-                // Chạy 1 lần ngay sau khi kết nối
-                _ = _deviceHealthService.CheckAllAndSyncAsync();
+            bool inPlateOk = _slotStates[CameraSlot.InPlate] == DeviceStatus.Connected || _slotStates[CameraSlot.InPlate] == DeviceStatus.Streaming;
+            bool inOvwOk = _slotStates[CameraSlot.InOverview] == DeviceStatus.Connected || _slotStates[CameraSlot.InOverview] == DeviceStatus.Streaming;
+            bool outPlateOk = _slotStates[CameraSlot.OutPlate] == DeviceStatus.Connected || _slotStates[CameraSlot.OutPlate] == DeviceStatus.Streaming;
+            bool outOvwOk = _slotStates[CameraSlot.OutOverview] == DeviceStatus.Connected || _slotStates[CameraSlot.OutOverview] == DeviceStatus.Streaming;
+            bool ctrlOk = _controller.IsConnected;
 
-                _deviceSyncTimer = new Timer
-                {
-                    Interval = 30000 // 30 giây
-                };
-                _deviceSyncTimer.Tick += async (s, e) =>
-                {
-                    await _deviceHealthService.CheckAllAndSyncAsync();
-                };
-                _deviceSyncTimer.Start();
-            }
-            catch (Exception ex)
+            bool inLaneOk = (string.IsNullOrEmpty(_inPlateCam.Config.Ip) || inPlateOk) && (string.IsNullOrEmpty(_inOverviewCam.Config.Ip) || inOvwOk);
+            bool outLaneOk = (string.IsNullOrEmpty(_outPlateCam.Config.Ip) || outPlateOk) && (string.IsNullOrEmpty(_outOverviewCam.Config.Ip) || outOvwOk);
+
+            string inStatus = inLaneOk ? "Làn Vào: Sẵn sàng" : "Làn Vào: Chưa sẵn sàng";
+            string outStatus = outLaneOk ? "Làn Ra: Sẵn sàng" : "Làn Ra: Chưa sẵn sàng";
+            string ctrlStatus = string.IsNullOrEmpty(_controllerIp) ? "Access Controller: Chưa cấu hình" : (ctrlOk ? "Access Controller: Đã kết nối" : "Access Controller: Mất tín hiệu");
+
+            SetHeaderStatus($"{inStatus}  |  {outStatus}  |  {ctrlStatus}");
+
+            // Tự động kiểm tra trạng thái tất cả thiết bị từ _activeDevices
+            var disconnected = new List<string>();
+            foreach (var kvp in _activeDevices)
             {
-                AppLogger.Warning($"Lỗi khởi tạo Background Device Sync: {ex.Message}");
+                var devId = kvp.Key;
+                var dev = kvp.Value;
+                if (_deviceIdToSlotMap.TryGetValue(devId, out var slot))
+                {
+                    if (_slotStates.TryGetValue(slot, out var state) && state != DeviceStatus.Streaming && state != DeviceStatus.Connected)
+                    {
+                        disconnected.Add(dev.Name);
+                    }
+                }
+                else if (dev.Type == DeviceType.Controller && !_controller.IsConnected)
+                {
+                    disconnected.Add(dev.Name);
+                }
+            }
+
+            if (_activeDevices.Count > 0)
+            {
+                if (disconnected.Count == 0)
+                {
+                    SetFooterStatus("Hệ thống sẵn sàng và hoạt động bình thường.", isError: false);
+                }
+                else
+                {
+                    string detail = disconnected.Count switch
+                    {
+                        1 => $"{disconnected[0]} mất kết nối",
+                        2 => $"{disconnected[0]}, {disconnected[1]} mất kết nối",
+                        _ => $"Có {disconnected.Count} thiết bị mất kết nối"
+                    };
+                    SetFooterStatus($"⚠️ {detail} (Nhấn để xem chi tiết)", isError: true);
+                }
+            }
+            else
+            {
+                SetFooterStatus("Chưa có thiết bị nào được cấu hình trong hệ thống.", isError: false);
             }
         }
 
@@ -291,14 +404,14 @@ namespace PhuXuanParkingSystem.Forms
         }
 
         /// <summary>
-        /// Bắt đầu giám sát thay đổi cấu hình định kỳ (5 phút)
+        /// Bắt đầu giám sát thay đổi cấu hình định kỳ (15 giây)
         /// </summary>
         private void StartConfigMonitoring()
         {
             try
             {
-                _deviceConfigService.StartMonitoring(TimeSpan.FromMinutes(5));
-                AppLogger.Information("[FrmMain] Đã bắt đầu giám sát thay đổi cấu hình thiết bị (5 phút/lần)");
+                _deviceConfigService.StartMonitoring(TimeSpan.FromSeconds(15));
+                AppLogger.Information("[FrmMain] Đã bắt đầu giám sát thay đổi cấu hình thiết bị (15 giây/lần)");
             }
             catch (Exception ex)
             {
@@ -307,7 +420,7 @@ namespace PhuXuanParkingSystem.Forms
         }
 
         /// <summary>
-        /// Xử lý khi Web Admin thay đổi cấu hình thiết bị
+        /// Xử lý khi Web Admin thay đổi cấu hình thiết bị (Hot-Reload phân sai chỉ thiết bị thay đổi)
         /// </summary>
         private async void DeviceConfigService_OnConfigChanged(object? sender, ConfigChangeEventArgs e)
         {
@@ -319,11 +432,8 @@ namespace PhuXuanParkingSystem.Forms
 
             AppLogger.Warning($"[FrmMain] Phát hiện thay đổi cấu hình từ Web Admin: {string.Join(", ", e.ChangedDevices)}");
 
-            // Hiển thị thông báo cho người vận hành
-            SetHeaderStatus("⚠️ Cấu hình thiết bị đã thay đổi từ Web Admin!");
-            // Tự động ngắt kết nối cũ và kết nối lại với cấu hình mới
-            await Task.Delay(3000); // Chờ 3s để người dùng nhận biết
-            await AutoConnectAllAsync();
+            SetHeaderStatus("⚠️ Đang cập nhật thiết bị thay đổi...");
+            await ApplyDifferentialConfigAsync(e.OldConfig, e.NewConfig);
         }
 
         public void OpenDeviceMonitor()
@@ -359,15 +469,16 @@ namespace PhuXuanParkingSystem.Forms
             lblSystemStatus.Text = message;
         }
 
-        private void SetFooterStatus(string message)
+        private void SetFooterStatus(string message, bool isError = false)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => SetFooterStatus(message)));
+                BeginInvoke(new Action(() => SetFooterStatus(message, isError)));
                 return;
             }
 
             lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {message}";
+            lblFooterStatus.ForeColor = isError ? Color.FromArgb(220, 53, 69) : Color.FromArgb(40, 167, 69);
         }
 
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)

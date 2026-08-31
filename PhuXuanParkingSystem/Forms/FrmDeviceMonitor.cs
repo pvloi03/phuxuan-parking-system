@@ -1,7 +1,8 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
-using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Health;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Collections.Generic;
@@ -19,8 +20,9 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IRepository<Device> _deviceRepo;
         private readonly IDeviceAdapterFactory _adapterFactory;
 
-        private List<Device> _devices = new();
-        private readonly Dictionary<string, DevicePingResult> _latestResults = new();
+        private List<Device> _devices = [];
+        private readonly Dictionary<string, DevicePingResult> _latestResults = [];
+        private readonly Dictionary<string, DeviceStatus> _deviceStates = [];
         private bool _isChecking = false;
         private CancellationTokenSource? _cts;
 
@@ -47,6 +49,7 @@ namespace PhuXuanParkingSystem.Forms
         public FrmDeviceMonitor(IDeviceHealthMonitorService healthService, IRepository<Device> deviceRepo, IDeviceAdapterFactory adapterFactory)
         {
             InitializeComponent();
+
             _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
             _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
             _adapterFactory = adapterFactory ?? throw new ArgumentNullException(nameof(adapterFactory));
@@ -58,6 +61,23 @@ namespace PhuXuanParkingSystem.Forms
         {
             cboAutoCheckInterval.SelectedIndex = 1; // Mặc định mỗi 30 giây
             await LoadDevicesAndCheckAllAsync();
+        }
+
+        /// <summary>
+        /// Lấy text và màu hiển thị cho trạng thái
+        /// </summary>
+        private static (string text, Color color) GetStateDisplayInfo(DeviceStatus state)
+        {
+            return state switch
+            {
+                DeviceStatus.Disconnected => ("⚪ Chưa kết nối", Color.FromArgb(150, 150, 150)),
+                DeviceStatus.Connecting => ("🟡 Đang kết nối...", Color.FromArgb(200, 140, 0)),
+                DeviceStatus.Connected => ("🟢 Đã kết nối", Color.FromArgb(40, 140, 70)),
+                DeviceStatus.Streaming => ("🔵 Đang Streaming", Color.FromArgb(0, 123, 255)),
+                DeviceStatus.Error => ("🔴 Lỗi kết nối", Color.FromArgb(200, 40, 40)),
+                DeviceStatus.Maintenance => ("🟠 Đang bảo trì", Color.FromArgb(230, 120, 0)),
+                _ => ("❓ Không xác định", Color.FromArgb(100, 100, 100))
+            };
         }
 
         private void HealthService_OnDeviceChecked(object? sender, DevicePingResult e)
@@ -81,12 +101,12 @@ namespace PhuXuanParkingSystem.Forms
             try
             {
                 SetStatus("Đang tải danh sách thiết bị từ CSDL...", true);
-                _devices = (await _deviceRepo.FindAsync(d => !d.IsDeleted)).ToList();
+                _devices = (await _deviceRepo.FindAsync(d => !d.IsDeleted && d.IsActive)).ToList();
 
                 if (_devices.Count == 0)
                 {
                     SetStatus("Chưa có thiết bị nào được cấu hình trong hệ thống.", false);
-                    UpdateStats(0, 0, 0);
+                    UpdateStats(0, 0, 0, 0);
                     dgvDevices.Rows.Clear();
                     return;
                 }
@@ -107,12 +127,18 @@ namespace PhuXuanParkingSystem.Forms
         private void PopulateGrid()
         {
             dgvDevices.Rows.Clear();
+            _deviceStates.Clear();
 
             foreach (var dev in _devices)
             {
                 string typeName = GetDeviceTypeName(dev.Type);
-                string statusText = dev.Status == DeviceStatus.Connected ? "🟢 Đang kết nối" : "🔴 Mất kết nối";
                 string heartbeatText = dev.LastHeartbeat.HasValue ? dev.LastHeartbeat.Value.ToString("HH:mm:ss dd/MM") : "Chưa có";
+
+                // Khởi tạo state từ Device.Status
+                var initialState = dev.Status;
+                _deviceStates[dev.Id] = initialState;
+
+                var (statusText, statusColor) = GetStateDisplayInfo(initialState);
 
                 int rowIndex = dgvDevices.Rows.Add(
                     statusText,
@@ -128,20 +154,10 @@ namespace PhuXuanParkingSystem.Forms
 
                 var row = dgvDevices.Rows[rowIndex];
                 row.Tag = dev;
-
-                // Tô màu theo trạng thái
-                if (dev.Status == DeviceStatus.Connected)
-                {
-                    row.Cells[0].Style.ForeColor = Color.FromArgb(40, 140, 70);
-                }
-                else
-                {
-                    row.Cells[0].Style.ForeColor = Color.FromArgb(200, 40, 40);
-                }
+                row.Cells[0].Style.ForeColor = statusColor;
             }
 
-            int onlineCount = _devices.Count(d => d.Status == DeviceStatus.Connected);
-            UpdateStats(_devices.Count, onlineCount, _devices.Count - onlineCount);
+            UpdateStatsFromStates();
         }
 
         private async Task CheckAllDevicesAsync()
@@ -170,7 +186,9 @@ namespace PhuXuanParkingSystem.Forms
 
                 int online = results.Count(r => r.IsSuccess);
                 int offline = results.Count - online;
-                UpdateStats(results.Count, online, offline);
+                int streaming = _deviceStates.Values.Count(s => s == DeviceStatus.Streaming);
+
+                UpdateStats(results.Count, online, offline, streaming);
 
                 SetStatus($"Hoàn tất kiểm tra lúc {DateTime.Now:HH:mm:ss}: {online} Online, {offline} Offline. Đã đồng bộ lên Web Admin.", false);
             }
@@ -197,14 +215,20 @@ namespace PhuXuanParkingSystem.Forms
 
             _latestResults[result.Device.Id] = result;
 
+            // Convert ping result to status
+            var state = result.IsSuccess ? DeviceStatus.Connected : DeviceStatus.Error;
+            _deviceStates[result.Device.Id] = state;
+
             foreach (DataGridViewRow row in dgvDevices.Rows)
             {
                 if (row.Tag is Device dev && dev.Id == result.Device.Id)
                 {
+                    var (statusText, statusColor) = GetStateDisplayInfo(state);
+                    row.Cells[0].Value = statusText;
+                    row.Cells[0].Style.ForeColor = statusColor;
+
                     if (result.IsSuccess)
                     {
-                        row.Cells[0].Value = "🟢 Đang kết nối";
-                        row.Cells[0].Style.ForeColor = Color.FromArgb(40, 140, 70);
                         row.Cells[6].Value = $"{result.LatencyMs} ms";
                         row.Cells[6].Style.ForeColor = result.LatencyMs < 50 ? Color.FromArgb(40, 140, 70) : Color.FromArgb(200, 140, 0);
                         row.Cells[7].Value = result.CheckedAt.ToString("HH:mm:ss dd/MM");
@@ -212,8 +236,6 @@ namespace PhuXuanParkingSystem.Forms
                     }
                     else
                     {
-                        row.Cells[0].Value = "🔴 Mất kết nối";
-                        row.Cells[0].Style.ForeColor = Color.FromArgb(200, 40, 40);
                         row.Cells[6].Value = $"{result.LatencyMs} ms";
                         row.Cells[6].Style.ForeColor = Color.FromArgb(200, 40, 40);
                         row.Cells[7].Value = result.CheckedAt.ToString("HH:mm:ss dd/MM");
@@ -223,14 +245,17 @@ namespace PhuXuanParkingSystem.Forms
                 }
             }
 
-            // Cập nhật lại số liệu thống kê nhanh
-            int total = dgvDevices.Rows.Count;
-            int online = 0;
-            foreach (DataGridViewRow row in dgvDevices.Rows)
-            {
-                if (row.Cells[0].Value?.ToString()?.Contains("🟢") == true) online++;
-            }
-            UpdateStats(total, online, total - online);
+            UpdateStatsFromStates();
+        }
+
+        private void UpdateStatsFromStates()
+        {
+            int total = _deviceStates.Count;
+            int online = _deviceStates.Values.Count(s => s == DeviceStatus.Connected || s == DeviceStatus.Streaming);
+            int offline = _deviceStates.Values.Count(s => s == DeviceStatus.Error || s == DeviceStatus.Disconnected);
+            int streaming = _deviceStates.Values.Count(s => s == DeviceStatus.Streaming);
+
+            UpdateStats(total, online, offline, streaming);
         }
 
         private async void BtnCheckSelected_Click(object sender, EventArgs e)
@@ -268,11 +293,22 @@ namespace PhuXuanParkingSystem.Forms
             await CheckAllDevicesAsync();
         }
 
-        private void UpdateStats(int total, int online, int offline)
+        private void UpdateStats(int total, int online, int offline, int streaming)
         {
             lblStatTotalVal.Text = total.ToString();
             lblStatOnlineVal.Text = online.ToString();
             lblStatOfflineVal.Text = offline.ToString();
+
+            // Streaming count có thể được thêm vào tooltip hoặc footer
+            if (streaming > 0)
+            {
+                // Update footer để hiển thị streaming count
+                var currentStatus = lblFooterStatus.Text;
+                if (!currentStatus.Contains("🔵"))
+                {
+                    lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {streaming} thiết bị đang Streaming";
+                }
+            }
         }
 
         private void SetStatus(string message, bool isBusy)

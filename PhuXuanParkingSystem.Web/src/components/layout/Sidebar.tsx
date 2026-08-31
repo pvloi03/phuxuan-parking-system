@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/useAuthStore'
 import { recycleBinService } from '@/services/recycleBinService'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { cn } from '@/lib/utils'
 
 interface NavSubItem {
@@ -74,6 +75,7 @@ export function Sidebar() {
   const { user, logout } = useAuthStore()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [openGroup, setOpenGroup] = useState<string | null>('Tổ Chức & Đơn Vị')
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   const { data: trashCounts } = useQuery({
     queryKey: ['recycle-bin-counts'],
@@ -281,7 +283,7 @@ export function Sidebar() {
           )}
           <button
             type="button"
-            onClick={logout}
+            onClick={() => setShowLogoutConfirm(true)}
             title="Đăng xuất"
             className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer shrink-0"
           >
@@ -289,6 +291,23 @@ export function Sidebar() {
           </button>
         </div>
       </div>
+
+      {/* ── Logout Confirmation Dialog ── */}
+      <ConfirmDialog
+        open={showLogoutConfirm}
+        onOpenChange={setShowLogoutConfirm}
+        title="Xác Nhận Đăng Xuất"
+        description="Bạn có chắc chắn muốn đăng xuất khỏi hệ thống quản trị không?"
+        confirmText="Đăng Xuất"
+        cancelText="Hủy Bỏ"
+        variant="destructive"
+        icon={<LogOut className="h-5 w-5 text-red-600 dark:text-red-400" />}
+        confirmIcon={<LogOut className="h-3.5 w-3.5" />}
+        onConfirm={() => {
+          setShowLogoutConfirm(false)
+          logout()
+        }}
+      />
     </aside>
   )
 }

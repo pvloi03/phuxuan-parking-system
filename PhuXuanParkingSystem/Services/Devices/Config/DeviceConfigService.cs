@@ -1,4 +1,4 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Logging;
@@ -9,15 +9,15 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceConfig
+namespace PhuXuanParkingSystem.Services.Devices.Config
 {
     /// <summary>
     /// Triển khai IDeviceConfigService - Quản lý cấu hình thiết bị với Cache + Reload động
     /// </summary>
-    public class DeviceConfigService : IDeviceConfigService, IDisposable
+    public class DeviceConfigService(IRepository<Lane> laneRepo, IRepository<Device> deviceRepo) : IDeviceConfigService, IDisposable
     {
-        private readonly IRepository<Lane> _laneRepo;
-        private readonly IRepository<Device> _deviceRepo;
+        private readonly IRepository<Lane> _laneRepo = laneRepo ?? throw new ArgumentNullException(nameof(laneRepo));
+        private readonly IRepository<Device> _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
 
         private DeviceConfigResult _currentConfig = new();
         private string _lastConfigHash = string.Empty;
@@ -28,12 +28,6 @@ namespace PhuXuanParkingSystem.Services.DeviceConfig
         public event EventHandler<ConfigChangeEventArgs>? OnConfigChanged;
 
         public DeviceConfigResult CurrentConfig => _currentConfig;
-
-        public DeviceConfigService(IRepository<Lane> laneRepo, IRepository<Device> deviceRepo)
-        {
-            _laneRepo = laneRepo ?? throw new ArgumentNullException(nameof(laneRepo));
-            _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
-        }
 
         /// <summary>
         /// Nạp cấu hình từ MongoDB với logging chi tiết
@@ -47,9 +41,9 @@ namespace PhuXuanParkingSystem.Services.DeviceConfig
 
             try
             {
-                // 1. Query Lanes và Devices song song để tăng tốc
+                // 1. Query Lanes và Devices song song để tăng tốc (chỉ lấy các bản ghi đang Active)
                 var lanesTask = _laneRepo.FindAsync(l => !l.IsDeleted && l.IsActive, cancellationToken);
-                var devicesTask = _deviceRepo.FindAsync(d => !d.IsDeleted, cancellationToken);
+                var devicesTask = _deviceRepo.FindAsync(d => !d.IsDeleted && d.IsActive, cancellationToken);
 
                 await Task.WhenAll(lanesTask, devicesTask);
 
@@ -61,8 +55,8 @@ namespace PhuXuanParkingSystem.Services.DeviceConfig
 
                 if (devices == null || devices.Count == 0)
                 {
-                    result.Warnings.Add("Không tìm thấy thiết bị nào trong CSDL MongoDB");
-                    AppLogger.Warning("[DeviceConfig] Không tìm thấy thiết bị nào");
+                    result.Warnings.Add("Không tìm thấy thiết bị nào đang hoạt động trong CSDL MongoDB");
+                    AppLogger.Warning("[DeviceConfig] Không tìm thấy thiết bị nào đang hoạt động");
                     return result;
                 }
 
@@ -133,12 +127,14 @@ namespace PhuXuanParkingSystem.Services.DeviceConfig
         /// </summary>
         public async Task<(bool hasChanged, DeviceConfigResult? newConfig)> CheckAndReloadIfChangedAsync(CancellationToken cancellationToken = default)
         {
-            var newConfig = await LoadConfigAsync(cancellationToken);
-            var newHash = ComputeConfigHash(newConfig);
+            var oldHash = _lastConfigHash;
+            var oldConfig = _currentConfig;
 
-            if (newHash != _lastConfigHash)
+            var newConfig = await LoadConfigAsync(cancellationToken);
+            var newHash = newConfig.Success ? ComputeConfigHash(newConfig) : oldHash;
+
+            if (newConfig.Success && newHash != oldHash)
             {
-                var oldConfig = _currentConfig;
                 var changedDevices = DetectChanges(oldConfig, newConfig);
 
                 AppLogger.Warning($"[DeviceConfig] Phát hiện thay đổi cấu hình: {string.Join(", ", changedDevices)}");
@@ -247,14 +243,14 @@ namespace PhuXuanParkingSystem.Services.DeviceConfig
 
         private string ComputeConfigHash(DeviceConfigResult config)
         {
-            // Hash dựa trên Device IDs và IPs để detect thay đổi nhanh
+            // Băm toàn bộ các thuộc tính cấu hình để phát hiện bất kỳ thay đổi nào từ Web Admin / API
             var parts = new List<string>
             {
-                config.InPlateCamera?.Id ?? "",
-                config.InOverviewCamera?.Id ?? "",
-                config.OutPlateCamera?.Id ?? "",
-                config.OutOverviewCamera?.Id ?? "",
-                config.Controller?.Id ?? "",
+                FormatDeviceHash(config.InPlateCamera),
+                FormatDeviceHash(config.InOverviewCamera),
+                FormatDeviceHash(config.OutPlateCamera),
+                FormatDeviceHash(config.OutOverviewCamera),
+                FormatDeviceHash(config.Controller),
                 config.ControllerIp ?? "",
                 config.ControllerPort.ToString()
             };
@@ -263,26 +259,53 @@ namespace PhuXuanParkingSystem.Services.DeviceConfig
             return combined.GetHashCode().ToString("X8");
         }
 
+        private static string FormatDeviceHash(Device? dev)
+        {
+            if (dev == null) return "null";
+            return $"{dev.Id}:{dev.Code}:{dev.Name}:{dev.IpAddress}:{dev.Port}:{dev.UserName}:{dev.Password}:{dev.IsActive}";
+        }
+
         private List<string> DetectChanges(DeviceConfigResult oldConfig, DeviceConfigResult newConfig)
         {
             var changes = new List<string>();
 
-            if (oldConfig.InPlateCamera?.IpAddress != newConfig.InPlateCamera?.IpAddress)
-                changes.Add($"InPlateCamera: {oldConfig.InPlateCamera?.IpAddress} → {newConfig.InPlateCamera?.IpAddress}");
-
-            if (oldConfig.InOverviewCamera?.IpAddress != newConfig.InOverviewCamera?.IpAddress)
-                changes.Add($"InOverviewCamera: {oldConfig.InOverviewCamera?.IpAddress} → {newConfig.InOverviewCamera?.IpAddress}");
-
-            if (oldConfig.OutPlateCamera?.IpAddress != newConfig.OutPlateCamera?.IpAddress)
-                changes.Add($"OutPlateCamera: {oldConfig.OutPlateCamera?.IpAddress} → {newConfig.OutPlateCamera?.IpAddress}");
-
-            if (oldConfig.OutOverviewCamera?.IpAddress != newConfig.OutOverviewCamera?.IpAddress)
-                changes.Add($"OutOverviewCamera: {oldConfig.OutOverviewCamera?.IpAddress} → {newConfig.OutOverviewCamera?.IpAddress}");
+            CheckDeviceDiff(changes, "Camera Biển Số Vào", oldConfig.InPlateCamera, newConfig.InPlateCamera);
+            CheckDeviceDiff(changes, "Camera Toàn Cảnh Vào", oldConfig.InOverviewCamera, newConfig.InOverviewCamera);
+            CheckDeviceDiff(changes, "Camera Biển Số Ra", oldConfig.OutPlateCamera, newConfig.OutPlateCamera);
+            CheckDeviceDiff(changes, "Camera Toàn Cảnh Ra", oldConfig.OutOverviewCamera, newConfig.OutOverviewCamera);
+            CheckDeviceDiff(changes, "Controller", oldConfig.Controller, newConfig.Controller);
 
             if (oldConfig.ControllerIp != newConfig.ControllerIp || oldConfig.ControllerPort != newConfig.ControllerPort)
-                changes.Add($"Controller: {oldConfig.ControllerIp}:{oldConfig.ControllerPort} → {newConfig.ControllerIp}:{newConfig.ControllerPort}");
+                changes.Add($"Controller Config: {oldConfig.ControllerIp}:{oldConfig.ControllerPort} → {newConfig.ControllerIp}:{newConfig.ControllerPort}");
 
             return changes;
+        }
+
+        private static void CheckDeviceDiff(List<string> changes, string label, Device? oldDev, Device? newDev)
+        {
+            if (oldDev == null && newDev != null)
+            {
+                changes.Add($"{label}: Đã kích hoạt ({newDev.IpAddress}:{newDev.Port})");
+                return;
+            }
+            if (oldDev != null && newDev == null)
+            {
+                changes.Add($"{label}: Đã vô hiệu hóa");
+                return;
+            }
+            if (oldDev != null && newDev != null)
+            {
+                if (oldDev.Id != newDev.Id)
+                    changes.Add($"{label} ID: {oldDev.Id} → {newDev.Id}");
+                if (oldDev.IpAddress != newDev.IpAddress || oldDev.Port != newDev.Port)
+                    changes.Add($"{label} Địa chỉ: {oldDev.IpAddress}:{oldDev.Port} → {newDev.IpAddress}:{newDev.Port}");
+                if (oldDev.UserName != newDev.UserName || oldDev.Password != newDev.Password)
+                    changes.Add($"{label} Tài khoản đăng nhập thay đổi");
+                if (oldDev.Name != newDev.Name)
+                    changes.Add($"{label} Tên: {oldDev.Name} → {newDev.Name}");
+                if (oldDev.IsActive != newDev.IsActive)
+                    changes.Add($"{label} IsActive: {oldDev.IsActive} → {newDev.IsActive}");
+            }
         }
 
         public void Dispose()

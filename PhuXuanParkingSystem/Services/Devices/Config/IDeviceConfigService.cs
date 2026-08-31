@@ -1,11 +1,11 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceConfig
+namespace PhuXuanParkingSystem.Services.Devices.Config
 {
     /// <summary>
     /// Kết quả nạp cấu hình thiết bị từ MongoDB

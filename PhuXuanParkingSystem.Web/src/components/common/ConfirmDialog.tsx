@@ -17,6 +17,8 @@ export interface ConfirmDialogProps {
   cancelText?: string
   variant?: 'destructive' | 'default'
   isLoading?: boolean
+  icon?: React.ReactNode
+  confirmIcon?: React.ReactNode
   onConfirm: () => void
 }
 
@@ -29,6 +31,8 @@ export function ConfirmDialog({
   cancelText = 'Hủy Bỏ',
   variant = 'destructive',
   isLoading = false,
+  icon,
+  confirmIcon,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -36,7 +40,7 @@ export function ConfirmDialog({
       <DialogContent className="max-w-md p-0 overflow-hidden flex flex-col bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-2xl">
         <div className="p-6 flex items-start gap-4">
           <div className="h-11 w-11 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 shadow-xs">
-            <AlertTriangle className="h-5 w-5" />
+            {icon ?? <AlertTriangle className="h-5 w-5" />}
           </div>
           <div className="space-y-1.5 flex-1 min-w-0">
             <DialogTitle className="text-base font-bold text-slate-900 dark:text-slate-100">
@@ -71,7 +75,7 @@ export function ConfirmDialog({
               'Đang xử lý...'
             ) : (
               <>
-                <Trash2 className="h-3.5 w-3.5" />
+                {confirmIcon ?? <Trash2 className="h-3.5 w-3.5" />}
                 {confirmText}
               </>
             )}
