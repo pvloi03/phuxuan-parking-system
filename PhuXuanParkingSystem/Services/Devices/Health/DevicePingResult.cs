@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using System;
 
@@ -49,19 +49,11 @@ namespace PhuXuanParkingSystem.Services.Devices.Health
     /// <summary>
     /// Event arguments cho thay đổi trạng thái thiết bị
     /// </summary>
-    public class DeviceStateChangedEventArgs : EventArgs
+    public class DeviceStateChangedEventArgs(string deviceId, DeviceStatus oldState, DeviceStatus newState) : EventArgs
     {
-        public string DeviceId { get; }
-        public DeviceStatus OldState { get; }
-        public DeviceStatus NewState { get; }
-        public DateTime Timestamp { get; }
-
-        public DeviceStateChangedEventArgs(string deviceId, DeviceStatus oldState, DeviceStatus newState)
-        {
-            DeviceId = deviceId;
-            OldState = oldState;
-            NewState = newState;
-            Timestamp = DateTime.Now;
-        }
+        public string DeviceId { get; } = deviceId;
+        public DeviceStatus OldState { get; } = oldState;
+        public DeviceStatus NewState { get; } = newState;
+        public DateTime Timestamp { get; } = DateTime.Now;
     }
 }

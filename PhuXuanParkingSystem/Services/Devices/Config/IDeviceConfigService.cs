@@ -1,5 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Entities;
-using PhuXuanParkingSystem.Models.Enums;
+using PhuXuanParkingSystem.Models.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -68,10 +67,5 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
         /// Dừng giám sát
         /// </summary>
         void StopMonitoring();
-
-        /// <summary>
-        /// Cập nhật trạng thái IsActive của lane (dùng cho In/Out lanes)
-        /// </summary>
-        void UpdateLaneActiveState(LaneDirection direction, bool isActive);
     }
 }

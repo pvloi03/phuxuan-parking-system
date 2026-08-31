@@ -311,17 +311,11 @@ namespace PhuXuanParkingSystem.Forms
                     string outOvwId = _deviceIdToSlotMap.FirstOrDefault(x => x.Value == CameraSlot.OutOverview).Key ?? string.Empty;
                     string controllerId = _activeDevices.Values.FirstOrDefault(d => d.Type == DeviceType.Controller)?.Id ?? string.Empty;
 
-                    factory.RegisterCameras(
-                        _inPlateCam,
-                        _outPlateCam,
-                        _inOverviewCam,
-                        _outOverviewCam,
-                        inPlateId,
-                        outPlateId,
-                        inOvwId,
-                        outOvwId);
-
-                    factory.RegisterController(_controller, controllerId);
+                    factory.RegisterAdapter(inPlateId, _inPlateCam, _inPlateCam.Config.Ip);
+                    factory.RegisterAdapter(outPlateId, _outPlateCam, _outPlateCam.Config.Ip);
+                    factory.RegisterAdapter(inOvwId, _inOverviewCam, _inOverviewCam.Config.Ip);
+                    factory.RegisterAdapter(outOvwId, _outOverviewCam, _outOverviewCam.Config.Ip);
+                    factory.RegisterAdapter(controllerId, _controller, _controllerIp);
                     AppLogger.Information("[FrmMain] Đã đăng ký device adapters với factory");
                 }
             }
