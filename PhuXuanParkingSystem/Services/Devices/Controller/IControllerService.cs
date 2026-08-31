@@ -20,9 +20,9 @@ namespace PhuXuanParkingSystem.Services.Devices.Controller
         /// Kết nối tới Controller qua IP, Port và mật khẩu
         /// </summary>
         Task<bool> ConnectAsync(
-            string ipAddress = "192.168.1.202",
-            int port = 4370,
-            string? password = null,
+            string ipAddress,
+            int port,
+            string? password,
             CancellationToken cancellationToken = default);
 
         /// <summary>

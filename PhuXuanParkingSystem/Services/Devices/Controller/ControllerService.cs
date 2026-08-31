@@ -21,7 +21,7 @@ namespace PhuXuanParkingSystem.Services.Devices.Controller
         private Task? _listeningTask;
         private bool _isDisposed;
 
-        private string _lastIp = "192.168.1.202";
+        private string _lastIp = "";
         private int _lastPort = 4370;
         private string? _lastPassword;
         private DateTime _drainUntil = DateTime.MinValue;
