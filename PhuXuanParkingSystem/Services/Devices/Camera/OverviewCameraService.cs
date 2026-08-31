@@ -1,4 +1,4 @@
-using CHCNetSDK_Library;
+﻿using CHCNetSDK_Library;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.Camera
+namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     /// <summary>
     /// Service kết nối và điều khiển Camera Toàn Cảnh (HikVision SDK)

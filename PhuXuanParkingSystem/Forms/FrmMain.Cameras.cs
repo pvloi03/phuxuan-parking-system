@@ -1,7 +1,10 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
-using PhuXuanParkingSystem.Services.Camera;
-using PhuXuanParkingSystem.Services.DeviceConfig;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Camera;
+using PhuXuanParkingSystem.Services.Devices.Config;
+using PhuXuanParkingSystem.Services.Devices.Health;
+using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
 using System;
@@ -216,7 +219,6 @@ namespace PhuXuanParkingSystem.Forms
 
             await LoadConfigurationsFromDbAsync();
 
-            RegisterDevicesWithHealthManager();
             RegisterDeviceAdapters();
 
             foreach (var slot in (CameraSlot[])Enum.GetValues(typeof(CameraSlot)))
@@ -379,8 +381,7 @@ namespace PhuXuanParkingSystem.Forms
                 _activeDevices[newConfig.Controller.Id] = newConfig.Controller;
             }
 
-            // Đồng bộ DeviceHealthManager và Adapters
-            RegisterDevicesWithHealthManager();
+            // Đồng bộ Adapters
             RegisterDeviceAdapters();
 
             // Kết nối lại CHỈ các camera bị thay đổi

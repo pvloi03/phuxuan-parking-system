@@ -1,4 +1,4 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Logging;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceConfig
+namespace PhuXuanParkingSystem.Services.Devices.Config
 {
     /// <summary>
     /// Triển khai IDeviceConfigService - Quản lý cấu hình thiết bị với Cache + Reload động

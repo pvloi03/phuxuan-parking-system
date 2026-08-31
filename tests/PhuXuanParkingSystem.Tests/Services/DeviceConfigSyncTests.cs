@@ -2,8 +2,9 @@ using Moq;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
-using PhuXuanParkingSystem.Services.DeviceConfig;
-using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Config;
+using PhuXuanParkingSystem.Services.Devices.Health;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -150,27 +151,26 @@ namespace PhuXuanParkingSystem.Tests.Services
         }
 
         [Fact]
-        public void DeviceHealthManager_ClearAllDevices_RemovesAllDevices()
+        public async Task DeviceHealthMonitorService_GetState_ReturnsCorrectStatus()
         {
             // Arrange
-            var healthManager = new DeviceHealthManager();
+            var mockDeviceRepo = new Mock<IRepository<Device>>();
+            var mockAdapterFactory = new Mock<IDeviceAdapterFactory>();
+            var mockAdapter = new Mock<IDeviceAdapter>();
+            mockAdapter.SetupGet(a => a.IsConnected).Returns(true);
+
             var dev = new Device("CAM-01", "Cam Biển Số", DeviceType.PlateCamera, "192.168.1.100", 3000)
             {
                 Id = "dev-01"
             };
-            var mockAdapter = new Mock<IDeviceAdapter>();
-            mockAdapter.Setup(a => a.IsConnected).Returns(true);
+            mockAdapterFactory.Setup(f => f.GetAdapter(dev)).Returns(mockAdapter.Object);
 
-            healthManager.RegisterDevice("dev-01", dev, mockAdapter.Object);
+            using var healthService = new DeviceHealthMonitorService(mockDeviceRepo.Object, mockAdapterFactory.Object);
 
-            Assert.NotNull(healthManager.GetDevice("dev-01"));
-
-            // Act
-            healthManager.ClearAllDevices();
-
-            // Assert
-            Assert.Null(healthManager.GetDevice("dev-01"));
-            Assert.Empty(healthManager.GetAllDevices());
+            // Act & Assert
+            Assert.Equal(DeviceStatus.Disconnected, healthService.GetState("dev-01"));
+            await healthService.PingDeviceAsync(dev);
+            Assert.Equal(DeviceStatus.Connected, healthService.GetState("dev-01"));
         }
 
         [Fact]

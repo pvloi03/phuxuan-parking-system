@@ -1,7 +1,7 @@
 using FluentAssertions;
 using Moq;
 using PhuXuanParkingSystem.Models.Enums;
-using PhuXuanParkingSystem.Services.Camera;
+using PhuXuanParkingSystem.Services.Devices.Camera;
 using System;
 using System.IO;
 using System.Threading;

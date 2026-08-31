@@ -1,7 +1,8 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
-using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Health;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,6 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IDeviceHealthMonitorService _healthService;
         private readonly IRepository<Device> _deviceRepo;
         private readonly IDeviceAdapterFactory _adapterFactory;
-        private readonly DeviceHealthManager _deviceHealthManager;
 
         private List<Device> _devices = [];
         private readonly Dictionary<string, DevicePingResult> _latestResults = [];
@@ -29,9 +29,6 @@ namespace PhuXuanParkingSystem.Forms
         public FrmDeviceMonitor()
         {
             InitializeComponent();
-
-            _deviceHealthManager = new DeviceHealthManager();
-            _deviceHealthManager.OnStateChanged += DeviceHealthManager_OnStateChanged;
 
             _deviceRepo = Program.ServiceProvider != null
                 ? (Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetService<IRepository<Device>>(Program.ServiceProvider) ?? new MongoRepository<Device>())
@@ -53,9 +50,6 @@ namespace PhuXuanParkingSystem.Forms
         {
             InitializeComponent();
 
-            _deviceHealthManager = new DeviceHealthManager();
-            _deviceHealthManager.OnStateChanged += DeviceHealthManager_OnStateChanged;
-
             _healthService = healthService ?? throw new ArgumentNullException(nameof(healthService));
             _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
             _adapterFactory = adapterFactory ?? throw new ArgumentNullException(nameof(adapterFactory));
@@ -67,47 +61,6 @@ namespace PhuXuanParkingSystem.Forms
         {
             cboAutoCheckInterval.SelectedIndex = 1; // Mặc định mỗi 30 giây
             await LoadDevicesAndCheckAllAsync();
-
-            // Bắt đầu health check để nhận real-time events
-            _deviceHealthManager.StartHealthCheck(TimeSpan.FromSeconds(30));
-        }
-
-        /// <summary>
-        /// Xử lý sự kiện thay đổi trạng thái real-time từ DeviceHealthManager
-        /// </summary>
-        private void DeviceHealthManager_OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
-        {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => DeviceHealthManager_OnStateChanged(sender, e)));
-                return;
-            }
-
-            _deviceStates[e.DeviceId] = e.NewState;
-
-            // Cập nhật row tương ứng
-            UpdateDeviceStateRow(e.DeviceId, e.NewState, e.Timestamp);
-
-            // Cập nhật stats
-            UpdateStatsFromStates();
-        }
-
-        /// <summary>
-        /// Cập nhật row với trạng thái DeviceStatus
-        /// </summary>
-        private void UpdateDeviceStateRow(string deviceId, DeviceStatus state, DateTime timestamp)
-        {
-            foreach (DataGridViewRow row in dgvDevices.Rows)
-            {
-                if (row.Tag is Device dev && dev.Id == deviceId)
-                {
-                    var (statusText, statusColor) = GetStateDisplayInfo(state);
-                    row.Cells[0].Value = statusText;
-                    row.Cells[0].Style.ForeColor = statusColor;
-                    row.Cells[7].Value = timestamp.ToString("HH:mm:ss dd/MM");
-                    break;
-                }
-            }
         }
 
         /// <summary>
@@ -424,9 +377,6 @@ namespace PhuXuanParkingSystem.Forms
         {
             timerAutoCheck.Stop();
             _cts?.Cancel();
-            _deviceHealthManager.StopHealthCheck();
-            _deviceHealthManager.OnStateChanged -= DeviceHealthManager_OnStateChanged;
-            _deviceHealthManager.Dispose();
             _healthService.OnDeviceChecked -= HealthService_OnDeviceChecked;
         }
 

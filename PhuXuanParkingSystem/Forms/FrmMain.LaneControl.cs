@@ -1,5 +1,5 @@
 using PhuXuanParkingSystem.Services.Anpr;
-using PhuXuanParkingSystem.Services.Controller;
+using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Drawing;
@@ -12,7 +12,7 @@ namespace PhuXuanParkingSystem.Forms
     public partial class FrmMain
     {
         // ── 1 Access Controller dùng chung ───────────────────────────
-        private readonly ZKTecoDeviceAdapter _controller = new();
+        private readonly IControllerService _controller = new ControllerService();
 
         // ── Chống rung Radar Debounce ─────────────────────────────────────────
         private DateTime _lastInRadarTriggerTime = DateTime.MinValue;

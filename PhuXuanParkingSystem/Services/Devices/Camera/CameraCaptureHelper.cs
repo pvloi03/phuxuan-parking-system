@@ -1,10 +1,10 @@
-using PhuXuanParkingSystem.Services.Logging;
+﻿using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.Camera
+namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     /// <summary>
     /// Helper dùng chung cho việc lưu file ảnh snapshot bất đồng bộ

@@ -1,22 +1,19 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.SDK.ZKTeco;
-using PhuXuanParkingSystem.Services.DeviceHealth;
 using PhuXuanParkingSystem.Services.Logging;
-using PhuXuanParkingSystem.Services.Notification;
 using System;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.Controller
+namespace PhuXuanParkingSystem.Services.Devices.Controller
 {
     /// <summary>
-    /// Adapter kết nối và lắng nghe sự kiện từ Bộ điều khiển trung tâm (Access Controller) qua giao thức TCP
-    /// Implements IDeviceAdapter cho DeviceHealthManager
+    /// Triển khai IControllerService - Quản lý kết nối TCP, luồng nhận RTLog ngầm và dispatch sự kiện Radar
     /// </summary>
-    public class ZKTecoDeviceAdapter : IDeviceAdapter, IDisposable
+    public class ControllerService : IControllerService
     {
         private IntPtr _handle = IntPtr.Zero;
         private readonly object _lockObj = new();
@@ -51,18 +48,11 @@ namespace PhuXuanParkingSystem.Services.Controller
             try
             {
                 using var client = new TcpClient();
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(timeoutMs);
-
                 var connectTask = client.ConnectAsync(_lastIp, _lastPort);
-                var delayTask = Task.Delay(timeoutMs, cts.Token);
-                var completedTask = await Task.WhenAny(connectTask, delayTask);
+                var delayTask = Task.Delay(timeoutMs, cancellationToken);
+                var completedTask = await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false);
 
-                if (completedTask == connectTask && client.Connected)
-                {
-                    return true;
-                }
-                return false;
+                return completedTask == connectTask && client.Connected;
             }
             catch
             {
@@ -74,7 +64,7 @@ namespace PhuXuanParkingSystem.Services.Controller
         /// Kết nối tới bộ điều khiển trung tâm qua giao thức TCP
         /// </summary>
         public Task<bool> ConnectAsync(
-            string ipAddress = "192.168.1.202",
+            string ipAddress = "",
             int port = 4370,
             string? password = null,
             CancellationToken cancellationToken = default)
@@ -106,7 +96,6 @@ namespace PhuXuanParkingSystem.Services.Controller
                     {
                         _drainUntil = DateTime.Now.AddSeconds(1.5);
                         StartListening();
-                        AppNotificationService.NotifySuccess(NotificationCategory.Controller, "Access Controller", $"Đã kết nối Access Controller ({ipAddress}:{port}) thành công.", ipAddress);
                         OnConnectionStateChanged?.Invoke(this, DeviceStatus.Connected);
                         return true;
                     }
@@ -153,16 +142,6 @@ namespace PhuXuanParkingSystem.Services.Controller
             return await ConnectAsync(device, cancellationToken).ConfigureAwait(false);
         }
 
-        /// <summary>
-        /// Controller không có màn hình preview
-        /// </summary>
-        public bool StartPreview(IntPtr windowHandle) => true;
-
-        /// <summary>
-        /// Dừng preview (no-op cho Controller)
-        /// </summary>
-        public void StopPreview() { }
-
         private void DisconnectInternal()
         {
             StopListening();
@@ -188,15 +167,8 @@ namespace PhuXuanParkingSystem.Services.Controller
         {
             if (_listeningCts != null)
             {
-                try
-                {
-                    _listeningCts.Cancel();
-                    _listeningCts.Dispose();
-                }
-                catch
-                {
-                    // Bỏ qua lỗi hủy token
-                }
+                try { _listeningCts.Cancel(); } catch { }
+                _listeningCts.Dispose();
                 _listeningCts = null;
             }
 
@@ -234,13 +206,13 @@ namespace PhuXuanParkingSystem.Services.Controller
 
                         if (!string.IsNullOrWhiteSpace(rawString))
                         {
-                            var lines = rawString.Split(["\r\n", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries);
+                            var lines = rawString.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                             foreach (var line in lines)
                             {
-                                var trimmedLine = line.Trim();
-                                if (!string.IsNullOrEmpty(trimmedLine))
+                                var trimmed = line.Trim();
+                                if (!string.IsNullOrEmpty(trimmed))
                                 {
-                                    ParseAndDispatchLog(trimmedLine);
+                                    ParseAndDispatchLog(trimmed);
                                 }
                             }
                         }
@@ -344,21 +316,18 @@ namespace PhuXuanParkingSystem.Services.Controller
             // 220: HẾT XE / ĐÃ QUA (Active = false)
             bool isActive = eventType == 221 || eventType == 25 || eventType == 1;
 
-            var (category, title, message) = (portIndex, isActive) switch
-            {
-                (1, true) => (NotificationCategory.LaneIn, "Phát hiện xe vào", "Cảm biến Radar Làn Vào phát hiện có xe đến."),
-                (1, false) => (NotificationCategory.LaneIn, "Xe đã qua cổng vào", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Vào."),
-                (2, true) => (NotificationCategory.LaneOut, "Phát hiện xe ra", "Cảm biến Radar Làn Ra phát hiện có xe đến."),
-                _ => (NotificationCategory.LaneOut, "Xe đã qua cổng ra", "Xe đã di chuyển qua khỏi vùng cảm biến Làn Ra.")
-            };
-            AppNotificationService.NotifyInfo(category, title, message, rawLog);
-
             AppLogger.Information($"[Access Controller Trigger] Phát sự kiện OnAuxInputTriggered: Làn {portIndex} (Aux {portIndex}), IsActive={isActive}, EventType={eventType}");
+
+            DateTime triggerTime = DateTime.Now;
+            if (parts.Length > 0 && DateTime.TryParse(parts[0].Trim(), out var parsedTime))
+            {
+                triggerTime = parsedTime;
+            }
 
             OnAuxInputTriggered?.Invoke(this, new AuxTriggerEventArgs(
                 auxPort: portIndex,
                 isActive: isActive,
-                triggerTime: DateTime.Now,
+                triggerTime: triggerTime,
                 rawLog: rawLog));
         }
 
@@ -375,4 +344,3 @@ namespace PhuXuanParkingSystem.Services.Controller
         }
     }
 }
-

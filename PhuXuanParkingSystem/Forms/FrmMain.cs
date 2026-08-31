@@ -4,9 +4,11 @@ using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
-using PhuXuanParkingSystem.Services.Camera;
-using PhuXuanParkingSystem.Services.DeviceConfig;
-using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Camera;
+using PhuXuanParkingSystem.Services.Devices.Config;
+using PhuXuanParkingSystem.Services.Devices.Health;
+using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.License;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
@@ -33,7 +35,6 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IDeviceHealthMonitorService _deviceHealthService;
         private readonly IDeviceConfigService _deviceConfigService = null!;
         private readonly IDeviceAdapterFactory _adapterFactory;
-        private readonly DeviceHealthManager _deviceHealthManager = new DeviceHealthManager();
         private readonly LicenseManager _licenseManager;
 
         // ── Quản lý Thiết bị & Camera Slots động (Mở rộng cho N thiết bị/làn) ──
@@ -51,7 +52,6 @@ namespace PhuXuanParkingSystem.Forms
         private string _controllerIp = "192.168.1.202";
         private int _controllerPort = 4370;
         private readonly object _lockDebounce = new();
-        private Timer? _deviceSyncTimer;
 
         public FrmMain()
         {
@@ -249,34 +249,28 @@ namespace PhuXuanParkingSystem.Forms
             await CheckAndEnforceLicenseAsync();
 
             // Đăng ký event handler TRƯỚC KHI kết nối - tránh miss events
-            _deviceHealthManager.OnStateChanged += DeviceHealthManager_OnStateChanged;
+            _deviceHealthService.OnStateChanged += DeviceHealthService_OnStateChanged;
 
             await AutoConnectAllAsync();
-
-            // Đăng ký devices với DeviceHealthManager SAU KHI kết nối thành công
-            RegisterDevicesWithHealthManager();
-
-            // Bắt đầu health check định kỳ (30 giây)
-            _deviceHealthManager.StartHealthCheck(TimeSpan.FromSeconds(30));
 
             // Đăng ký adapters với factory để DeviceHealthMonitor sử dụng
             RegisterDeviceAdapters();
 
-            // Khởi động đồng bộ trạng thái thiết bị lên Web Admin định kỳ 30s
-            StartDeviceSyncBackgroundWorker();
+            // Bắt đầu health check định kỳ (30 giây) và tự động đồng bộ MongoDB
+            _deviceHealthService.StartHealthCheck(TimeSpan.FromSeconds(30));
 
             // Bắt đầu giám sát thay đổi cấu hình từ Web Admin mỗi 5 phút
             StartConfigMonitoring();
         }
 
         /// <summary>
-        /// Xử lý sự kiện thay đổi trạng thái từ DeviceHealthManager
+        /// Xử lý sự kiện thay đổi trạng thái từ DeviceHealthMonitorService
         /// </summary>
-        private void DeviceHealthManager_OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
+        private void DeviceHealthService_OnStateChanged(object? sender, DeviceStateChangedEventArgs e)
         {
             if (InvokeRequired)
             {
-                BeginInvoke(new Action(() => DeviceHealthManager_OnStateChanged(sender, e)));
+                BeginInvoke(new Action(() => DeviceHealthService_OnStateChanged(sender, e)));
                 return;
             }
 
@@ -298,43 +292,8 @@ namespace PhuXuanParkingSystem.Forms
                 panel.Invalidate();
             }
 
-            // Cập nhật header & footer status từ DeviceHealthManager
+            // Cập nhật header & footer status từ DeviceHealthService
             UpdateHeaderStatusFromAllStates();
-        }
-
-        /// <summary>
-        /// Đăng ký tất cả các thiết bị thực tế từ CSDL với DeviceHealthManager để theo dõi
-        /// </summary>
-        private void RegisterDevicesWithHealthManager()
-        {
-            try
-            {
-                _deviceHealthManager.ClearAllDevices();
-
-                foreach (var kvp in _activeDevices)
-                {
-                    var deviceId = kvp.Key;
-                    var device = kvp.Value;
-                    if (_deviceIdToSlotMap.TryGetValue(deviceId, out var slot))
-                    {
-                        var cam = GetCameraService(slot);
-                        var panel = GetCameraPanel(slot);
-                        IDeviceAdapter adapter = new CameraDeviceAdapter(cam);
-
-                        _deviceHealthManager.RegisterDevice(deviceId, device, adapter, panel.Handle);
-                    }
-                    else if (device.Type == DeviceType.Controller)
-                    {
-                        _deviceHealthManager.RegisterDevice(deviceId, device, _controller);
-                    }
-                }
-
-                AppLogger.Information($"[FrmMain] Đã đăng ký {_activeDevices.Count} thiết bị thực tế từ CSDL với DeviceHealthManager");
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Warning($"[FrmMain] Lỗi đăng ký devices với DeviceHealthManager: {ex.Message}");
-            }
         }
 
         /// <summary>
@@ -431,29 +390,6 @@ namespace PhuXuanParkingSystem.Forms
             else
             {
                 SetFooterStatus("Chưa có thiết bị nào được cấu hình trong hệ thống.", isError: false);
-            }
-        }
-
-        private void StartDeviceSyncBackgroundWorker()
-        {
-            try
-            {
-                // Chạy 1 lần ngay sau khi kết nối
-                _ = _deviceHealthService.CheckAllAndSyncAsync();
-
-                _deviceSyncTimer = new Timer
-                {
-                    Interval = 30000 // 30 giây
-                };
-                _deviceSyncTimer.Tick += async (s, e) =>
-                {
-                    await _deviceHealthService.CheckAllAndSyncAsync();
-                };
-                _deviceSyncTimer.Start();
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Warning($"Lỗi khởi tạo Background Device Sync: {ex.Message}");
             }
         }
 

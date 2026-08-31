@@ -1,8 +1,8 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using System;
 
-namespace PhuXuanParkingSystem.Services.DeviceHealth
+namespace PhuXuanParkingSystem.Services.Devices.Health
 {
     /// <summary>
     /// Kết quả kiểm tra kết nối & sức khỏe của một thiết bị phần cứng
@@ -44,5 +44,24 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 Details = $"Mất kết nối: {error}",
                 RetryCount = retryCount
             };
+    }
+
+    /// <summary>
+    /// Event arguments cho thay đổi trạng thái thiết bị
+    /// </summary>
+    public class DeviceStateChangedEventArgs : EventArgs
+    {
+        public string DeviceId { get; }
+        public DeviceStatus OldState { get; }
+        public DeviceStatus NewState { get; }
+        public DateTime Timestamp { get; }
+
+        public DeviceStateChangedEventArgs(string deviceId, DeviceStatus oldState, DeviceStatus newState)
+        {
+            DeviceId = deviceId;
+            OldState = oldState;
+            NewState = newState;
+            Timestamp = DateTime.Now;
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace PhuXuanParkingSystem.Services.Camera
+﻿namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     public class CameraConfig
     {

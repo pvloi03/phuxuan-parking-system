@@ -1,20 +1,41 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceHealth
+namespace PhuXuanParkingSystem.Services.Devices.Health
 {
     /// <summary>
-    /// Giao diện dịch vụ kiểm tra sức khỏe và đồng bộ trạng thái thiết bị Clean Architecture
+    /// Giao diện dịch vụ kiểm tra sức khỏe và đồng bộ trạng thái thiết bị
     /// </summary>
-    public interface IDeviceHealthMonitorService
+    public interface IDeviceHealthMonitorService : IDisposable
     {
         /// <summary>
         /// Sự kiện phát ra khi một thiết bị hoàn thành kiểm tra kết nối
         /// </summary>
         event EventHandler<DevicePingResult>? OnDeviceChecked;
+
+        /// <summary>
+        /// Sự kiện phát ra khi trạng thái thiết bị thay đổi (Online, Offline, Error,...)
+        /// </summary>
+        event EventHandler<DeviceStateChangedEventArgs>? OnStateChanged;
+
+        /// <summary>
+        /// Lấy trạng thái hiện tại của một thiết bị theo Id
+        /// </summary>
+        DeviceStatus GetState(string deviceId);
+
+        /// <summary>
+        /// Bắt đầu chu kỳ tự động kiểm tra sức khỏe định kỳ
+        /// </summary>
+        void StartHealthCheck(TimeSpan interval);
+
+        /// <summary>
+        /// Dừng chu kỳ kiểm tra sức khỏe
+        /// </summary>
+        void StopHealthCheck();
 
         /// <summary>
         /// Kiểm tra kết nối tới 1 thiết bị cụ thể (TCP Socket Connect + ICMP Ping)

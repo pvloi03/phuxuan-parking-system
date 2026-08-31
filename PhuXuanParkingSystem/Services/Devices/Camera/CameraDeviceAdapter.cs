@@ -1,15 +1,16 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
-using PhuXuanParkingSystem.Services.Camera;
+using PhuXuanParkingSystem.Services.Devices;
 using System;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceHealth
+namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     /// <summary>
     /// Adapter dùng chung cho tất cả các loại camera triển khai ICameraService
+    /// Bọc ICameraService thành chuẩn IDeviceAdapter
     /// </summary>
     public class CameraDeviceAdapter : IDeviceAdapter
     {
@@ -70,10 +71,6 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             return await _cameraService.LoginAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        public bool StartPreview(IntPtr windowHandle) => _cameraService.StartPreview(windowHandle);
-
-        public void StopPreview() => _cameraService.StopPreview();
-
         private void ApplyDeviceConfig(Device device)
         {
             if (_cameraService.Config != null && device != null)
@@ -84,21 +81,5 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 _cameraService.Config.Password = device.Password ?? string.Empty;
             }
         }
-    }
-
-    /// <summary>
-    /// Alias tương thích ngược cho Camera Biển Số
-    /// </summary>
-    public class PlateCameraAdapter : CameraDeviceAdapter
-    {
-        public PlateCameraAdapter(ICameraService cameraService) : base(cameraService) { }
-    }
-
-    /// <summary>
-    /// Alias tương thích ngược cho Camera Toàn Cảnh
-    /// </summary>
-    public class OverviewCameraAdapter : CameraDeviceAdapter
-    {
-        public OverviewCameraAdapter(ICameraService cameraService) : base(cameraService) { }
     }
 }

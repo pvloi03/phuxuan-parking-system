@@ -1,13 +1,14 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
-using PhuXuanParkingSystem.Services.Camera;
-using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Camera;
+using PhuXuanParkingSystem.Services.Devices.Controller;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceHealth
+namespace PhuXuanParkingSystem.Services.Devices.Health
 {
     /// <summary>
     /// Factory cung cấp adapter tương ứng cho từng thiết bị phần cứng
@@ -67,12 +68,21 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             }
         }
 
-        public void RegisterController(IDeviceAdapter controllerAdapter, string? deviceId = null)
+        public void RegisterController(IControllerService controllerService, string? deviceId = null, string? ipAddress = null)
+        {
+            RegisterController((IDeviceAdapter)controllerService, deviceId, ipAddress);
+        }
+
+        public void RegisterController(IDeviceAdapter controllerAdapter, string? deviceId = null, string? ipAddress = null)
         {
             if (controllerAdapter == null) return;
             if (!string.IsNullOrEmpty(deviceId))
             {
-                RegisterAdapter(deviceId!, controllerAdapter);
+                RegisterAdapter(deviceId!, controllerAdapter, ipAddress);
+            }
+            else if (!string.IsNullOrEmpty(ipAddress))
+            {
+                _ipAdapters[ipAddress!] = controllerAdapter;
             }
         }
 
@@ -97,7 +107,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
     }
 
     /// <summary>
-    /// Adapter mặc định khi không tìm thấy thiết bị thực
+    /// Adapter mặc định khi không tìm thấy thiết bị thực (Null Object Pattern)
     /// </summary>
     internal sealed class NoOpDeviceAdapter : IDeviceAdapter
     {
@@ -111,7 +121,5 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         public Task<bool> ConnectAsync(Device device, CancellationToken cancellationToken = default) => Task.FromResult(false);
         public Task DisconnectAsync() => Task.CompletedTask;
         public Task<bool> RestartAsync(Device device, CancellationToken cancellationToken = default) => Task.FromResult(false);
-        public bool StartPreview(IntPtr windowHandle) => false;
-        public void StopPreview() { }
     }
 }

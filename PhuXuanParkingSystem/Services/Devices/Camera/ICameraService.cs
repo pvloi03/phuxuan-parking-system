@@ -1,9 +1,9 @@
-using PhuXuanParkingSystem.Models.Enums;
+﻿using PhuXuanParkingSystem.Models.Enums;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.Camera
+namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     /// <summary>
     /// Giao diện chuẩn cho Camera Service (Biển số / Toàn cảnh)

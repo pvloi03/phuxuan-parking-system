@@ -1,39 +1,34 @@
-using PhuXuanParkingSystem.Models.Entities;
+﻿using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.DeviceHealth
+namespace PhuXuanParkingSystem.Services.Devices.Health
 {
     /// <summary>
-    /// Dịch vụ giám sát tình trạng thiết bị phần cứng - Phiên bản tối ưu
-    ///
-    /// Luồng hoạt động:
-    /// 1. Priority 1: Check SDK State (IsConnected) - Single source of truth
-    /// 2. Priority 2: Nếu disconnected → Try reconnect với retry (3 lần, exponential backoff)
-    /// 3. Fire event AFTER return - tránh race condition
-    /// 4. Sync to MongoDB
-    ///
-    /// Responsibility Split:
-    /// - SDK lo: Low-level (socket, protocol, auth, auto-reconnect)
-    /// - Our Code lo: High-level (monitoring, retry logic, sync, notification)
+    /// Dịch vụ giám sát tình trạng thiết bị phần cứng - Động cơ trung tâm quản lý Ping, Retry, In-Memory State & Sync MongoDB
     /// </summary>
     public class DeviceHealthMonitorService : IDeviceHealthMonitorService
     {
         private readonly IRepository<Device> _deviceRepo;
         private readonly IDeviceAdapterFactory _adapterFactory;
+        private readonly ConcurrentDictionary<string, DeviceStatus> _states = new();
+        private Timer? _healthTimer;
+        private bool _isDisposed;
 
         // Retry configuration
         private const int MAX_RETRIES = 3;
         private const int BASE_DELAY_MS = 100; // Exponential backoff: 100ms, 200ms, 400ms
 
         public event EventHandler<DevicePingResult>? OnDeviceChecked;
+        public event EventHandler<DeviceStateChangedEventArgs>? OnStateChanged;
 
         public DeviceHealthMonitorService(
             IRepository<Device> deviceRepo,
@@ -41,6 +36,28 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         {
             _deviceRepo = deviceRepo ?? throw new ArgumentNullException(nameof(deviceRepo));
             _adapterFactory = adapterFactory ?? throw new ArgumentNullException(nameof(adapterFactory));
+        }
+
+        public DeviceStatus GetState(string deviceId)
+        {
+            return _states.TryGetValue(deviceId, out var state) ? state : DeviceStatus.Disconnected;
+        }
+
+        public void StartHealthCheck(TimeSpan interval)
+        {
+            StopHealthCheck();
+            _healthTimer = new Timer(
+                async _ => await CheckAllAndSyncAsync().ConfigureAwait(false),
+                null,
+                interval,
+                interval);
+            AppLogger.Information($"[DeviceHealth] Bắt đầu tự động kiểm tra sức khỏe thiết bị định kỳ (chu kỳ: {interval.TotalSeconds}s)");
+        }
+
+        public void StopHealthCheck()
+        {
+            _healthTimer?.Dispose();
+            _healthTimer = null;
         }
 
         /// <summary>
@@ -59,6 +76,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             if (string.IsNullOrWhiteSpace(device.IpAddress))
             {
                 var result = DevicePingResult.Fail(device, "Địa chỉ IP không hợp lệ", 0);
+                UpdateState(device.Id, DeviceStatus.Error);
                 OnDeviceChecked?.Invoke(this, result);
                 return result;
             }
@@ -69,8 +87,6 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             // =========================================================================
             // PRIORITY 1: CHECK SDK STATE
             // =========================================================================
-            // SDK đã handle auto-reconnect nếu có cable hiccup
-            // Nếu IsConnected = true → Device online
             if (adapter.IsConnected)
             {
                 sw.Stop();
@@ -79,9 +95,11 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 var successResult = DevicePingResult.Success(
                     device,
                     sw.ElapsedMilliseconds,
-                    $"SDK Connected (auto-recovered)");
+                    "SDK Connected (auto-recovered)");
 
-                // Fire event AFTER return - tránh race condition
+                DeviceStatus currentStatus = adapter.IsStreaming ? DeviceStatus.Streaming : DeviceStatus.Connected;
+                UpdateState(device.Id, currentStatus);
+
                 OnDeviceChecked?.Invoke(this, successResult);
                 return successResult;
             }
@@ -89,9 +107,8 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
             // =========================================================================
             // PRIORITY 2: TRY RECONNECT WITH RETRY
             // =========================================================================
-            // Device disconnected → Thử reconnect với retry logic
-            // Dùng exponential backoff để tránh spam device
             AppLogger.Information($"[HealthCheck] {device.Name} SDK Disconnected. Thử reconnect...");
+            UpdateState(device.Id, DeviceStatus.Connecting);
 
             int successfulRetryCount = 0;
 
@@ -103,7 +120,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
                 try
                 {
-                    bool connected = await adapter.ConnectAsync(device, cancellationToken);
+                    bool connected = await adapter.ConnectAsync(device, cancellationToken).ConfigureAwait(false);
 
                     if (connected)
                     {
@@ -116,6 +133,9 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                             sw.ElapsedMilliseconds,
                             $"Reconnected thành công (lần {successfulRetryCount})",
                             retryCount: successfulRetryCount);
+
+                        DeviceStatus currentStatus = adapter.IsStreaming ? DeviceStatus.Streaming : DeviceStatus.Connected;
+                        UpdateState(device.Id, currentStatus);
 
                         OnDeviceChecked?.Invoke(this, successResult);
                         return successResult;
@@ -130,7 +150,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 if (retry < MAX_RETRIES - 1)
                 {
                     int delayMs = BASE_DELAY_MS * (int)Math.Pow(2, retry);
-                    await Task.Delay(delayMs, cancellationToken);
+                    await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -146,6 +166,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                 sw.ElapsedMilliseconds,
                 retryCount: MAX_RETRIES);
 
+            UpdateState(device.Id, DeviceStatus.Error);
             OnDeviceChecked?.Invoke(this, failResult);
             return failResult;
         }
@@ -160,7 +181,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
             try
             {
-                var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted && d.IsActive, cancellationToken);
+                var devices = await _deviceRepo.FindAsync(d => !d.IsDeleted && d.IsActive, cancellationToken).ConfigureAwait(false);
                 if (devices == null || devices.Count == 0)
                 {
                     AppLogger.Debug("[DeviceHealth] Không có thiết bị nào đang hoạt động để kiểm tra");
@@ -171,13 +192,13 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
                 // Kiểm tra song song đồng thời tất cả thiết bị
                 var checkTasks = devices.Select(d => PingDeviceAsync(d, 2000, cancellationToken)).ToList();
-                var pingResults = await Task.WhenAll(checkTasks);
+                var pingResults = await Task.WhenAll(checkTasks).ConfigureAwait(false);
 
                 // Sync trạng thái vào MongoDB
                 foreach (var res in pingResults)
                 {
                     results.Add(res);
-                    await SyncStatusToDbAsync(res, cancellationToken);
+                    await SyncStatusToDbAsync(res, cancellationToken).ConfigureAwait(false);
                 }
 
                 int onlineCount = results.Count(r => r.IsSuccess);
@@ -192,7 +213,7 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
         }
 
         /// <summary>
-        /// Đồng bộ trạng thái thiết bị vào MongoDB (lấy bản ghi mới nhất từ DB để không ghi đè cấu hình vừa cập nhật từ Web Admin)
+        /// Đồng bộ trạng thái thiết bị vào MongoDB
         /// </summary>
         public async Task SyncStatusToDbAsync(
             DevicePingResult result,
@@ -202,14 +223,13 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
 
             try
             {
-                // Nạp bản ghi mới nhất từ MongoDB để giữ nguyên các thay đổi IP, Port, Username, Pass vừa sửa trên Web Admin
-                var freshDev = await _deviceRepo.GetByIdAsync(result.Device.Id, cancellationToken);
+                var freshDev = await _deviceRepo.GetByIdAsync(result.Device.Id, cancellationToken).ConfigureAwait(false);
                 if (freshDev == null) return;
 
                 if (result.IsSuccess)
                 {
                     freshDev.MarkConnected();
-                    freshDev.ErrorMessage = null; // Clear error
+                    freshDev.ErrorMessage = null;
                 }
                 else
                 {
@@ -217,13 +237,37 @@ namespace PhuXuanParkingSystem.Services.DeviceHealth
                     freshDev.ErrorMessage = result.ErrorMessage;
                 }
 
-                await _deviceRepo.UpdateAsync(freshDev, cancellationToken);
+                await _deviceRepo.UpdateAsync(freshDev, cancellationToken).ConfigureAwait(false);
                 AppLogger.Debug($"[DeviceHealth] Sync {freshDev.Name}: {result.Status}");
             }
             catch (Exception ex)
             {
                 AppLogger.Warning($"[DeviceHealth] Lỗi sync '{result.Device.Name}': {ex.Message}");
             }
+        }
+
+        private void UpdateState(string deviceId, DeviceStatus newStatus)
+        {
+            if (string.IsNullOrEmpty(deviceId)) return;
+
+            var oldStatus = _states.TryGetValue(deviceId, out var s) ? s : DeviceStatus.Disconnected;
+            if (oldStatus != newStatus)
+            {
+                _states[deviceId] = newStatus;
+                AppLogger.Debug($"[DeviceHealth] State change: {deviceId} {oldStatus} → {newStatus}");
+                OnStateChanged?.Invoke(this, new DeviceStateChangedEventArgs(deviceId, oldStatus, newStatus));
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_isDisposed) return;
+            _isDisposed = true;
+
+            StopHealthCheck();
+            _states.Clear();
+
+            GC.SuppressFinalize(this);
         }
     }
 }

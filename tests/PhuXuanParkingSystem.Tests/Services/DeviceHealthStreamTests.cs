@@ -1,7 +1,10 @@
 using Moq;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
-using PhuXuanParkingSystem.Services.DeviceHealth;
+using PhuXuanParkingSystem.Repositories;
+using PhuXuanParkingSystem.Services.Devices;
+using PhuXuanParkingSystem.Services.Devices.Camera;
+using PhuXuanParkingSystem.Services.Devices.Health;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,67 +15,61 @@ namespace PhuXuanParkingSystem.Tests.Services
     public class DeviceHealthStreamTests
     {
         [Fact]
-        public async Task ConnectAsync_WhenSuccessfulAndPreviewHandleProvided_StartsLiveStreamAndSetsStateToStreaming()
+        public async Task PingDeviceAsync_WhenConnectedAndStreaming_SetsStateToStreamingAndFiresEvents()
         {
             // Arrange
-            var healthManager = new DeviceHealthManager();
+            var mockRepo = new Mock<IRepository<Device>>();
+            var mockFactory = new Mock<IDeviceAdapterFactory>();
             var mockAdapter = new Mock<IDeviceAdapter>();
             var device = new Device("CAM-01", "Camera Biển Số", DeviceType.PlateCamera, "192.168.1.100", 3000)
             {
                 Id = "dev-cam-01"
             };
 
-            var fakeHandle = new IntPtr(12345);
+            mockAdapter.SetupGet(a => a.IsConnected).Returns(true);
+            mockAdapter.SetupGet(a => a.IsStreaming).Returns(true);
+            mockFactory.Setup(f => f.GetAdapter(device)).Returns(mockAdapter.Object);
 
-            mockAdapter.Setup(a => a.ConnectAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()))
-                       .ReturnsAsync(true);
-            mockAdapter.SetupGet(a => a.IsConnected)
-                       .Returns(true);
-            mockAdapter.Setup(a => a.StartPreview(fakeHandle))
-                       .Returns(true);
-
-            healthManager.RegisterDevice(device.Id, device, mockAdapter.Object, fakeHandle);
+            using var healthService = new DeviceHealthMonitorService(mockRepo.Object, mockFactory.Object);
+            DeviceStateChangedEventArgs? stateChangedArgs = null;
+            healthService.OnStateChanged += (_, e) => stateChangedArgs = e;
 
             // Act
-            bool connectResult = await healthManager.ConnectAsync(device.Id);
+            var pingResult = await healthService.PingDeviceAsync(device);
 
             // Assert
-            Assert.True(connectResult);
-            mockAdapter.Verify(a => a.ConnectAsync(device, It.IsAny<CancellationToken>()), Times.Once);
-            mockAdapter.Verify(a => a.StartPreview(fakeHandle), Times.Once);
-            Assert.Equal(DeviceStatus.Streaming, healthManager.GetState(device.Id));
+            Assert.True(pingResult.IsSuccess);
+            Assert.Equal(DeviceStatus.Streaming, healthService.GetState(device.Id));
+            Assert.NotNull(stateChangedArgs);
+            Assert.Equal(device.Id, stateChangedArgs.DeviceId);
+            Assert.Equal(DeviceStatus.Streaming, stateChangedArgs.NewState);
         }
 
         [Fact]
-        public async Task RestartAsync_WhenSuccessfulAndPreviewHandleProvided_RestoresPreviewAndSetsStateToStreaming()
+        public async Task PingDeviceAsync_WhenDisconnected_RetriesAndRecovers()
         {
             // Arrange
-            var healthManager = new DeviceHealthManager();
+            var mockRepo = new Mock<IRepository<Device>>();
+            var mockFactory = new Mock<IDeviceAdapterFactory>();
             var mockAdapter = new Mock<IDeviceAdapter>();
             var device = new Device("CAM-02", "Camera Toàn Cảnh", DeviceType.OverviewCamera, "192.168.1.101", 8000)
             {
                 Id = "dev-cam-02"
             };
 
-            var fakeHandle = new IntPtr(99999);
+            mockAdapter.SetupGet(a => a.IsConnected).Returns(false);
+            mockAdapter.Setup(a => a.ConnectAsync(device, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            mockFactory.Setup(f => f.GetAdapter(device)).Returns(mockAdapter.Object);
 
-            mockAdapter.Setup(a => a.RestartAsync(It.IsAny<Device>(), It.IsAny<CancellationToken>()))
-                       .ReturnsAsync(true);
-            mockAdapter.SetupGet(a => a.IsConnected)
-                       .Returns(true);
-            mockAdapter.Setup(a => a.StartPreview(fakeHandle))
-                       .Returns(true);
-
-            healthManager.RegisterDevice(device.Id, device, mockAdapter.Object, fakeHandle);
+            using var healthService = new DeviceHealthMonitorService(mockRepo.Object, mockFactory.Object);
 
             // Act
-            bool restartResult = await healthManager.RestartAsync(device.Id);
+            var pingResult = await healthService.PingDeviceAsync(device);
 
             // Assert
-            Assert.True(restartResult);
-            mockAdapter.Verify(a => a.RestartAsync(device, It.IsAny<CancellationToken>()), Times.Once);
-            mockAdapter.Verify(a => a.StartPreview(fakeHandle), Times.Once);
-            Assert.Equal(DeviceStatus.Streaming, healthManager.GetState(device.Id));
+            Assert.True(pingResult.IsSuccess);
+            Assert.True(pingResult.WasReconnected);
+            mockAdapter.Verify(a => a.ConnectAsync(device, It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -91,8 +88,8 @@ namespace PhuXuanParkingSystem.Tests.Services
         public async Task CameraDeviceAdapter_ConnectAsync_AppliesConfigAndCallsLoginAsync()
         {
             // Arrange
-            var mockCamService = new Mock<PhuXuanParkingSystem.Services.Camera.ICameraService>();
-            var camConfig = new PhuXuanParkingSystem.Services.Camera.CameraConfig();
+            var mockCamService = new Mock<ICameraService>();
+            var camConfig = new CameraConfig();
             mockCamService.SetupGet(c => c.Config).Returns(camConfig);
             mockCamService.Setup(c => c.LoginAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
             mockCamService.SetupGet(c => c.IsLoggedIn).Returns(true);

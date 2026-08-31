@@ -1,4 +1,4 @@
-using PhuXuanParkingSystem.Models.Enums;
+﻿using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.SDK.NST;
 using PhuXuanParkingSystem.Services.Logging;
 using PhuXuanParkingSystem.Services.Notification;
@@ -7,7 +7,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PhuXuanParkingSystem.Services.Camera
+namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     /// <summary>
     /// Service kết nối và điều khiển Camera Biển Số (NST SDK)
