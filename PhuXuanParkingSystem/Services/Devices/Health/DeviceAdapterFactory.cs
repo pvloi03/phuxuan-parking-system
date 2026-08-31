@@ -1,8 +1,6 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Devices;
-using PhuXuanParkingSystem.Services.Devices.Camera;
-using PhuXuanParkingSystem.Services.Devices.Controller;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -28,60 +26,16 @@ namespace PhuXuanParkingSystem.Services.Devices.Health
 
         public void RegisterAdapter(string deviceId, IDeviceAdapter adapter, string? ipAddress = null)
         {
-            if (string.IsNullOrWhiteSpace(deviceId) || adapter == null) return;
+            if (adapter == null) return;
 
-            _adapters[deviceId] = adapter;
+            if (!string.IsNullOrWhiteSpace(deviceId))
+            {
+                _adapters[deviceId] = adapter;
+            }
+
             if (!string.IsNullOrWhiteSpace(ipAddress))
             {
                 _ipAdapters[ipAddress!] = adapter;
-            }
-        }
-
-        public void RegisterCameras(
-            ICameraService? inPlateCam,
-            ICameraService? outPlateCam,
-            ICameraService? inOverviewCam,
-            ICameraService? outOverviewCam,
-            string? inPlateId = null,
-            string? outPlateId = null,
-            string? inOverviewId = null,
-            string? outOverviewId = null)
-        {
-            RegisterCam(inPlateCam, inPlateId);
-            RegisterCam(outPlateCam, outPlateId);
-            RegisterCam(inOverviewCam, inOverviewId);
-            RegisterCam(outOverviewCam, outOverviewId);
-        }
-
-        private void RegisterCam(ICameraService? cam, string? deviceId)
-        {
-            if (cam == null) return;
-            string? ip = cam.Config?.Ip;
-            if (!string.IsNullOrEmpty(deviceId))
-            {
-                RegisterAdapter(deviceId!, cam, ip);
-            }
-            else if (!string.IsNullOrEmpty(ip))
-            {
-                _ipAdapters[ip!] = cam;
-            }
-        }
-
-        public void RegisterController(IControllerService controllerService, string? deviceId = null, string? ipAddress = null)
-        {
-            RegisterController((IDeviceAdapter)controllerService, deviceId, ipAddress);
-        }
-
-        public void RegisterController(IDeviceAdapter controllerAdapter, string? deviceId = null, string? ipAddress = null)
-        {
-            if (controllerAdapter == null) return;
-            if (!string.IsNullOrEmpty(deviceId))
-            {
-                RegisterAdapter(deviceId!, controllerAdapter, ipAddress);
-            }
-            else if (!string.IsNullOrEmpty(ipAddress))
-            {
-                _ipAdapters[ipAddress!] = controllerAdapter;
             }
         }
 

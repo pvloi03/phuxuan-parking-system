@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Logging;
@@ -190,14 +190,6 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
             }
         }
 
-        /// <summary>
-        /// Cập nhật trạng thái Active của lane
-        /// </summary>
-        public void UpdateLaneActiveState(LaneDirection direction, bool isActive)
-        {
-            AppLogger.Information($"[DeviceConfig] Lane {(direction == LaneDirection.In ? "Vào" : "Ra")} {(isActive ? "bật" : "tắt")} hoạt động");
-        }
-
         private void LogDeviceMapping(string laneCode, LaneDirection direction, Device? plate, Device? overview, Device? controller)
         {
             var dir = direction == LaneDirection.In ? "Vào" : "Ra";
@@ -243,7 +235,6 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
 
         private string ComputeConfigHash(DeviceConfigResult config)
         {
-            // Băm toàn bộ các thuộc tính cấu hình để phát hiện bất kỳ thay đổi nào từ Web Admin / API
             var parts = new List<string>
             {
                 FormatDeviceHash(config.InPlateCamera),
@@ -255,15 +246,11 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
                 config.ControllerPort.ToString()
             };
 
-            var combined = string.Join("|", parts);
-            return combined.GetHashCode().ToString("X8");
+            return string.Join("|", parts).GetHashCode().ToString("X8");
         }
 
-        private static string FormatDeviceHash(Device? dev)
-        {
-            if (dev == null) return "null";
-            return $"{dev.Id}:{dev.Code}:{dev.Name}:{dev.IpAddress}:{dev.Port}:{dev.UserName}:{dev.Password}:{dev.IsActive}";
-        }
+        private static string FormatDeviceHash(Device? dev) =>
+            dev == null ? "null" : $"{dev.Id}:{dev.Code}:{dev.Name}:{dev.IpAddress}:{dev.Port}:{dev.UserName}:{dev.Password}:{dev.IsActive}";
 
         private List<string> DetectChanges(DeviceConfigResult oldConfig, DeviceConfigResult newConfig)
         {
@@ -295,9 +282,7 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
             }
             if (oldDev != null && newDev != null)
             {
-                if (oldDev.Id != newDev.Id)
-                    changes.Add($"{label} ID: {oldDev.Id} → {newDev.Id}");
-                if (oldDev.IpAddress != newDev.IpAddress || oldDev.Port != newDev.Port)
+                if (oldDev.Id != newDev.Id || oldDev.IpAddress != newDev.IpAddress || oldDev.Port != newDev.Port)
                     changes.Add($"{label} Địa chỉ: {oldDev.IpAddress}:{oldDev.Port} → {newDev.IpAddress}:{newDev.Port}");
                 if (oldDev.UserName != newDev.UserName || oldDev.Password != newDev.Password)
                     changes.Add($"{label} Tài khoản đăng nhập thay đổi");
