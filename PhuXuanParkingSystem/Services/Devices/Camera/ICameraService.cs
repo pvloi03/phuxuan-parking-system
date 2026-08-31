@@ -1,4 +1,4 @@
-﻿using PhuXuanParkingSystem.Models.Enums;
+using PhuXuanParkingSystem.Services.Devices;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -6,14 +6,12 @@ using System.Threading.Tasks;
 namespace PhuXuanParkingSystem.Services.Devices.Camera
 {
     /// <summary>
-    /// Giao diện chuẩn cho Camera Service (Biển số / Toàn cảnh)
+    /// Giao diện chuẩn cho Camera Service (Biển số / Toàn cảnh), tích hợp chuẩn IDeviceAdapter
     /// </summary>
-    public interface ICameraService : IDisposable
+    public interface ICameraService : IDeviceAdapter, IDisposable
     {
         CameraConfig Config { get; set; }
         bool IsLoggedIn { get; }
-        bool IsStreaming { get; }
-        event EventHandler<DeviceStatus>? OnConnectionStateChanged;
         Task<bool> LoginAsync(CancellationToken cancellationToken = default);
         bool StartPreview(IntPtr windowHandle);
         Task<byte[]?> CaptureSnapshotAsync(CancellationToken cancellationToken = default);

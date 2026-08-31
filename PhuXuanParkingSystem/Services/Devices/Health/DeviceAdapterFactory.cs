@@ -56,15 +56,14 @@ namespace PhuXuanParkingSystem.Services.Devices.Health
         private void RegisterCam(ICameraService? cam, string? deviceId)
         {
             if (cam == null) return;
-            var adapter = new CameraDeviceAdapter(cam);
             string? ip = cam.Config?.Ip;
             if (!string.IsNullOrEmpty(deviceId))
             {
-                RegisterAdapter(deviceId!, adapter, ip);
+                RegisterAdapter(deviceId!, cam, ip);
             }
             else if (!string.IsNullOrEmpty(ip))
             {
-                _ipAdapters[ip!] = adapter;
+                _ipAdapters[ip!] = cam;
             }
         }
 

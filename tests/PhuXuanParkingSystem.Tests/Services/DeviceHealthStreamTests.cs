@@ -85,16 +85,10 @@ namespace PhuXuanParkingSystem.Tests.Services
         }
 
         [Fact]
-        public async Task CameraDeviceAdapter_ConnectAsync_AppliesConfigAndCallsLoginAsync()
+        public async Task CameraServiceBase_ConnectAsync_AppliesConfigAndCallsLoginAsync()
         {
             // Arrange
-            var mockCamService = new Mock<ICameraService>();
-            var camConfig = new CameraConfig();
-            mockCamService.SetupGet(c => c.Config).Returns(camConfig);
-            mockCamService.Setup(c => c.LoginAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-            mockCamService.SetupGet(c => c.IsLoggedIn).Returns(true);
-
-            var adapter = new CameraDeviceAdapter(mockCamService.Object);
+            using var camService = new TestCameraService();
             var device = new Device("CAM-01", "Camera Biển Số", DeviceType.PlateCamera, "192.168.1.150", 8080)
             {
                 UserName = "admin",
@@ -102,15 +96,37 @@ namespace PhuXuanParkingSystem.Tests.Services
             };
 
             // Act
-            bool result = await adapter.ConnectAsync(device);
+            bool result = await camService.ConnectAsync(device);
 
             // Assert
             Assert.True(result);
-            Assert.Equal("192.168.1.150", camConfig.Ip);
-            Assert.Equal((ushort)8080, camConfig.Port);
-            Assert.Equal("admin", camConfig.UserName);
-            Assert.Equal("pwd", camConfig.Password);
-            mockCamService.Verify(c => c.LoginAsync(It.IsAny<CancellationToken>()), Times.Once);
+            Assert.Equal("192.168.1.150", camService.Config.Ip);
+            Assert.Equal((ushort)8080, camService.Config.Port);
+            Assert.Equal("admin", camService.Config.UserName);
+            Assert.Equal("pwd", camService.Config.Password);
+            Assert.Equal(1, camService.LoginCalls);
+            Assert.True(camService.IsConnected);
+        }
+
+        private class TestCameraService : CameraServiceBase
+        {
+            protected override string LogTag => "TestCamera";
+            protected override string LogCategory => "TestCamera";
+
+            public bool LoginResult { get; set; } = true;
+            public int LoginCalls { get; private set; }
+
+            public override Task<bool> LoginAsync(CancellationToken cancellationToken = default)
+            {
+                LoginCalls++;
+                IsLoggedIn = LoginResult;
+                return Task.FromResult(LoginResult);
+            }
+
+            public override bool StartPreview(IntPtr windowHandle) => true;
+            public override Task<byte[]?> CaptureSnapshotAsync(CancellationToken cancellationToken = default) => Task.FromResult<byte[]?>(new byte[] { 1, 2, 3 });
+            public override void StopPreview() { }
+            public override void Logout() { IsLoggedIn = false; }
         }
 
         [Fact]
