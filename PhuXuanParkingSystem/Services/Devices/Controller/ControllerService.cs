@@ -268,8 +268,6 @@ namespace PhuXuanParkingSystem.Services.Devices.Controller
 
         /// <summary>
         /// Phân tích chuỗi RTLog và phát sự kiện OnAuxInputTriggered
-        /// Định dạng: Time,Pin,CardNo,DoorID,EventType,InOutState,VerifyMode
-        /// Ví dụ: 2026-08-26 10:47:41,0,0,1,221,2,200
         /// </summary>
         public void ParseAndDispatchLog(string rawLog)
         {
