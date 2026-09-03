@@ -9,6 +9,7 @@ using PhuXuanParkingSystem.Services.Devices.Health;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
 using System.Collections.Concurrent;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -22,6 +23,7 @@ namespace PhuXuanParkingSystem.Services.Parking
         private readonly IRepository<Person> _personRepo;
         private readonly IRepository<Department> _departmentRepo;
         private readonly IRepository<Device>? _deviceRepo;
+        private readonly IRepository<Lane>? _laneRepo;
         private readonly IPlateRecognitionService _anprService;
         private readonly IDeviceHealthMonitorService? _healthService;
 
@@ -36,7 +38,8 @@ namespace PhuXuanParkingSystem.Services.Parking
             IRepository<Department> departmentRepo,
             IPlateRecognitionService anprService,
             IDeviceHealthMonitorService? healthService = null,
-            IRepository<Device>? deviceRepo = null)
+            IRepository<Device>? deviceRepo = null,
+            IRepository<Lane>? laneRepo = null)
         {
             _sessionRepo = sessionRepo ?? throw new ArgumentNullException(nameof(sessionRepo));
             _vehicleRepo = vehicleRepo ?? throw new ArgumentNullException(nameof(vehicleRepo));
@@ -45,6 +48,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             _anprService = anprService ?? throw new ArgumentNullException(nameof(anprService));
             _healthService = healthService;
             _deviceRepo = deviceRepo;
+            _laneRepo = laneRepo;
         }
 
         public async Task<LaneProcessResult> ProcessInLaneAsync(
@@ -60,6 +64,21 @@ namespace PhuXuanParkingSystem.Services.Parking
             {
                 ProcessedTime = DateTime.Now
             };
+
+            // 0. Xác định tên làn chính xác từ bảng Lanes nếu chưa có
+            if (string.IsNullOrWhiteSpace(inLaneName) && _laneRepo != null)
+            {
+                try
+                {
+                    var lane = await _laneRepo.FindOneAsync(l => l.Direction == LaneDirection.In && !l.IsDeleted && l.IsActive);
+                    if (lane != null && !string.IsNullOrWhiteSpace(lane.Name))
+                    {
+                        inLaneName = lane.Name;
+                    }
+                }
+                catch { }
+            }
+            if (string.IsNullOrWhiteSpace(inLaneName)) inLaneName = "Làn Vào";
 
             // 1. Chuẩn bị thư mục lưu trữ ảnh
             string baseDir = string.IsNullOrWhiteSpace(captureDir)
@@ -84,8 +103,7 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = "Không đọc được";
-            string? filePlateCrop = null;
-            System.Drawing.Bitmap? croppedBmp = null;
+            Bitmap? croppedBmp = null;
             if (plateOk)
             {
                 try
@@ -94,19 +112,8 @@ namespace PhuXuanParkingSystem.Services.Parking
                     if (anpr != null && anpr.IsSuccess && !string.IsNullOrWhiteSpace(anpr.FormattedPlate))
                     {
                         detectedPlate = PlateNumber.Clean(anpr.FormattedPlate);
-                        if (anpr.CroppedPlateImage != null)
-                        {
-                            croppedBmp = anpr.CroppedPlateImage;
-                            filePlateCrop = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_plate_crop.jpg");
-                            try
-                            {
-                                CameraCaptureHelper.SaveBitmapAsMediumJpeg(anpr.CroppedPlateImage, filePlateCrop, 75L);
-                            }
-                            catch (Exception exCrop)
-                            {
-                                AppLogger.Warning($"Lỗi lưu file ảnh crop biển số: {exCrop.Message}");
-                            }
-                        }
+                        // Chỉ giữ Bitmap trong bộ nhớ để hiển thị UI, KHÔNG lưu file ảnh crop ra đĩa
+                        croppedBmp = anpr.CroppedPlateImage;
                     }
                 }
                 catch (Exception ex)
@@ -116,7 +123,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
             result.PlateNumber = detectedPlate;
             result.CroppedPlateImage = croppedBmp;
-            result.PlateCropImagePath = filePlateCrop;
+            result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
             if (detectedPlate != "Không đọc được" && IsCrossLaneCollision(detectedPlate, "IN"))
@@ -125,6 +132,12 @@ namespace PhuXuanParkingSystem.Services.Parking
                 result.IsCrossLaneIgnored = true;
                 result.Success = false;
                 result.ErrorMessage = $"Bỏ qua góc nhìn chéo từ Làn Ra cho xe {detectedPlate}.";
+
+                // Xóa file ảnh snapshot trên đĩa để không lưu file rác khi không tạo phiên
+                DeleteFileSafe(filePlate);
+                DeleteFileSafe(fileOverview);
+                result.PlateImagePath = null;
+                result.OverviewImagePath = null;
                 return result;
             }
 
@@ -147,13 +160,25 @@ namespace PhuXuanParkingSystem.Services.Parking
                     result.Session = existingActive;
                     result.ErrorMessage = $"Xe {clean} đang ở trong bãi (Vào lúc {existingActive.InTime:dd/MM/yyyy HH:mm:ss} tại {existingActive.InLaneName}).";
 
+                    // Đọc ảnh toàn cảnh vào bộ nhớ RAM để WinForms vẫn xem được rồi xóa file trên đĩa
+                    if (ovwOk && File.Exists(fileOverview))
+                    {
+                        try { result.OverviewImageBytes = File.ReadAllBytes(fileOverview); } catch { }
+                    }
+
+                    // Xóa file ảnh snapshot trên đĩa vì không tạo phiên mới
+                    DeleteFileSafe(filePlate);
+                    DeleteFileSafe(fileOverview);
+                    result.PlateImagePath = null;
+                    result.OverviewImagePath = null;
+
                     // Ghi nhận bộ đệm chống chụp chéo
                     _lastProcessedPlates[clean] = (DateTime.Now, "IN");
                     return result;
                 }
             }
 
-            // 6. Tra cứu hồ sơ phương tiện & chủ xe đã đăng ký
+            // 6. Tra cứu hồ sơ phương tiện & chủ xe đã đăng ký (PersonType rõ ràng)
             var (personName, deptName, compName, personId, vehicleType, personType, isRegistered) =
                 await LookupVehicleAndPersonAsync(detectedPlate);
 
@@ -161,6 +186,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.DepartmentName = deptName;
             result.CompanyName = compName;
             result.VehicleType = vehicleType;
+            result.PersonType = personType;
             result.IsRegisteredVehicle = isRegistered;
 
             // 7. Tạo phiên đỗ xe (ParkingSession) và lưu vào MongoDB
@@ -169,16 +195,11 @@ namespace PhuXuanParkingSystem.Services.Parking
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
-            // Ưu tiên lưu ảnh biển số nhỏ (cắt từ ANPR), nếu không có thì dùng ảnh camera toàn khung
-            string savedPlatePath = (!string.IsNullOrEmpty(filePlateCrop) && File.Exists(filePlateCrop))
-                ? filePlateCrop!
-                : (plateOk ? filePlate : string.Empty);
-
             var session = ParkingSession.CheckIn(
                 inLaneName: inLaneName,
                 plateNumber: detectedPlate,
                 inOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
-                inPlateImagePath: savedPlatePath!,
+                inPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty, // Lưu ảnh gốc từ camera
                 personName: personName,
                 vehicleType: vehicleType,
                 note: note,
@@ -192,13 +213,13 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.Session = session;
             result.Success = true;
 
-            // 7. Ghi nhận bộ nhớ đệm chống chụp chéo
+            // 8. Ghi nhận bộ nhớ đệm chống chụp chéo
             if (detectedPlate != "Không đọc được")
             {
                 _lastProcessedPlates[detectedPlate] = (DateTime.Now, "IN");
             }
 
-            AppLogger.Information($"[LÀN VÀO] Tạo phiên thành công. ID: {session.Id}, Biển số: {detectedPlate}, Chủ xe: {personName ?? "Khách lạ"}, Trạng thái Cam: Plate={plateOk}, Overview={ovwOk}", "ParkingLaneService");
+            AppLogger.Information($"[LÀN VÀO] Tạo phiên thành công. ID: {session.Id}, Làn: {inLaneName}, Biển số: {detectedPlate}, Chủ xe: {personName ?? "Khách lạ"}, Đối tượng: {personType}, Trạng thái Cam: Plate={plateOk}, Overview={ovwOk}", "ParkingLaneService");
             return result;
         }
 
@@ -215,6 +236,21 @@ namespace PhuXuanParkingSystem.Services.Parking
             {
                 ProcessedTime = DateTime.Now
             };
+
+            // 0. Xác định tên làn chính xác từ bảng Lanes nếu chưa có
+            if (string.IsNullOrWhiteSpace(outLaneName) && _laneRepo != null)
+            {
+                try
+                {
+                    var lane = await _laneRepo.FindOneAsync(l => l.Direction == LaneDirection.Out && !l.IsDeleted && l.IsActive);
+                    if (lane != null && !string.IsNullOrWhiteSpace(lane.Name))
+                    {
+                        outLaneName = lane.Name;
+                    }
+                }
+                catch { }
+            }
+            if (string.IsNullOrWhiteSpace(outLaneName)) outLaneName = "Làn Ra";
 
             // 1. Chuẩn bị thư mục lưu trữ ảnh
             string baseDir = string.IsNullOrWhiteSpace(captureDir)
@@ -239,8 +275,7 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = "Không đọc được";
-            string? filePlateCrop = null;
-            System.Drawing.Bitmap? croppedBmp = null;
+            Bitmap? croppedBmp = null;
             if (plateOk)
             {
                 try
@@ -249,19 +284,8 @@ namespace PhuXuanParkingSystem.Services.Parking
                     if (anpr != null && anpr.IsSuccess && !string.IsNullOrWhiteSpace(anpr.FormattedPlate))
                     {
                         detectedPlate = PlateNumber.Clean(anpr.FormattedPlate);
-                        if (anpr.CroppedPlateImage != null)
-                        {
-                            croppedBmp = anpr.CroppedPlateImage;
-                            filePlateCrop = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_plate_crop.jpg");
-                            try
-                            {
-                                CameraCaptureHelper.SaveBitmapAsMediumJpeg(anpr.CroppedPlateImage, filePlateCrop, 75L);
-                            }
-                            catch (Exception exCrop)
-                            {
-                                AppLogger.Warning($"Lỗi lưu file ảnh crop biển số ra: {exCrop.Message}");
-                            }
-                        }
+                        // Chỉ giữ Bitmap trong bộ nhớ để hiển thị UI, KHÔNG lưu file ảnh crop ra đĩa
+                        croppedBmp = anpr.CroppedPlateImage;
                     }
                 }
                 catch (Exception ex)
@@ -271,7 +295,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
             result.PlateNumber = detectedPlate;
             result.CroppedPlateImage = croppedBmp;
-            result.PlateCropImagePath = filePlateCrop;
+            result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
             if (detectedPlate != "Không đọc được" && IsCrossLaneCollision(detectedPlate, "OUT"))
@@ -280,10 +304,16 @@ namespace PhuXuanParkingSystem.Services.Parking
                 result.IsCrossLaneIgnored = true;
                 result.Success = false;
                 result.ErrorMessage = $"Bỏ qua góc nhìn chéo từ Làn Vào cho xe {detectedPlate}.";
+
+                // Xóa file ảnh tạm vì không tạo phiên
+                DeleteFileSafe(filePlate);
+                DeleteFileSafe(fileOverview);
+                result.PlateImagePath = null;
+                result.OverviewImagePath = null;
                 return result;
             }
 
-            // 5. Tra cứu hồ sơ phương tiện & chủ xe
+            // 5. Tra cứu hồ sơ phương tiện & chủ xe (PersonType rõ ràng)
             var (personName, deptName, compName, personId, vehicleType, personType, isRegistered) =
                 await LookupVehicleAndPersonAsync(detectedPlate);
 
@@ -291,6 +321,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.DepartmentName = deptName;
             result.CompanyName = compName;
             result.VehicleType = vehicleType;
+            result.PersonType = personType;
             result.IsRegisteredVehicle = isRegistered;
 
             // 6. Tìm kiếm phiên Active trong bãi khớp 100% biển số
@@ -311,25 +342,20 @@ namespace PhuXuanParkingSystem.Services.Parking
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
-            // Ưu tiên lưu ảnh biển số nhỏ (cắt từ ANPR), nếu không có thì dùng ảnh camera toàn khung
-            string savedOutPlatePath = (!string.IsNullOrEmpty(filePlateCrop) && File.Exists(filePlateCrop))
-                ? filePlateCrop!
-                : (plateOk ? filePlate : string.Empty);
-
             if (activeSession != null)
             {
                 // Hoàn tất phiên gửi xe (Check-out)
                 activeSession.CheckOut(
                     outLaneName: outLaneName,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
-                    outPlateImagePath: savedOutPlatePath!,
+                    outPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty, // Lưu ảnh gốc từ camera
                     note: note
                 );
 
                 await _sessionRepo.UpdateAsync(activeSession);
                 result.Session = activeSession;
                 result.Success = true;
-                AppLogger.Information($"[LÀN RA] Hoàn tất Check-out cho xe {detectedPlate}. Session ID: {activeSession.Id}, Thời gian gửi: {activeSession.Duration?.TotalMinutes:F0} phút.", "ParkingLaneService");
+                AppLogger.Information($"[LÀN RA] Hoàn tất Check-out cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {activeSession.Id}, Thời gian gửi: {activeSession.Duration?.TotalMinutes:F0} phút.", "ParkingLaneService");
             }
             else
             {
@@ -338,7 +364,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     outLaneName: outLaneName,
                     plateNumber: detectedPlate,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
-                    outPlateImagePath: savedOutPlatePath!,
+                    outPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty, // Lưu ảnh gốc từ camera
                     personName: personName,
                     vehicleType: vehicleType,
                     note: string.IsNullOrWhiteSpace(note) ? "Xe ra không có lượt vào khớp" : $"{note}; Xe ra không có lượt vào khớp",
@@ -351,7 +377,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 await _sessionRepo.AddAsync(unmatchedSession);
                 result.Session = unmatchedSession;
                 result.Success = true;
-                AppLogger.Warning($"[LÀN RA] Tạo phiên UNMATCHED-OUT cho xe {detectedPlate}. Session ID: {unmatchedSession.Id}.", "ParkingLaneService");
+                AppLogger.Warning($"[LÀN RA] Tạo phiên UNMATCHED-OUT cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {unmatchedSession.Id}.", "ParkingLaneService");
             }
 
             // 7. Ghi nhận bộ nhớ đệm chống chụp chéo
@@ -369,6 +395,21 @@ namespace PhuXuanParkingSystem.Services.Parking
         }
 
         #region Private Helper Methods
+
+        private static void DeleteFileSafe(string filePath)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"Không thể xóa file tạm {filePath}: {ex.Message}");
+            }
+        }
 
         private async Task<(bool plateOk, bool ovwOk)> CaptureSnapshotsAsync(
             ICameraService? plateCam,
@@ -467,12 +508,12 @@ namespace PhuXuanParkingSystem.Services.Parking
             return false;
         }
 
-        private async Task<(string? personName, string? deptName, string? compName, string? personId, VehicleType vehicleType, PersonType? personType, bool isRegistered)>
+        private async Task<(string? personName, string? deptName, string? compName, string? personId, VehicleType vehicleType, PersonType personType, bool isRegistered)>
             LookupVehicleAndPersonAsync(string plateNumber)
         {
             if (string.IsNullOrWhiteSpace(plateNumber) || plateNumber == "Không đọc được")
             {
-                return (null, null, null, null, VehicleType.Car, null, false);
+                return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
             }
 
             try
@@ -485,7 +526,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     string? deptName = null;
                     string? compName = null;
                     string? personId = vehicle.OwnerPersonId;
-                    PersonType? personType = null;
+                    PersonType personType = PersonType.Visitor;
 
                     if (!string.IsNullOrEmpty(vehicle.OwnerPersonId))
                     {
@@ -511,7 +552,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                 AppLogger.Error(ex, $"Lỗi tra cứu thông tin xe/chủ xe: {ex.Message}", "ParkingLaneService");
             }
 
-            return (null, null, null, null, VehicleType.Car, null, false);
+            return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
         }
 
         #endregion

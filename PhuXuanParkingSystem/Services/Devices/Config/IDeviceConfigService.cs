@@ -12,6 +12,8 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
     public class DeviceConfigResult
     {
         public bool Success { get; set; }
+        public Lane? InLane { get; set; }
+        public Lane? OutLane { get; set; }
         public Device? InPlateCamera { get; set; }
         public Device? InOverviewCamera { get; set; }
         public Device? OutPlateCamera { get; set; }

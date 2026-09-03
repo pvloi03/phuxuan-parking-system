@@ -22,6 +22,8 @@ namespace PhuXuanParkingSystem.Services.Parking
         public string? DepartmentName { get; set; }
         public string? CompanyName { get; set; }
         public VehicleType VehicleType { get; set; } = VehicleType.Car;
+        public PersonType PersonType { get; set; } = PersonType.Visitor;
+        public byte[]? OverviewImageBytes { get; set; }
         public bool IsRegisteredVehicle { get; set; }
         public bool IsCrossLaneIgnored { get; set; }
         public bool IsAlreadyInLot { get; set; }

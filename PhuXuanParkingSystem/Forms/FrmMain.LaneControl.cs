@@ -160,11 +160,12 @@ namespace PhuXuanParkingSystem.Forms
             try
             {
                 var cfg = _deviceConfigService?.CurrentConfig;
+                string inLaneName = cfg?.InLane?.Name ?? "Làn Vào";
                 string? plateDevId = cfg?.InPlateCamera?.Id;
                 string? ovwDevId = cfg?.InOverviewCamera?.Id;
 
                 var res = await _laneService.ProcessInLaneAsync(
-                    inLaneName: "Làn Vào",
+                    inLaneName: inLaneName,
                     plateCam: _inPlateCam,
                     overviewCam: _inOverviewCam,
                     plateDeviceId: plateDevId,
@@ -175,20 +176,20 @@ namespace PhuXuanParkingSystem.Forms
 
                 void UpdateInUi()
                 {
-                    // 1. Cập nhật ảnh Toàn cảnh
-                    if (!string.IsNullOrEmpty(res.OverviewImagePath) && File.Exists(res.OverviewImagePath))
+                    // 1. Cập nhật ảnh Toàn cảnh (ưu tiên từ byte array nếu file đã dọn dẹp)
+                    if (res.OverviewImageBytes != null && res.OverviewImageBytes.Length > 0)
+                    {
+                        DisplayCapturedBytes(picInOverview, res.OverviewImageBytes);
+                    }
+                    else if (!string.IsNullOrEmpty(res.OverviewImagePath) && File.Exists(res.OverviewImagePath))
                     {
                         DisplayCapturedImage(picInOverview, res.OverviewImagePath!);
                     }
 
-                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh)
+                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh từ Bitmap nhận diện)
                     if (res.CroppedPlateImage != null)
                     {
                         DisplayCapturedBitmap(picInPlate, res.CroppedPlateImage);
-                    }
-                    else if (!string.IsNullOrEmpty(res.PlateCropImagePath) && File.Exists(res.PlateCropImagePath))
-                    {
-                        DisplayCapturedImage(picInPlate, res.PlateCropImagePath!);
                     }
                     else if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
                     {
@@ -200,7 +201,7 @@ namespace PhuXuanParkingSystem.Forms
                     lblInTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
                     lblInOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
                     lblInDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
-                    lblInTypeVal.Text = res.IsRegisteredVehicle ? "Xe nội bộ" : "Xe vãng lai";
+                    lblInTypeVal.Text = GetPersonTypeDisplay(res.PersonType, res.IsRegisteredVehicle);
 
                     // 4. Trạng thái kết quả
                     if (res.IsCrossLaneIgnored)
@@ -251,11 +252,12 @@ namespace PhuXuanParkingSystem.Forms
             try
             {
                 var cfg = _deviceConfigService?.CurrentConfig;
+                string outLaneName = cfg?.OutLane?.Name ?? "Làn Ra";
                 string? plateDevId = cfg?.OutPlateCamera?.Id;
                 string? ovwDevId = cfg?.OutOverviewCamera?.Id;
 
                 var res = await _laneService.ProcessOutLaneAsync(
-                    outLaneName: "Làn Ra",
+                    outLaneName: outLaneName,
                     plateCam: _outPlateCam,
                     overviewCam: _outOverviewCam,
                     plateDeviceId: plateDevId,
@@ -272,14 +274,10 @@ namespace PhuXuanParkingSystem.Forms
                         DisplayCapturedImage(picOutOverview, res.OverviewImagePath!);
                     }
 
-                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh)
+                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh từ Bitmap nhận diện)
                     if (res.CroppedPlateImage != null)
                     {
                         DisplayCapturedBitmap(picOutPlate, res.CroppedPlateImage);
-                    }
-                    else if (!string.IsNullOrEmpty(res.PlateCropImagePath) && File.Exists(res.PlateCropImagePath))
-                    {
-                        DisplayCapturedImage(picOutPlate, res.PlateCropImagePath!);
                     }
                     else if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
                     {
@@ -291,7 +289,7 @@ namespace PhuXuanParkingSystem.Forms
                     lblOutTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
                     lblOutOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
                     lblOutDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
-                    lblOutTypeVal.Text = res.IsRegisteredVehicle ? "Xe nội bộ" : "Xe vãng lai";
+                    lblOutTypeVal.Text = GetPersonTypeDisplay(res.PersonType, res.IsRegisteredVehicle);
 
                     // 4. Trạng thái kết quả phiên xe ra
                     if (res.IsCrossLaneIgnored)
@@ -331,6 +329,31 @@ namespace PhuXuanParkingSystem.Forms
             {
                 AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Ra: {ex.Message}", "LaneControl");
                 SetFooterStatus($"Lỗi chụp ảnh Làn Ra: {ex.Message}", isError: true);
+            }
+        }
+
+        private static string GetPersonTypeDisplay(PersonType personType, bool isRegistered)
+        {
+            return personType switch
+            {
+                PersonType.Employee => "Cán bộ / Nhân viên",
+                PersonType.Contractor => "Đối tác / Nhà thầu",
+                PersonType.VIP => "Khách VIP",
+                PersonType.Visitor => isRegistered ? "Khách đã đăng ký" : "Khách vãng lai",
+                _ => "Khách vãng lai"
+            };
+        }
+
+        private void DisplayCapturedBytes(PictureBox picBox, byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return;
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => SetPictureBoxImage(picBox, bytes)));
+            }
+            else
+            {
+                SetPictureBoxImage(picBox, bytes);
             }
         }
 

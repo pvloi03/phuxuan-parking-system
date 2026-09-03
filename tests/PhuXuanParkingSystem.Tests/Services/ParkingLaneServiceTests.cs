@@ -384,6 +384,51 @@ namespace PhuXuanParkingSystem.Tests.Services
 
             // Không được tạo thêm phiên mới vào DB
             _mockSessionRepo.Verify(r => r.AddAsync(It.IsAny<ParkingSession>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            // Các file ảnh chụp tạm trên đĩa phải được dọn dẹp sạch sẽ
+            Directory.GetFiles(_testTempDir, "*.jpg", SearchOption.AllDirectories).Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ProcessInLaneAsync_WhenNoLaneNameProvided_ResolvesLaneNameFromLaneRepository()
+        {
+            // Arrange
+            var plateCam = CreateMockCamera(true);
+            var ovwCam = CreateMockCamera(true);
+
+            _mockAnprService
+                .Setup(a => a.RecognizeAsync(It.IsAny<string>()))
+                .ReturnsAsync(PlateRecognitionResult.Success("29A-888.88", 0.95f));
+
+            var mockLaneRepo = new Mock<IRepository<Lane>>();
+            mockLaneRepo
+                .Setup(l => l.FindOneAsync(It.IsAny<Expression<Func<Lane, bool>>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Lane("L01", "Cổng Chính - Làn Vào 1", LaneDirection.In));
+
+            var service = new ParkingLaneService(
+                _mockSessionRepo.Object,
+                _mockVehicleRepo.Object,
+                _mockPersonRepo.Object,
+                _mockDeptRepo.Object,
+                _mockAnprService.Object,
+                null,
+                null,
+                mockLaneRepo.Object);
+
+            // Act: truyền chuỗi rỗng cho inLaneName
+            var result = await service.ProcessInLaneAsync(
+                inLaneName: "",
+                plateCam: plateCam.Object,
+                overviewCam: ovwCam.Object,
+                triggerSource: "RADAR",
+                captureDir: _testTempDir);
+
+            // Assert
+            result.Success.Should().BeTrue();
+            result.Session.Should().NotBeNull();
+            result.Session!.InLaneName.Should().Be("Cổng Chính - Làn Vào 1");
+            result.PersonType.Should().Be(PersonType.Visitor);
+            result.Session.PersonType.Should().Be(PersonType.Visitor);
         }
     }
 }

@@ -74,6 +74,7 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
                 var inLane = lanes?.FirstOrDefault(l => l.Direction == LaneDirection.In);
                 if (inLane != null)
                 {
+                    result.InLane = inLane;
                     result.InPlateCamera = inLane.PlateCamera;
                     result.InOverviewCamera = inLane.OverviewCamera;
                     result.Controller = inLane.Controller;
@@ -84,6 +85,7 @@ namespace PhuXuanParkingSystem.Services.Devices.Config
                 var outLane = lanes?.FirstOrDefault(l => l.Direction == LaneDirection.Out);
                 if (outLane != null)
                 {
+                    result.OutLane = outLane;
                     result.OutPlateCamera = outLane.PlateCamera;
                     result.OutOverviewCamera = outLane.OverviewCamera;
 

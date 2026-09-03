@@ -77,7 +77,8 @@ namespace PhuXuanParkingSystem.Forms
                         new MongoRepository<Department>(),
                         _anprService,
                         _deviceHealthService,
-                        _deviceRepo);
+                        _deviceRepo,
+                        _laneRepo);
             }
             else
             {
@@ -94,7 +95,8 @@ namespace PhuXuanParkingSystem.Forms
                     new MongoRepository<Department>(),
                     _anprService,
                     _deviceHealthService,
-                    _deviceRepo);
+                    _deviceRepo,
+                    _laneRepo);
             }
 
             // Đăng ký sự kiện khi cấu hình thay đổi (Web Admin sửa IP, etc.)
