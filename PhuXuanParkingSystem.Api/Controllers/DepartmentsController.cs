@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Api.Controllers
 {
@@ -12,10 +18,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class DepartmentsController : ControllerBase
     {
         private readonly IRepository<Department> _deptRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public DepartmentsController(IRepository<Department> deptRepo)
+        public DepartmentsController(IRepository<Department> deptRepo, IAuditLogQueue auditQueue)
         {
             _deptRepo = deptRepo;
+            _auditQueue = auditQueue;
         }
 
         [HttpGet]
@@ -70,6 +78,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             await _deptRepo.AddAsync(dept);
+
+            var diff = AuditDiffHelper.ComputeDiff<Department>(null, dept);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Department", dept.Id, dept.Name, diff);
+
             return Ok(ApiResponse<Department>.Ok(dept, "Thêm phòng ban thành công."));
         }
 
@@ -81,15 +93,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail("Danh sách phòng ban rỗng."));
             }
 
+            int addedCount = 0;
             foreach (var dept in departments)
             {
                 if (!string.IsNullOrWhiteSpace(dept.Name))
                 {
                     await _deptRepo.AddAsync(dept);
+                    addedCount++;
+                    var diff = AuditDiffHelper.ComputeDiff<Department>(null, dept);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Department", dept.Id, dept.Name, diff);
                 }
             }
 
-            return Ok(ApiResponse.Ok($"Nhập thành công {departments.Count} phòng ban từ file."));
+            return Ok(ApiResponse.Ok($"Nhập thành công {addedCount}/{departments.Count} phòng ban từ file."));
         }
 
         [HttpPut("{id}")]
@@ -97,6 +113,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
         {
             var existing = await _deptRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy phòng ban."));
+
+            var snapshot = AuditDiffHelper.TakeSnapshot(existing);
 
             existing.Code = dept.Code;
             existing.Name = dept.Name;
@@ -109,27 +127,44 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UpdatedAt = DateTime.Now;
 
             await _deptRepo.UpdateAsync(existing);
+
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, existing);
+            if (diff.HasChanges)
+            {
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "Department", existing.Id, existing.Name, diff);
+            }
+
             return Ok(ApiResponse<Department>.Ok(existing, "Cập nhật phòng ban thành công."));
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string id, [FromQuery] string? reason = null)
         {
             var existing = await _deptRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy phòng ban."));
 
             await _deptRepo.DeleteAsync(id);
+
+            var diff = AuditDiffHelper.ComputeDiff<Department>(existing, null);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Department", existing.Id, existing.Name, diff, reason: reason);
+
             return Ok(ApiResponse.Ok("Đã xóa phòng ban thành công."));
         }
 
         [HttpPost("delete-batch")]
-        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách ID rỗng."));
 
             foreach (var id in ids)
             {
-                await _deptRepo.DeleteAsync(id);
+                var existing = await _deptRepo.GetByIdAsync(id);
+                if (existing != null && !existing.IsDeleted)
+                {
+                    await _deptRepo.DeleteAsync(id);
+                    var diff = AuditDiffHelper.ComputeDiff<Department>(existing, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Department", existing.Id, existing.Name, diff, reason: reason);
+                }
             }
 
             return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} phòng ban thành công."));

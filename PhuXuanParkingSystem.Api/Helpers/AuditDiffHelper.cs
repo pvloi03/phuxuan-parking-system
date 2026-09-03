@@ -27,6 +27,86 @@ namespace PhuXuanParkingSystem.Api.Helpers
             "UpdatedAt", "DeletedAt"
         };
 
+        /// <summary>
+        /// Tạo snapshot thuộc tính thô của entity trước khi chỉnh sửa trong bộ nhớ
+        /// </summary>
+        public static Dictionary<string, object?> TakeSnapshot(object entity)
+        {
+            var dict = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            if (entity == null) return dict;
+
+            var properties = entity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && !IgnoredPropertyNames.Contains(p.Name));
+
+            foreach (var prop in properties)
+            {
+                dict[prop.Name] = prop.GetValue(entity);
+            }
+
+            return dict;
+        }
+
+        /// <summary>
+        /// Tính toán Diff giữa Snapshot cũ và thực thể mới đã được cập nhật
+        /// Tự động che giấu dữ liệu nhạy cảm
+        /// </summary>
+        public static AuditDiffResult ComputeDiffFromSnapshot(Dictionary<string, object?>? oldSnapshot, object? newEntity)
+        {
+            var result = new AuditDiffResult();
+            if (oldSnapshot == null && newEntity != null)
+            {
+                var (dict, props) = ExtractProperties(newEntity);
+                result.NewValues = JsonSerializer.Serialize(dict);
+                result.ChangedProperties = props;
+                return result;
+            }
+
+            if (oldSnapshot != null && newEntity == null)
+            {
+                var oldChanges = new Dictionary<string, object?>();
+                var props = new List<string>();
+                foreach (var kvp in oldSnapshot)
+                {
+                    props.Add(kvp.Key);
+                    var isSensitive = SensitivePropertyNames.Contains(kvp.Key);
+                    oldChanges[kvp.Key] = isSensitive ? "******" : FormatValue(kvp.Value);
+                }
+                result.OldValues = JsonSerializer.Serialize(oldChanges);
+                result.ChangedProperties = props;
+                return result;
+            }
+
+            if (oldSnapshot == null || newEntity == null) return result;
+
+            var properties = newEntity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && !IgnoredPropertyNames.Contains(p.Name));
+
+            var oldDiff = new Dictionary<string, object?>();
+            var newDiff = new Dictionary<string, object?>();
+
+            foreach (var prop in properties)
+            {
+                oldSnapshot.TryGetValue(prop.Name, out var oldVal);
+                var newVal = prop.GetValue(newEntity);
+
+                if (!AreValuesEqual(oldVal, newVal))
+                {
+                    result.ChangedProperties.Add(prop.Name);
+                    var isSensitive = IsSensitive(prop);
+                    oldDiff[prop.Name] = isSensitive ? "******" : FormatValue(oldVal);
+                    newDiff[prop.Name] = isSensitive ? "******" : FormatValue(newVal);
+                }
+            }
+
+            if (result.ChangedProperties.Count > 0)
+            {
+                result.OldValues = JsonSerializer.Serialize(oldDiff);
+                result.NewValues = JsonSerializer.Serialize(newDiff);
+            }
+
+            return result;
+        }
+
         public static AuditDiffResult ComputeDiff<T>(T? oldEntity, T? newEntity) where T : class
         {
             var result = new AuditDiffResult();

@@ -167,22 +167,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             await _licenseRepo.AddAsync(newEntity);
 
             // Ghi nhận AuditLog LicenseUpdate
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.LicenseUpdate,
-                TargetEntity = "LicenseInfo",
-                TargetId = newEntity.Id,
-                TargetDisplay = payload.CustomerName,
-                Reason = "Kích hoạt bản quyền phần mềm mới",
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.LicenseUpdate, "LicenseInfo", newEntity.Id, payload.CustomerName, reason: "Kích hoạt bản quyền phần mềm mới");
 
             return Ok(new
             {
