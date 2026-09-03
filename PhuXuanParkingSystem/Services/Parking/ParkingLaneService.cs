@@ -84,6 +84,8 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = "Không đọc được";
+            string? filePlateCrop = null;
+            System.Drawing.Bitmap? croppedBmp = null;
             if (plateOk)
             {
                 try
@@ -92,6 +94,19 @@ namespace PhuXuanParkingSystem.Services.Parking
                     if (anpr != null && anpr.IsSuccess && !string.IsNullOrWhiteSpace(anpr.FormattedPlate))
                     {
                         detectedPlate = PlateNumber.Clean(anpr.FormattedPlate);
+                        if (anpr.CroppedPlateImage != null)
+                        {
+                            croppedBmp = anpr.CroppedPlateImage;
+                            filePlateCrop = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_plate_crop.jpg");
+                            try
+                            {
+                                CameraCaptureHelper.SaveBitmapAsMediumJpeg(anpr.CroppedPlateImage, filePlateCrop, 75L);
+                            }
+                            catch (Exception exCrop)
+                            {
+                                AppLogger.Warning($"Lỗi lưu file ảnh crop biển số: {exCrop.Message}");
+                            }
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -100,6 +115,8 @@ namespace PhuXuanParkingSystem.Services.Parking
                 }
             }
             result.PlateNumber = detectedPlate;
+            result.CroppedPlateImage = croppedBmp;
+            result.PlateCropImagePath = filePlateCrop;
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
             if (detectedPlate != "Không đọc được" && IsCrossLaneCollision(detectedPlate, "IN"))
@@ -127,11 +144,16 @@ namespace PhuXuanParkingSystem.Services.Parking
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
+            // Ưu tiên lưu ảnh biển số nhỏ (cắt từ ANPR), nếu không có thì dùng ảnh camera toàn khung
+            string savedPlatePath = (!string.IsNullOrEmpty(filePlateCrop) && File.Exists(filePlateCrop))
+                ? filePlateCrop!
+                : (plateOk ? filePlate : string.Empty);
+
             var session = ParkingSession.CheckIn(
                 inLaneName: inLaneName,
                 plateNumber: detectedPlate,
                 inOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
-                inPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty,
+                inPlateImagePath: savedPlatePath!,
                 personName: personName,
                 vehicleType: vehicleType,
                 note: note,
@@ -192,6 +214,8 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = "Không đọc được";
+            string? filePlateCrop = null;
+            System.Drawing.Bitmap? croppedBmp = null;
             if (plateOk)
             {
                 try
@@ -200,6 +224,19 @@ namespace PhuXuanParkingSystem.Services.Parking
                     if (anpr != null && anpr.IsSuccess && !string.IsNullOrWhiteSpace(anpr.FormattedPlate))
                     {
                         detectedPlate = PlateNumber.Clean(anpr.FormattedPlate);
+                        if (anpr.CroppedPlateImage != null)
+                        {
+                            croppedBmp = anpr.CroppedPlateImage;
+                            filePlateCrop = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_plate_crop.jpg");
+                            try
+                            {
+                                CameraCaptureHelper.SaveBitmapAsMediumJpeg(anpr.CroppedPlateImage, filePlateCrop, 75L);
+                            }
+                            catch (Exception exCrop)
+                            {
+                                AppLogger.Warning($"Lỗi lưu file ảnh crop biển số ra: {exCrop.Message}");
+                            }
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -208,6 +245,8 @@ namespace PhuXuanParkingSystem.Services.Parking
                 }
             }
             result.PlateNumber = detectedPlate;
+            result.CroppedPlateImage = croppedBmp;
+            result.PlateCropImagePath = filePlateCrop;
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
             if (detectedPlate != "Không đọc được" && IsCrossLaneCollision(detectedPlate, "OUT"))
@@ -247,13 +286,18 @@ namespace PhuXuanParkingSystem.Services.Parking
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
+            // Ưu tiên lưu ảnh biển số nhỏ (cắt từ ANPR), nếu không có thì dùng ảnh camera toàn khung
+            string savedOutPlatePath = (!string.IsNullOrEmpty(filePlateCrop) && File.Exists(filePlateCrop))
+                ? filePlateCrop!
+                : (plateOk ? filePlate : string.Empty);
+
             if (activeSession != null)
             {
                 // Hoàn tất phiên gửi xe (Check-out)
                 activeSession.CheckOut(
                     outLaneName: outLaneName,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
-                    outPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty,
+                    outPlateImagePath: savedOutPlatePath!,
                     note: note
                 );
 
@@ -269,7 +313,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                     outLaneName: outLaneName,
                     plateNumber: detectedPlate,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
-                    outPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty,
+                    outPlateImagePath: savedOutPlatePath!,
                     personName: personName,
                     vehicleType: vehicleType,
                     note: string.IsNullOrWhiteSpace(note) ? "Xe ra không có lượt vào khớp" : $"{note}; Xe ra không có lượt vào khớp",

@@ -15,6 +15,8 @@ namespace PhuXuanParkingSystem.Services.Parking
         public ParkingSession? Session { get; set; }
         public string PlateNumber { get; set; } = string.Empty;
         public string? PlateImagePath { get; set; }
+        public string? PlateCropImagePath { get; set; }
+        public System.Drawing.Bitmap? CroppedPlateImage { get; set; }
         public string? OverviewImagePath { get; set; }
         public string? PersonName { get; set; }
         public string? DepartmentName { get; set; }

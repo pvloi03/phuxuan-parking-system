@@ -181,8 +181,16 @@ namespace PhuXuanParkingSystem.Forms
                         DisplayCapturedImage(picInOverview, res.OverviewImagePath!);
                     }
 
-                    // 2. Cập nhật ảnh Biển số
-                    if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
+                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh)
+                    if (res.CroppedPlateImage != null)
+                    {
+                        DisplayCapturedBitmap(picInPlate, res.CroppedPlateImage);
+                    }
+                    else if (!string.IsNullOrEmpty(res.PlateCropImagePath) && File.Exists(res.PlateCropImagePath))
+                    {
+                        DisplayCapturedImage(picInPlate, res.PlateCropImagePath!);
+                    }
+                    else if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
                     {
                         DisplayCapturedImage(picInPlate, res.PlateImagePath!);
                     }
@@ -252,8 +260,16 @@ namespace PhuXuanParkingSystem.Forms
                         DisplayCapturedImage(picOutOverview, res.OverviewImagePath!);
                     }
 
-                    // 2. Cập nhật ảnh Biển số
-                    if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
+                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh)
+                    if (res.CroppedPlateImage != null)
+                    {
+                        DisplayCapturedBitmap(picOutPlate, res.CroppedPlateImage);
+                    }
+                    else if (!string.IsNullOrEmpty(res.PlateCropImagePath) && File.Exists(res.PlateCropImagePath))
+                    {
+                        DisplayCapturedImage(picOutPlate, res.PlateCropImagePath!);
+                    }
+                    else if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
                     {
                         DisplayCapturedImage(picOutPlate, res.PlateImagePath!);
                     }
