@@ -117,22 +117,53 @@ PhuXuanParkingSystem.Api.exe --urls "http://0.0.0.0:80" --CapturesFolder "D:\Cap
    :: 2. Đặt thư mục làm việc
    nssm set PhuXuanParkingApi AppDirectory "D:\PhuXuanServer"
 
-   :: 3. Truyền toàn bộ cấu hình vào Service qua CLI (Cổng 80, Đường dẫn ảnh, CSDL)
-   nssm set PhuXuanParkingApi AppParameters "--urls http://0.0.0.0:80 --CapturesFolder D:\Captures --ConnectionStrings:MongoDb mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
-
-   :: 4. Cấu hình tự động khởi động cùng Windows
+   :: 3. Cấu hình tự động khởi động cùng Windows
    nssm set PhuXuanParkingApi Start SERVICE_AUTO_START
+   ```
 
-   :: 5. Khởi động dịch vụ ngay lập tức
+   **Lựa chọn A: Cấu hình qua Biến Môi Trường Riêng Biệt (Environment Variables - Khuyên Dùng Nhất)**:
+   > NSSM hỗ trợ tính năng `AppEnvironmentExtra`, gán biến môi trường chỉ cho riêng dịch vụ `PhuXuanParkingApi`. Ưu điểm vượt trội là **bảo mật cao** (mật khẩu không bị lộ khi ai đó xem Command Line trong Task Manager/Process Explorer) và cú pháp rất sạch sẽ:
+   ```cmd
+   nssm set PhuXuanParkingApi AppEnvironmentExtra "ASPNETCORE_URLS=http://0.0.0.0:80" "CapturesFolder=D:\Captures" "ConnectionStrings__MongoDb=mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
+   ```
+   *(Lưu ý quy tắc .NET: Các mục lồng nhau như `ConnectionStrings:MongoDb` trong JSON được biểu diễn bằng 2 dấu gạch dưới `ConnectionStrings__MongoDb` trong Biến Môi Trường).*
+
+   **Lựa chọn B: Cấu hình qua Tham Số Dòng Lệnh (CLI AppParameters)**:
+   ```cmd
+   nssm set PhuXuanParkingApi AppParameters "--urls http://0.0.0.0:80 --CapturesFolder D:\Captures --ConnectionStrings:MongoDb mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
+   ```
+
+   **Khởi động dịch vụ**:
+   ```cmd
    nssm start PhuXuanParkingApi
    ```
 
-3. **Khi cần thay đổi cấu hình (ví dụ đổi cổng sang 5005 hoặc đổi mật khẩu DB)**:
-   Chỉ cần gõ 1 lệnh CLI cập nhật tham số và restart dịch vụ:
+3. **Khi cần thay đổi cấu hình (ví dụ đổi cổng hoặc đổi mật khẩu DB)**:
+   Chỉ cần chạy lệnh cập nhật và restart dịch vụ:
    ```cmd
-   nssm set PhuXuanParkingApi AppParameters "--urls http://0.0.0.0:5005 --CapturesFolder D:\Captures --ConnectionStrings:MongoDb mongodb://phuxuan_app:NewPassword!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
+   :: Cập nhật lại Biến Môi Trường trong Service:
+   nssm set PhuXuanParkingApi AppEnvironmentExtra "ASPNETCORE_URLS=http://0.0.0.0:5005" "CapturesFolder=D:\Captures" "ConnectionStrings__MongoDb=mongodb://phuxuan_app:NewPassword!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
+
+   :: Restart dịch vụ để nhận cấu hình mới:
    nssm restart PhuXuanParkingApi
    ```
+
+---
+
+### Bước 2.4.1: (Tùy Chọn) Đặt Biến Môi Trường Cấp Hệ Thống (System-wide)
+Nếu muốn thiết lập biến môi trường áp dụng cho toàn bộ máy chủ Windows:
+- **Bằng PowerShell (Admin)**:
+  ```powershell
+  [Environment]::SetEnvironmentVariable("ASPNETCORE_URLS", "http://0.0.0.0:80", "Machine")
+  [Environment]::SetEnvironmentVariable("CapturesFolder", "D:\Captures", "Machine")
+  [Environment]::SetEnvironmentVariable("ConnectionStrings__MongoDb", "mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin", "Machine")
+  ```
+- **Bằng Command Prompt (Admin)**:
+  ```cmd
+  setx ASPNETCORE_URLS "http://0.0.0.0:80" /M
+  setx CapturesFolder "D:\Captures" /M
+  setx ConnectionStrings__MongoDb "mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin" /M
+  ```
 
 ---
 
@@ -155,26 +186,33 @@ New-NetFirewallRule -DisplayName "PhuXuan_SMB_Share" -Direction Inbound -LocalPo
 
 Trên mỗi máy tính bốt bảo vệ chạy ứng dụng WinForms:
 1. Đặt IP tĩnh cho máy bốt: `192.168.1.21`, Subnet: `255.255.255.0`, Gateway: `192.168.1.1`.
-2. Mở file cấu hình `PhuXuanParkingSystem.exe.config` (hoặc `App.config` trước khi build):
+2. **Cấu hình qua Biến Môi Trường (Khuyên dùng - Không cần sửa file `App.config`)**:
+   Chỉ cần mở CMD (Admin) trên máy bốt và chạy các lệnh sau:
+   ```cmd
+   :: 1. Chuỗi kết nối CSDL MongoDB máy chủ:
+   setx MongoDb_ConnectionString "mongodb://phuxuan_app:SecretPassword2026!@192.168.1.10:27017/PhuXuanParkingSystemDb?authSource=admin&connectTimeoutMS=5000" /M
+
+   :: 2. Đường dẫn thư mục mạng UNC lưu ảnh tập trung trên máy chủ:
+   setx CaptureSavePath "\\192.168.1.10\Captures" /M
+
+   :: 3. (Tùy chọn) Mức ghi log:
+   setx LogLevel "Warning" /M
+   ```
+   *(Hoặc bằng PowerShell Admin)*:
+   ```powershell
+   [Environment]::SetEnvironmentVariable("MongoDb_ConnectionString", "mongodb://phuxuan_app:SecretPassword2026!@192.168.1.10:27017/PhuXuanParkingSystemDb?authSource=admin&connectTimeoutMS=5000", "Machine")
+   [Environment]::SetEnvironmentVariable("CaptureSavePath", "\\192.168.1.10\Captures", "Machine")
+   ```
+
+3. **Hoặc cấu hình qua file `PhuXuanParkingSystem.exe.config`** *(Nếu không dùng Biến môi trường)*:
    ```xml
    <?xml version="1.0" encoding="utf-8" ?>
    <configuration>
        <appSettings>
            <add key="LogLevel" value="Warning" />
-           <add key="Log_Path" value="Logs/app-.log" />
-           
-           <!-- ================= LƯU TRỮ ẢNH TẬP TRUNG TRÊN SERVER ================= -->
-           <!-- Trỏ trực tiếp vào thư mục chia sẻ mạng UNC của Máy Chủ -->
            <add key="CaptureSavePath" value="\\192.168.1.10\Captures" />
-           
-           <!-- Thư mục lưu tạm cục bộ khi mất mạng LAN máy chủ -->
-           <add key="CaptureFallbackLocalPath" value="C:\Captures_Local_Temp" />
-           
-           <!-- ================= KẾT NỐI CSDL MONGODB MÁY CHỦ ================= -->
            <add key="MongoDb_ConnectionString" value="mongodb://phuxuan_app:SecretPassword2026!@192.168.1.10:27017/PhuXuanParkingSystemDb?authSource=admin&amp;connectTimeoutMS=5000" />
            <add key="MongoDb_DatabaseName" value="PhuXuanParkingSystemDb" />
-           
-           <!-- ================= ANPR TỐI ƯU ================= -->
            <add key="Anpr_MaxImageWidth" value="1280" />
        </appSettings>
    </configuration>

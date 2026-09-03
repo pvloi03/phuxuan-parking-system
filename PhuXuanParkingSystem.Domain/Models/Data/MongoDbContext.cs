@@ -32,8 +32,12 @@ namespace PhuXuanParkingSystem.Models.Data
         public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
 
         public MongoDbContext() : this(
-            ConfigurationManager.AppSettings?["MongoDb_ConnectionString"] ?? "mongodb://localhost:27017",
-            ConfigurationManager.AppSettings?["MongoDb_DatabaseName"] ?? "PhuXuanParkingSystemDb")
+            Environment.GetEnvironmentVariable("MongoDb_ConnectionString")
+                ?? ConfigurationManager.AppSettings?["MongoDb_ConnectionString"]
+                ?? "mongodb://localhost:27017",
+            Environment.GetEnvironmentVariable("MongoDb_DatabaseName")
+                ?? ConfigurationManager.AppSettings?["MongoDb_DatabaseName"]
+                ?? "PhuXuanParkingSystemDb")
         {
         }
 

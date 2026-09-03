@@ -111,7 +111,7 @@ namespace PhuXuanParkingSystem.Services.Logging
     public static class AppLogger
     {
         private static bool _isInitialized;
-        private static readonly object _initLock = new object();
+        private static readonly object _initLock = new();
 
         /// <summary>
         /// Sự kiện phát ra mỗi khi có log mới (dành cho UI WinForms lắng nghe)
@@ -127,8 +127,9 @@ namespace PhuXuanParkingSystem.Services.Logging
             {
                 if (_isInitialized) return;
 
-                // 1. Mức độ log từ App.config (mặc định Warning cho Production)
+                // 1. Mức độ log từ Biến Môi Trường hoặc App.config (mặc định Warning cho Production)
                 string levelStr = customLogLevel
+                    ?? Environment.GetEnvironmentVariable("LogLevel")
                     ?? ConfigurationManager.AppSettings["LogLevel"]
                     ?? "Warning";
 
