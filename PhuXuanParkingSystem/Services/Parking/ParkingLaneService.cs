@@ -128,7 +128,32 @@ namespace PhuXuanParkingSystem.Services.Parking
                 return result;
             }
 
-            // 5. Tra cứu hồ sơ phương tiện & chủ xe đã đăng ký
+            // 5. Kiểm tra xe đang có phiên Active trong bãi (Anti-Passback / Chống xe vào trùng lặp)
+            if (detectedPlate != "Không đọc được")
+            {
+                var clean = PlateNumber.Clean(detectedPlate);
+                var filter = Builders<ParkingSession>.Filter.Eq(s => s.PlateNumber, clean) &
+                             Builders<ParkingSession>.Filter.Eq(s => s.Status, ParkingSessionStatus.Active) &
+                             Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
+
+                var activeSessions = await _sessionRepo.FindAsync(filter, Builders<ParkingSession>.Sort.Descending(s => s.InTime));
+                var existingActive = activeSessions.FirstOrDefault();
+
+                if (existingActive != null)
+                {
+                    AppLogger.Warning($"[LÀN VÀO ANTI-PASSBACK] Chặn xe {clean} vào lại do đang có phiên Active trong bãi (ID: {existingActive.Id}, Vào lúc: {existingActive.InTime:dd/MM/yyyy HH:mm:ss} tại {existingActive.InLaneName}).", "ParkingLaneService");
+                    result.IsAlreadyInLot = true;
+                    result.Success = false;
+                    result.Session = existingActive;
+                    result.ErrorMessage = $"Xe {clean} đang ở trong bãi (Vào lúc {existingActive.InTime:dd/MM/yyyy HH:mm:ss} tại {existingActive.InLaneName}).";
+
+                    // Ghi nhận bộ đệm chống chụp chéo
+                    _lastProcessedPlates[clean] = (DateTime.Now, "IN");
+                    return result;
+                }
+            }
+
+            // 6. Tra cứu hồ sơ phương tiện & chủ xe đã đăng ký
             var (personName, deptName, compName, personId, vehicleType, personType, isRegistered) =
                 await LookupVehicleAndPersonAsync(detectedPlate);
 
@@ -138,7 +163,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.VehicleType = vehicleType;
             result.IsRegisteredVehicle = isRegistered;
 
-            // 6. Tạo phiên đỗ xe (ParkingSession) và lưu vào MongoDB
+            // 7. Tạo phiên đỗ xe (ParkingSession) và lưu vào MongoDB
             string? note = null;
             if (!plateOk && !ovwOk) note = "Cả 2 camera mất kết nối hoặc lỗi lúc chụp";
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";

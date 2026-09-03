@@ -24,6 +24,7 @@ namespace PhuXuanParkingSystem.Services.Parking
         public VehicleType VehicleType { get; set; } = VehicleType.Car;
         public bool IsRegisteredVehicle { get; set; }
         public bool IsCrossLaneIgnored { get; set; }
+        public bool IsAlreadyInLot { get; set; }
         public bool PlateCamSuccess { get; set; }
         public bool OverviewCamSuccess { get; set; }
         public string? ErrorMessage { get; set; }

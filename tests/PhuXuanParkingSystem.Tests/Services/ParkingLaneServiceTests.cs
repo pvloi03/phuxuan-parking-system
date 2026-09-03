@@ -334,5 +334,56 @@ namespace PhuXuanParkingSystem.Tests.Services
 
             _mockSessionRepo.Verify(r => r.AddAsync(It.IsAny<ParkingSession>(), It.IsAny<CancellationToken>()), Times.Once);
         }
+
+        [Fact]
+        public async Task ProcessInLaneAsync_WhenVehicleAlreadyHasActiveSession_BlocksCreationAndReturnsWarning()
+        {
+            // Arrange: Xe 30A-123.45 đã có phiên Active trong bãi
+            var plateCam = CreateMockCamera(true);
+            var ovwCam = CreateMockCamera(true);
+
+            _mockAnprService
+                .Setup(a => a.RecognizeAsync(It.IsAny<string>()))
+                .ReturnsAsync(PlateRecognitionResult.Success("30A-123.45", 0.95f));
+
+            var existingActiveSession = ParkingSession.CheckIn(
+                inLaneName: "Làn Vào 1",
+                plateNumber: "30A12345",
+                inOverviewImagePath: "old_ovw.jpg",
+                inPlateImagePath: "old_plt.jpg");
+
+            _mockSessionRepo
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession> { existingActiveSession });
+
+            var service = new ParkingLaneService(
+                _mockSessionRepo.Object,
+                _mockVehicleRepo.Object,
+                _mockPersonRepo.Object,
+                _mockDeptRepo.Object,
+                _mockAnprService.Object);
+
+            // Act: Xe cố tình vào lại khi chưa ra
+            var result = await service.ProcessInLaneAsync(
+                inLaneName: "Làn Vào 1",
+                plateCam: plateCam.Object,
+                overviewCam: ovwCam.Object,
+                triggerSource: "RADAR",
+                captureDir: _testTempDir);
+
+            // Assert
+            result.Success.Should().BeFalse();
+            result.IsAlreadyInLot.Should().BeTrue();
+            result.ErrorMessage.Should().Contain("đang ở trong bãi");
+            result.Session.Should().Be(existingActiveSession);
+
+            // Không được tạo thêm phiên mới vào DB
+            _mockSessionRepo.Verify(r => r.AddAsync(It.IsAny<ParkingSession>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
     }
 }

@@ -208,6 +208,11 @@ namespace PhuXuanParkingSystem.Forms
                         lblInStatusVal.Text = "🟡 Bỏ qua góc quét chéo";
                         lblInStatusVal.ForeColor = Color.DarkOrange;
                     }
+                    else if (res.IsAlreadyInLot)
+                    {
+                        lblInStatusVal.Text = $"⚠️ XE ĐANG TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})";
+                        lblInStatusVal.ForeColor = Color.Crimson;
+                    }
                     else if (res.Success)
                     {
                         lblInStatusVal.Text = res.PlateCamSuccess ? "🟢 Đã ghi nhận phiên vào" : "⚠️ Vào (Cam biển lỗi)";
@@ -223,7 +228,14 @@ namespace PhuXuanParkingSystem.Forms
                 if (InvokeRequired) BeginInvoke(new Action(UpdateInUi));
                 else UpdateInUi();
 
-                SetFooterStatus($"📸 LÀN VÀO ({triggerSource}): Biển [{res.PlateNumber}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
+                if (res.IsAlreadyInLot)
+                {
+                    SetFooterStatus($"⚠️ [CẢNH BÁO LÀN VÀO] Xe [{res.PlateNumber}] ĐANG Ở TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})!", isError: true);
+                }
+                else
+                {
+                    SetFooterStatus($"📸 LÀN VÀO ({triggerSource}): Biển [{res.PlateNumber}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
+                }
             }
             catch (Exception ex)
             {
