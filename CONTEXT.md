@@ -19,6 +19,7 @@
 | **Company** | Công ty/đơn vị thành viên. Chứa nhiều Department. | Đơn vị | |
 | **Contractor** | Đơn vị nhà thầu/đối tác bên ngoài. | Nhà thầu | |
 | **User** | Tài khoản đăng nhập hệ thống Web Admin/WinForms. Phân quyền theo UserRole. | Tài khoản | Khác với Person |
+| **AuditLog** | Bản ghi nhật ký kiểm toán (Aggregate Root). Ghi lại các hoạt động quản trị, bảo mật và thay đổi dữ liệu trên Web Admin (Append-Only). | Nhật ký kiểm toán, Audit trail | |
 | **LicenseInfo** | Bản quyền phần mềm. Chứa Hardware Fingerprint, ExpiryDate, Quota limits (MaxLanes, MaxCameras, MaxControllers). | Bản quyền, License | |
 
 ### Value Objects
@@ -27,6 +28,7 @@
 |------|------------|
 | **PlateNumber** | Biển số xe đã chuẩn hóa. Tự động loại bỏ dấu ., -, khoảng trắng. Hỗ trợ format display VN (29A-123.45). Immutable. |
 | **ImageStoragePath** | Đường dẫn file ảnh snapshot (UNC hoặc local). Immutable. Có custom BSON serializer. |
+| **AuditDiff** | Thông tin so sánh chi tiết trước và sau thay đổi (OldValues, NewValues, ChangedProperties). Tự động che giấu dữ liệu nhạy cảm. |
 | **BaseEntity** | Lớp cơ sở cho tất cả entities. Cung cấp: Id (ObjectId), CreatedAt, UpdatedAt, IsDeleted, DeletedAt. Hỗ trợ Soft-Delete. |
 
 ### Enums
@@ -41,6 +43,7 @@
 | **DeviceStatus** | `Connected=1`, `Disconnected=2`, `Error=3`, `Maintenance=4`, `Connecting=5`, `Streaming=6` | Trạng thái kết nối & streaming chuẩn của thiết bị (dùng chung cho Domain, DB, UI và Web) |
 | **HealthCheckCycle** | Vòng đời kiểm tra thiết bị: Init → Check → Sync State → Retry (nếu fail) → Notify UI | Quản lý trạng thái thiết bị |
 | **UserRole** | `SuperAdmin`, `Manager`, `Operator` | Phân quyền |
+| **AuditActionType** | `Login=1`, `Logout=2`, `Create=3`, `Update=4`, `Delete=5`, `ChangePassword=6`, `ChangeRole=7`, `LicenseUpdate=8`, `Export=9` | Loại hành động kiểm toán |
 
 ---
 
@@ -51,6 +54,8 @@
 3. **Vehicle** phải có `PlateNumber` hợp lệ (sau khi Clean)
 4. **LicenseInfo.IsValid** yêu cầu: `IsActive && !IsDeleted && !IsExpired && !string.IsNullOrWhiteSpace(LicenseKey)`
 5. **LicenseInfo.IsPermanent** khi `ExpiryDate.Year >= 2099`
+6. **AuditLog** là bất biến (Append-Only): Không hỗ trợ Update/Soft-Delete/Hard-Delete qua API; chỉ tự động dọn dẹp bằng MongoDB TTL Index.
+7. **AuditLog** bắt buộc phải có `Reason` khi `ActionType` thuộc nhóm rủi ro cao (`Delete`, `ChangeRole`, `ChangePassword`, `LicenseUpdate`).
 
 ---
 

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
@@ -17,10 +19,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class PeopleController : ControllerBase
     {
         private readonly IRepository<Person> _personRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public PeopleController(IRepository<Person> personRepo)
+        public PeopleController(IRepository<Person> personRepo, IAuditLogQueue auditQueue)
         {
             _personRepo = personRepo;
+            _auditQueue = auditQueue;
         }
 
         [HttpGet]
@@ -111,6 +115,27 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(person.ContractorId)) person.ContractorId = null;
 
             await _personRepo.AddAsync(person);
+
+            // Ghi nhận AuditLog Create
+            var diff = AuditDiffHelper.ComputeDiff<Person>(null, person);
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.Create,
+                TargetEntity = "Person",
+                TargetId = person.Id,
+                TargetDisplay = person.FullName,
+                NewValues = diff.NewValues,
+                ChangedProperties = diff.ChangedProperties,
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
+
             return Ok(ApiResponse<Person>.Ok(person, "Thêm nhân sự thành công."));
         }
 
@@ -132,6 +157,22 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail($"Mã định danh '{cleanCode}' đã thuộc về nhân sự khác."));
             }
 
+            // Lưu trạng thái cũ để tính Diff
+            var oldState = new Person
+            {
+                Id = existing.Id,
+                Code = existing.Code,
+                FullName = existing.FullName,
+                PhoneNumber = existing.PhoneNumber,
+                Email = existing.Email,
+                Type = existing.Type,
+                DepartmentId = existing.DepartmentId,
+                CompanyId = existing.CompanyId,
+                ContractorId = existing.ContractorId,
+                IsActive = existing.IsActive,
+                CreatedAt = existing.CreatedAt
+            };
+
             existing.Code = cleanCode;
             existing.FullName = person.FullName.Trim();
             existing.PhoneNumber = person.PhoneNumber?.Trim();
@@ -144,6 +185,31 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UpdatedAt = DateTime.Now;
 
             await _personRepo.UpdateAsync(existing);
+
+            // Ghi nhận AuditLog Update
+            var diff = AuditDiffHelper.ComputeDiff(oldState, existing);
+            if (diff.HasChanges)
+            {
+                var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+                await _auditQueue.QueueLogAsync(new AuditLog
+                {
+                    ActorId = actorId,
+                    ActorUsername = actorUsername,
+                    ActorRole = actorRole,
+                    ActionType = AuditActionType.Update,
+                    TargetEntity = "Person",
+                    TargetId = existing.Id,
+                    TargetDisplay = existing.FullName,
+                    OldValues = diff.OldValues,
+                    NewValues = diff.NewValues,
+                    ChangedProperties = diff.ChangedProperties,
+                    IpAddress = HttpContext.GetClientIp(),
+                    UserAgent = HttpContext.GetUserAgent(),
+                    IsSuccess = true,
+                    Source = "WebAdmin"
+                });
+            }
+
             return Ok(ApiResponse<Person>.Ok(existing, "Cập nhật nhân sự thành công."));
         }
 
@@ -156,6 +222,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             int addedCount = 0;
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            var ip = HttpContext.GetClientIp();
+            var ua = HttpContext.GetUserAgent();
+
             foreach (var p in people)
             {
                 if (string.IsNullOrWhiteSpace(p.FullName) || string.IsNullOrWhiteSpace(p.Code)) continue;
@@ -169,6 +239,24 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     if (string.IsNullOrWhiteSpace(p.ContractorId)) p.ContractorId = null;
                     await _personRepo.AddAsync(p);
                     addedCount++;
+
+                    var diff = AuditDiffHelper.ComputeDiff<Person>(null, p);
+                    await _auditQueue.QueueLogAsync(new AuditLog
+                    {
+                        ActorId = actorId,
+                        ActorUsername = actorUsername,
+                        ActorRole = actorRole,
+                        ActionType = AuditActionType.Create,
+                        TargetEntity = "Person",
+                        TargetId = p.Id,
+                        TargetDisplay = p.FullName,
+                        NewValues = diff.NewValues,
+                        ChangedProperties = diff.ChangedProperties,
+                        IpAddress = ip,
+                        UserAgent = ua,
+                        IsSuccess = true,
+                        Source = "WebAdmin"
+                    });
                 }
             }
 
@@ -176,23 +264,71 @@ namespace PhuXuanParkingSystem.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string id, [FromQuery] string? reason = null)
         {
             var existing = await _personRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy nhân sự."));
 
             await _personRepo.DeleteAsync(id);
+
+            // Ghi nhận AuditLog Delete
+            var diff = AuditDiffHelper.ComputeDiff<Person>(existing, null);
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.Delete,
+                TargetEntity = "Person",
+                TargetId = existing.Id,
+                TargetDisplay = existing.FullName,
+                OldValues = diff.OldValues,
+                ChangedProperties = diff.ChangedProperties,
+                Reason = reason,
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
+
             return Ok(ApiResponse.Ok("Đã xóa nhân sự thành công."));
         }
 
         [HttpPost("delete-batch")]
-        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách ID rỗng."));
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            var ip = HttpContext.GetClientIp();
+            var ua = HttpContext.GetUserAgent();
 
             foreach (var id in ids)
             {
-                await _personRepo.DeleteAsync(id);
+                var p = await _personRepo.GetByIdAsync(id);
+                if (p != null && !p.IsDeleted)
+                {
+                    await _personRepo.DeleteAsync(id);
+
+                    var diff = AuditDiffHelper.ComputeDiff<Person>(p, null);
+                    await _auditQueue.QueueLogAsync(new AuditLog
+                    {
+                        ActorId = actorId,
+                        ActorUsername = actorUsername,
+                        ActorRole = actorRole,
+                        ActionType = AuditActionType.Delete,
+                        TargetEntity = "Person",
+                        TargetId = p.Id,
+                        TargetDisplay = p.FullName,
+                        OldValues = diff.OldValues,
+                        ChangedProperties = diff.ChangedProperties,
+                        Reason = reason,
+                        IpAddress = ip,
+                        UserAgent = ua,
+                        IsSuccess = true,
+                        Source = "WebAdmin"
+                    });
+                }
             }
 
             return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} nhân sự thành công."));
