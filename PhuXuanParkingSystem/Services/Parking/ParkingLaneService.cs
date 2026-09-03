@@ -92,7 +92,7 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
             string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_plate.jpg");
-            string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_panoramic.jpg");
+            string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_overview.jpg");
 
             // 2. Chụp ảnh song song với cơ chế chống chịu lỗi (Graceful Degradation)
             var (plateOk, ovwOk) = await CaptureSnapshotsAsync(plateCam, overviewCam, filePlate, fileOverview, plateDeviceId, overviewDeviceId);
@@ -264,7 +264,7 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
             string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_plate.jpg");
-            string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_panoramic.jpg");
+            string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_overview.jpg");
 
             // 2. Chụp ảnh song song với cơ chế chống chịu lỗi
             var (plateOk, ovwOk) = await CaptureSnapshotsAsync(plateCam, overviewCam, filePlate, fileOverview, plateDeviceId, overviewDeviceId);

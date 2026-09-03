@@ -206,12 +206,12 @@ namespace PhuXuanParkingSystem.Forms
                     // 4. Trạng thái kết quả
                     if (res.IsCrossLaneIgnored)
                     {
-                        lblInStatusVal.Text = "🟡 Bỏ qua góc quét chéo";
+                        lblInStatusVal.Text = "🟡 Thao tác quá nhanh";
                         lblInStatusVal.ForeColor = Color.DarkOrange;
                     }
                     else if (res.IsAlreadyInLot)
                     {
-                        lblInStatusVal.Text = $"⚠️ XE ĐANG TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})";
+                        lblInStatusVal.Text = $"⚠️ XE ĐANG TRONG BÃI";
                         lblInStatusVal.ForeColor = Color.Crimson;
                     }
                     else if (res.Success)
@@ -294,7 +294,7 @@ namespace PhuXuanParkingSystem.Forms
                     // 4. Trạng thái kết quả phiên xe ra
                     if (res.IsCrossLaneIgnored)
                     {
-                        lblOutStatusVal.Text = "🟡 Bỏ qua góc quét chéo";
+                        lblOutStatusVal.Text = "🟡 Thao tác quá nhanh";
                         lblOutStatusVal.ForeColor = Color.DarkOrange;
                     }
                     else if (res.Session?.Status == ParkingSessionStatus.Completed)
