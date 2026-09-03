@@ -10,6 +10,7 @@ using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -223,23 +224,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             // Ghi nhận AuditLog Create
             var diff = AuditDiffHelper.ComputeDiff<User>(null, user);
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.Create,
-                TargetEntity = "User",
-                TargetId = user.Id,
-                TargetDisplay = user.Username,
-                NewValues = diff.NewValues,
-                ChangedProperties = diff.ChangedProperties,
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "User", user.Id, user.Username, diff);
 
             return Ok(ApiResponse<UserDto>.Ok(MapToDto(user), "Tạo tài khoản người dùng thành công!"));
         }
@@ -272,20 +257,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 }
             }
 
-            // Lưu trạng thái cũ để tính Diff
-            var oldState = new User
-            {
-                Id = user.Id,
-                Username = user.Username,
-                PasswordHash = user.PasswordHash,
-                FullName = user.FullName,
-                Email = user.Email,
-                PhoneNumber = user.PhoneNumber,
-                Role = user.Role,
-                IsActive = user.IsActive,
-                CreatedAt = user.CreatedAt
-            };
-
+            // Snapshot trạng thái cũ trước khi cập nhật
+            var snapshot = AuditDiffHelper.TakeSnapshot(user);
             var isRoleChanged = user.Role != request.Role;
 
             user.FullName = request.FullName?.Trim() ?? user.FullName;
@@ -298,27 +271,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
             await _userRepo.UpdateAsync(user);
 
             // Ghi nhận AuditLog Update / ChangeRole
-            var diff = AuditDiffHelper.ComputeDiff(oldState, user);
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, user);
             if (diff.HasChanges)
             {
-                var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-                await _auditQueue.QueueLogAsync(new AuditLog
-                {
-                    ActorId = actorId,
-                    ActorUsername = actorUsername,
-                    ActorRole = actorRole,
-                    ActionType = isRoleChanged ? AuditActionType.ChangeRole : AuditActionType.Update,
-                    TargetEntity = "User",
-                    TargetId = user.Id,
-                    TargetDisplay = user.Username,
-                    OldValues = diff.OldValues,
-                    NewValues = diff.NewValues,
-                    ChangedProperties = diff.ChangedProperties,
-                    IpAddress = HttpContext.GetClientIp(),
-                    UserAgent = HttpContext.GetUserAgent(),
-                    IsSuccess = true,
-                    Source = "WebAdmin"
-                });
+                var actionType = isRoleChanged ? AuditActionType.ChangeRole : AuditActionType.Update;
+                var reason = isRoleChanged ? $"Thay đổi vai trò từ {snapshot["Role"]} sang {user.Role}" : null;
+                await _auditQueue.LogActivityAsync(User, HttpContext, actionType, "User", user.Id, user.Username, diff, reason: reason);
             }
 
             return Ok(ApiResponse<UserDto>.Ok(MapToDto(user), "Cập nhật tài khoản người dùng thành công!"));
@@ -348,17 +306,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var user = await _userRepo.GetByIdAsync(id);
             if (user == null || user.IsDeleted)
             {
-                return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng trong hệ thống."));
+                return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng."));
             }
 
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                             ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                              ?? User.FindFirstValue("sub")
                              ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
 
             var roleClaim = User.FindFirstValue(ClaimTypes.Role)
                          ?? User.FindFirstValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
                          ?? User.FindFirstValue("role")
-                         ?? "";
+                         ?? string.Empty;
+
             var isCurrentUserAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase)
                                   || roleClaim == "1";
 
@@ -372,15 +332,16 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
                 if (!isSameUser)
                 {
-                    return StatusCode(StatusCodes.Status403Forbidden, ApiResponse.Fail("Bạn không có quyền đổi mật khẩu của tài khoản khác."));
+                    return StatusCode(StatusCodes.Status403Forbidden,
+                        ApiResponse.Fail("Bạn không có quyền đổi mật khẩu cho tài khoản người dùng khác!"));
                 }
 
                 if (string.IsNullOrWhiteSpace(oldPassword))
                 {
-                    return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu hiện tại để xác thực."));
+                    return BadRequest(ApiResponse.Fail("Vui lòng nhập mật khẩu hiện tại của bạn!"));
                 }
 
-                bool isOldValid = false;
+                bool isOldValid;
                 try
                 {
                     isOldValid = BCrypt.Net.BCrypt.Verify(oldPassword, user.PasswordHash);
@@ -392,7 +353,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
                 if (!isOldValid)
                 {
-                    return BadRequest(ApiResponse.Fail("Mật khẩu hiện tại không chính xác. Vui lòng kiểm tra lại."));
+                    return BadRequest(ApiResponse.Fail("Mật khẩu hiện tại không chính xác!"));
                 }
             }
 
@@ -407,21 +368,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             // Ghi nhận AuditLog ChangePassword
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.ChangePassword,
-                TargetEntity = "User",
-                TargetId = user.Id,
-                TargetDisplay = user.Username,
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.ChangePassword, "User", user.Id, user.Username);
 
             return Ok(ApiResponse.Ok("Đổi mật khẩu tài khoản thành công!"));
         }
@@ -448,22 +395,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
             await _userRepo.UpdateAsync(user);
 
             // Ghi nhận AuditLog ToggleStatus
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.Update,
-                TargetEntity = "User",
-                TargetId = user.Id,
-                TargetDisplay = user.Username,
-                Reason = user.IsActive ? "Mở khóa tài khoản" : "Khóa tài khoản",
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            var reason = user.IsActive ? "Mở khóa tài khoản" : "Khóa tài khoản";
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "User", user.Id, user.Username, reason: reason);
 
             return Ok(ApiResponse<UserDto>.Ok(MapToDto(user), user.IsActive ? "Đã mở khóa tài khoản thành công." : "Đã khóa tài khoản thành công."));
         }
@@ -497,24 +430,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             // Ghi nhận AuditLog Delete
             var diff = AuditDiffHelper.ComputeDiff<User>(user, null);
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.Delete,
-                TargetEntity = "User",
-                TargetId = user.Id,
-                TargetDisplay = user.Username,
-                OldValues = diff.OldValues,
-                ChangedProperties = diff.ChangedProperties,
-                Reason = reason,
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "User", user.Id, user.Username, diff, reason: reason);
 
             return Ok(ApiResponse.Ok("Đã xóa tài khoản người dùng thành công (dữ liệu được chuyển vào thùng rác)."));
         }

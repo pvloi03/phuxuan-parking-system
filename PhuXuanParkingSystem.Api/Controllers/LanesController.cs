@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
@@ -20,15 +22,18 @@ namespace PhuXuanParkingSystem.Api.Controllers
         private readonly IRepository<Lane> _laneRepo;
         private readonly IRepository<Device> _deviceRepo;
         private readonly IRepository<LicenseInfo> _licenseRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
         public LanesController(
             IRepository<Lane> laneRepo,
             IRepository<Device> deviceRepo,
-            IRepository<LicenseInfo> licenseRepo)
+            IRepository<LicenseInfo> licenseRepo,
+            IAuditLogQueue auditQueue)
         {
             _laneRepo = laneRepo;
             _deviceRepo = deviceRepo;
             _licenseRepo = licenseRepo;
+            _auditQueue = auditQueue;
         }
 
         // GET api/lanes
@@ -117,6 +122,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             lane.IsDeleted = false;
 
             await _laneRepo.AddAsync(lane);
+
+            var diff = AuditDiffHelper.ComputeDiff<Lane>(null, lane);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Lane", lane.Id, lane.Name, diff);
+
             return Ok(ApiResponse<Lane>.Ok(lane, "Thêm mới làn kiểm soát thành công."));
         }
 
@@ -140,6 +149,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail($"Mã làn '{cleanCode}' đã thuộc về làn khác."));
             }
 
+            var snapshot = AuditDiffHelper.TakeSnapshot(existing);
+
             existing.Code = cleanCode;
             existing.Name = lane.Name.Trim();
             existing.Direction = lane.Direction;
@@ -152,24 +163,35 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UpdatedAt = DateTime.Now;
 
             await _laneRepo.UpdateAsync(existing);
+
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, existing);
+            if (diff.HasChanges)
+            {
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "Lane", existing.Id, existing.Name, diff);
+            }
+
             return Ok(ApiResponse<Lane>.Ok(existing, "Cập nhật làn kiểm soát thành công."));
         }
 
         // DELETE api/lanes/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string id, [FromQuery] string? reason = null)
         {
             var existing = await _laneRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted)
                 return NotFound(ApiResponse.Fail("Không tìm thấy làn kiểm soát."));
 
             await _laneRepo.DeleteAsync(id);
+
+            var diff = AuditDiffHelper.ComputeDiff<Lane>(existing, null);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Lane", existing.Id, existing.Name, diff, reason: reason);
+
             return Ok(ApiResponse.Ok("Đã xóa làn kiểm soát thành công."));
         }
 
         // POST api/lanes/delete-batch
         [HttpPost("delete-batch")]
-        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0)
                 return BadRequest(ApiResponse.Fail("Danh sách ID không được rỗng."));
@@ -180,6 +202,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 if (l != null && !l.IsDeleted)
                 {
                     await _laneRepo.DeleteAsync(id);
+                    var diff = AuditDiffHelper.ComputeDiff<Lane>(l, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Lane", l.Id, l.Name, diff, reason: reason);
                 }
             }
             return Ok(ApiResponse.Ok($"Đã xóa thành công {ids.Count} làn kiểm soát."));

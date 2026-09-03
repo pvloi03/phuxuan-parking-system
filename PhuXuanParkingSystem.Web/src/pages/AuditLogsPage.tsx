@@ -18,35 +18,8 @@ import { auditLogService } from '@/services/auditLogService'
 import type { AuditLogQueryParams } from '@/services/auditLogService'
 import type { AuditLog, AuditActionType } from '@/types'
 import { AuditLogDetailDrawer } from '@/components/audit/AuditLogDetailDrawer'
+import { actionTypeConfig, targetEntityList } from '@/lib/auditConfig'
 import { cn } from '@/lib/utils'
-
-const actionTypeLabels: Record<
-  AuditActionType,
-  { label: string; bg: string; text: string; border: string }
-> = {
-  Login: { label: 'Đăng Nhập', bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-400', border: 'border-purple-200 dark:border-purple-800' },
-  Logout: { label: 'Đăng Xuất', bg: 'bg-slate-50 dark:bg-slate-900/40', text: 'text-slate-700 dark:text-slate-400', border: 'border-slate-200 dark:border-slate-800' },
-  Create: { label: 'Tạo Mới', bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' },
-  Update: { label: 'Cập Nhật', bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800' },
-  Delete: { label: 'Xóa Dữ Liệu', bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800' },
-  ChangePassword: { label: 'Đổi Mật Khẩu', bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-800' },
-  ChangeRole: { label: 'Đổi Vai Trò', bg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800' },
-  LicenseUpdate: { label: 'Cập Nhật Bản Quyền', bg: 'bg-cyan-50 dark:bg-cyan-950/40', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-800' },
-  Export: { label: 'Xuất Báo Cáo', bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-800' },
-  ManualOverride: { label: 'Can Thiệp Thủ Công', bg: 'bg-red-50 dark:bg-red-950/40', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-800' },
-}
-
-const targetEntityList = [
-  'User',
-  'Person',
-  'Vehicle',
-  'Department',
-  'Company',
-  'Contractor',
-  'Lane',
-  'Device',
-  'LicenseInfo',
-]
 
 const toEndOfDayIso = (d: string) => {
   const date = new Date(d)
@@ -210,9 +183,9 @@ export function AuditLogsPage() {
               className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-slate-900 dark:text-slate-100"
             >
               <option value="">Tất cả loại hành động</option>
-              {Object.keys(actionTypeLabels).map((act) => (
+              {Object.keys(actionTypeConfig).map((act) => (
                 <option key={act} value={act}>
-                  {actionTypeLabels[act as AuditActionType]?.label || act}
+                  {actionTypeConfig[act as AuditActionType]?.label || act}
                 </option>
               ))}
             </select>
@@ -319,7 +292,7 @@ export function AuditLogsPage() {
                 </tr>
               ) : (
                 logs.map((log) => {
-                  const actCfg = actionTypeLabels[log.actionType] || {
+                  const actCfg = actionTypeConfig[log.actionType] || {
                     label: log.actionType,
                     bg: 'bg-slate-50',
                     text: 'text-slate-700',

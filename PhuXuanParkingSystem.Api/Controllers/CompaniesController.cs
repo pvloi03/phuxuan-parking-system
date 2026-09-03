@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Api.Controllers
 {
@@ -12,10 +18,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class CompaniesController : ControllerBase
     {
         private readonly IRepository<Company> _companyRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public CompaniesController(IRepository<Company> companyRepo)
+        public CompaniesController(IRepository<Company> companyRepo, IAuditLogQueue auditQueue)
         {
             _companyRepo = companyRepo;
+            _auditQueue = auditQueue;
         }
 
         [HttpGet]
@@ -61,6 +69,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             await _companyRepo.AddAsync(company);
+
+            var diff = AuditDiffHelper.ComputeDiff<Company>(null, company);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Company", company.Id, company.Name, diff);
+
             return Ok(ApiResponse<Company>.Ok(company, "Thêm công ty thành công."));
         }
 
@@ -72,15 +84,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail("Danh sách công ty rỗng."));
             }
 
+            int addedCount = 0;
             foreach (var comp in companies)
             {
                 if (!string.IsNullOrWhiteSpace(comp.Name))
                 {
                     await _companyRepo.AddAsync(comp);
+                    addedCount++;
+                    var diff = AuditDiffHelper.ComputeDiff<Company>(null, comp);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Company", comp.Id, comp.Name, diff);
                 }
             }
 
-            return Ok(ApiResponse.Ok($"Nhập thành công {companies.Count} công ty từ file."));
+            return Ok(ApiResponse.Ok($"Nhập thành công {addedCount}/{companies.Count} công ty từ file."));
         }
 
         [HttpPut("{id}")]
@@ -88,6 +104,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
         {
             var existing = await _companyRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy công ty."));
+
+            var snapshot = AuditDiffHelper.TakeSnapshot(existing);
 
             existing.Code = company.Code;
             existing.Name = company.Name;
@@ -98,27 +116,44 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UpdatedAt = DateTime.Now;
 
             await _companyRepo.UpdateAsync(existing);
+
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, existing);
+            if (diff.HasChanges)
+            {
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "Company", existing.Id, existing.Name, diff);
+            }
+
             return Ok(ApiResponse<Company>.Ok(existing, "Cập nhật công ty thành công."));
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string id, [FromQuery] string? reason = null)
         {
             var existing = await _companyRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy công ty."));
 
             await _companyRepo.DeleteAsync(id);
+
+            var diff = AuditDiffHelper.ComputeDiff<Company>(existing, null);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Company", existing.Id, existing.Name, diff, reason: reason);
+
             return Ok(ApiResponse.Ok("Đã xóa công ty thành công."));
         }
 
         [HttpPost("delete-batch")]
-        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách ID rỗng."));
 
             foreach (var id in ids)
             {
-                await _companyRepo.DeleteAsync(id);
+                var existing = await _companyRepo.GetByIdAsync(id);
+                if (existing != null && !existing.IsDeleted)
+                {
+                    await _companyRepo.DeleteAsync(id);
+                    var diff = AuditDiffHelper.ComputeDiff<Company>(existing, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Company", existing.Id, existing.Name, diff, reason: reason);
+                }
             }
 
             return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} công ty thành công."));

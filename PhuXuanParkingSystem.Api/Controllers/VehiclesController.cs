@@ -102,23 +102,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             // Ghi nhận AuditLog Create
             var diff = AuditDiffHelper.ComputeDiff<Vehicle>(null, vehicle);
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.Create,
-                TargetEntity = "Vehicle",
-                TargetId = vehicle.Id,
-                TargetDisplay = vehicle.PlateNumber,
-                NewValues = diff.NewValues,
-                ChangedProperties = diff.ChangedProperties,
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Vehicle", vehicle.Id, vehicle.PlateNumber, diff);
 
             return Ok(ApiResponse<Vehicle>.Ok(vehicle, "Thêm phương tiện thành công."));
         }
@@ -141,14 +125,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail($"Biển số '{cleanPlate}' đã thuộc về một phương tiện khác."));
             }
 
-            // Bản sao trạng thái cũ để tính Diff
-            var oldState = new Vehicle(existing.PlateNumber, existing.Type)
-            {
-                Id = existing.Id,
-                OwnerPersonId = existing.OwnerPersonId,
-                IsActive = existing.IsActive,
-                CreatedAt = existing.CreatedAt
-            };
+            // Snapshot trạng thái cũ trước khi cập nhật
+            var snapshot = AuditDiffHelper.TakeSnapshot(existing);
 
             existing.PlateNumber = cleanPlate;
             existing.Type = vehicle.Type;
@@ -159,27 +137,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             await _vehicleRepo.UpdateAsync(existing);
 
             // Ghi nhận AuditLog Update nếu có thay đổi
-            var diff = AuditDiffHelper.ComputeDiff(oldState, existing);
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, existing);
             if (diff.HasChanges)
             {
-                var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-                await _auditQueue.QueueLogAsync(new AuditLog
-                {
-                    ActorId = actorId,
-                    ActorUsername = actorUsername,
-                    ActorRole = actorRole,
-                    ActionType = AuditActionType.Update,
-                    TargetEntity = "Vehicle",
-                    TargetId = existing.Id,
-                    TargetDisplay = existing.PlateNumber,
-                    OldValues = diff.OldValues,
-                    NewValues = diff.NewValues,
-                    ChangedProperties = diff.ChangedProperties,
-                    IpAddress = HttpContext.GetClientIp(),
-                    UserAgent = HttpContext.GetUserAgent(),
-                    IsSuccess = true,
-                    Source = "WebAdmin"
-                });
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "Vehicle", existing.Id, existing.PlateNumber, diff);
             }
 
             return Ok(ApiResponse<Vehicle>.Ok(existing, "Cập nhật phương tiện thành công."));
@@ -195,24 +156,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             // Ghi nhận AuditLog Delete
             var diff = AuditDiffHelper.ComputeDiff<Vehicle>(existing, null);
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            await _auditQueue.QueueLogAsync(new AuditLog
-            {
-                ActorId = actorId,
-                ActorUsername = actorUsername,
-                ActorRole = actorRole,
-                ActionType = AuditActionType.Delete,
-                TargetEntity = "Vehicle",
-                TargetId = existing.Id,
-                TargetDisplay = existing.PlateNumber,
-                OldValues = diff.OldValues,
-                ChangedProperties = diff.ChangedProperties,
-                Reason = reason,
-                IpAddress = HttpContext.GetClientIp(),
-                UserAgent = HttpContext.GetUserAgent(),
-                IsSuccess = true,
-                Source = "WebAdmin"
-            });
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Vehicle", existing.Id, existing.PlateNumber, diff, reason: reason);
 
             return Ok(ApiResponse.Ok("Đã xóa phương tiện thành công."));
         }
@@ -221,9 +165,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
         public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách ID không được rỗng."));
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            var ip = HttpContext.GetClientIp();
-            var ua = HttpContext.GetUserAgent();
 
             foreach (var id in ids)
             {
@@ -233,23 +174,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     await _vehicleRepo.DeleteAsync(id);
 
                     var diff = AuditDiffHelper.ComputeDiff<Vehicle>(v, null);
-                    await _auditQueue.QueueLogAsync(new AuditLog
-                    {
-                        ActorId = actorId,
-                        ActorUsername = actorUsername,
-                        ActorRole = actorRole,
-                        ActionType = AuditActionType.Delete,
-                        TargetEntity = "Vehicle",
-                        TargetId = v.Id,
-                        TargetDisplay = v.PlateNumber,
-                        OldValues = diff.OldValues,
-                        ChangedProperties = diff.ChangedProperties,
-                        Reason = reason,
-                        IpAddress = ip,
-                        UserAgent = ua,
-                        IsSuccess = true,
-                        Source = "WebAdmin"
-                    });
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Vehicle", v.Id, v.PlateNumber, diff, reason: reason);
                 }
             }
             return Ok(ApiResponse.Ok($"Đã xóa thành công {ids.Count} phương tiện."));
@@ -261,9 +186,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (vehicles == null || vehicles.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách phương tiện không được rỗng."));
 
             int addedCount = 0;
-            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
-            var ip = HttpContext.GetClientIp();
-            var ua = HttpContext.GetUserAgent();
 
             foreach (var v in vehicles)
             {
@@ -279,22 +201,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     addedCount++;
 
                     var diff = AuditDiffHelper.ComputeDiff<Vehicle>(null, v);
-                    await _auditQueue.QueueLogAsync(new AuditLog
-                    {
-                        ActorId = actorId,
-                        ActorUsername = actorUsername,
-                        ActorRole = actorRole,
-                        ActionType = AuditActionType.Create,
-                        TargetEntity = "Vehicle",
-                        TargetId = v.Id,
-                        TargetDisplay = v.PlateNumber,
-                        NewValues = diff.NewValues,
-                        ChangedProperties = diff.ChangedProperties,
-                        IpAddress = ip,
-                        UserAgent = ua,
-                        IsSuccess = true,
-                        Source = "WebAdmin"
-                    });
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Vehicle", v.Id, v.PlateNumber, diff);
                 }
             }
 

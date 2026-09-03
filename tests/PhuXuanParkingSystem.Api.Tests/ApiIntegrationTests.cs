@@ -428,5 +428,127 @@ namespace PhuXuanParkingSystem.Api.Tests
             bytes.Should().NotBeEmpty();
             bytes.Length.Should().BeGreaterThan(100);
         }
+
+        [Fact]
+        public async Task Test_15_User_Role_Change_Generates_ChangeRole_Audit_Log_With_Reason()
+        {
+            var token = await AuthenticateAsAdminAsync();
+            var username = "roleuser_" + new Random().Next(1000, 9999);
+
+            // 1. Tạo user với vai trò Operator
+            var createReq = new HttpRequestMessage(HttpMethod.Post, "/api/users")
+            {
+                Content = JsonContent.Create(new UsersController.CreateUserRequest
+                {
+                    Username = username,
+                    Password = "InitialPassword@123",
+                    FullName = "Role Test User",
+                    Role = UserRole.Operator,
+                    IsActive = true
+                })
+            };
+            createReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var createRes = await _client.SendAsync(createReq);
+            createRes.StatusCode.Should().Be(HttpStatusCode.OK);
+            var createData = await createRes.Content.ReadFromJsonAsync<ApiResponse<UsersController.UserDto>>(JsonOptions);
+            var userId = createData!.Data!.Id;
+
+            await Task.Delay(400);
+
+            // 2. Cập nhật vai trò sang Manager
+            var updateReq = new HttpRequestMessage(HttpMethod.Put, $"/api/users/{userId}")
+            {
+                Content = JsonContent.Create(new UsersController.UpdateUserRequest
+                {
+                    FullName = "Role Test User Updated",
+                    Role = UserRole.Manager,
+                    IsActive = true
+                })
+            };
+            updateReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var updateRes = await _client.SendAsync(updateReq);
+            updateRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            await Task.Delay(500);
+
+            // 3. Truy vấn AuditLog với ActionType = ChangeRole
+            var logReq = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/audit-logs?targetEntity=User&actionType=ChangeRole&search={username}");
+            logReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var logRes = await _client.SendAsync(logReq);
+            logRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            var logApiRes = await logRes.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AuditLog>>>(JsonOptions);
+            logApiRes.Should().NotBeNull();
+            logApiRes!.Data!.Items.Should().NotBeEmpty();
+
+            var roleLog = logApiRes.Data.Items.FirstOrDefault(x => x.TargetDisplay == username && x.ActionType == AuditActionType.ChangeRole);
+            roleLog.Should().NotBeNull();
+            roleLog!.ChangedProperties.Should().Contain("Role");
+            roleLog.Reason.Should().NotBeNullOrWhiteSpace();
+            roleLog.Reason.Should().Contain("Manager");
+        }
+
+        [Fact]
+        public async Task Test_16_Department_And_Company_Crud_Generates_Audit_Log_With_Diff()
+        {
+            var token = await AuthenticateAsAdminAsync();
+            var rand = new Random().Next(1000, 9999);
+
+            // 1. Tạo Department
+            var deptName = "Phong KT " + rand;
+            var deptReq = new HttpRequestMessage(HttpMethod.Post, "/api/departments")
+            {
+                Content = JsonContent.Create(new Department
+                {
+                    Name = deptName,
+                    Code = "PKT_" + rand,
+                    IsActive = true
+                })
+            };
+            deptReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var deptRes = await _client.SendAsync(deptReq);
+            deptRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // 2. Tạo Company
+            var compName = "Cong Ty " + rand;
+            var compReq = new HttpRequestMessage(HttpMethod.Post, "/api/companies")
+            {
+                Content = JsonContent.Create(new Company
+                {
+                    Name = compName,
+                    Code = "CTY_" + rand,
+                    IsActive = true
+                })
+            };
+            compReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var compRes = await _client.SendAsync(compReq);
+            compRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            await Task.Delay(600);
+
+            // 3. Kiểm tra AuditLog Department
+            var deptLogReq = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/audit-logs?targetEntity=Department&search={deptName}");
+            deptLogReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var deptLogRes = await _client.SendAsync(deptLogReq);
+            deptLogRes.StatusCode.Should().Be(HttpStatusCode.OK);
+            var deptLogApiRes = await deptLogRes.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AuditLog>>>(JsonOptions);
+            deptLogApiRes!.Data!.Items.Should().NotBeEmpty();
+            var deptLog = deptLogApiRes.Data.Items.FirstOrDefault(x => x.TargetDisplay == deptName);
+            deptLog.Should().NotBeNull();
+            deptLog!.ActionType.Should().Be(AuditActionType.Create);
+            deptLog.NewValues.Should().Contain(deptName);
+
+            // 4. Kiểm tra AuditLog Company
+            var compLogReq = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/audit-logs?targetEntity=Company&search={compName}");
+            compLogReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var compLogRes = await _client.SendAsync(compLogReq);
+            compLogRes.StatusCode.Should().Be(HttpStatusCode.OK);
+            var compLogApiRes = await compLogRes.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AuditLog>>>(JsonOptions);
+            compLogApiRes!.Data!.Items.Should().NotBeEmpty();
+            var compLog = compLogApiRes.Data.Items.FirstOrDefault(x => x.TargetDisplay == compName);
+            compLog.Should().NotBeNull();
+            compLog!.ActionType.Should().Be(AuditActionType.Create);
+            compLog.NewValues.Should().Contain(compName);
+        }
     }
 }

@@ -1,10 +1,16 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using MongoDB.Driver;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Api.Controllers
 {
@@ -15,11 +21,16 @@ namespace PhuXuanParkingSystem.Api.Controllers
     {
         private readonly IRepository<Device> _deviceRepo;
         private readonly IRepository<LicenseInfo> _licenseRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public DevicesController(IRepository<Device> deviceRepo, IRepository<LicenseInfo> licenseRepo)
+        public DevicesController(
+            IRepository<Device> deviceRepo,
+            IRepository<LicenseInfo> licenseRepo,
+            IAuditLogQueue auditQueue)
         {
             _deviceRepo = deviceRepo;
             _licenseRepo = licenseRepo;
+            _auditQueue = auditQueue;
         }
 
         // GET api/devices
@@ -109,6 +120,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             await _deviceRepo.AddAsync(device);
+
+            var diff = AuditDiffHelper.ComputeDiff<Device>(null, device);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Device", device.Id, device.Name, diff);
+
             return Ok(ApiResponse<Device>.Ok(device, "Thêm thiết bị mới thành công."));
         }
 
@@ -119,6 +134,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var existing = await _deviceRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted)
                 return NotFound(ApiResponse.Fail("Không tìm thấy thiết bị."));
+
+            var snapshot = AuditDiffHelper.TakeSnapshot(existing);
 
             existing.Code = updated.Code ?? existing.Code;
             existing.Name = updated.Name ?? existing.Name;
@@ -132,24 +149,35 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UpdatedAt = DateTime.Now;
 
             await _deviceRepo.UpdateAsync(existing);
+
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, existing);
+            if (diff.HasChanges)
+            {
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "Device", existing.Id, existing.Name, diff);
+            }
+
             return Ok(ApiResponse<Device>.Ok(existing, "Cập nhật thiết bị thành công."));
         }
 
-        // DELETE api/devices/{id}  — Xóa mềm (IRepository.DeleteAsync tự xử lý IsDeleted = true)
+        // DELETE api/devices/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string id, [FromQuery] string? reason = null)
         {
             var device = await _deviceRepo.GetByIdAsync(id);
             if (device == null || device.IsDeleted)
                 return NotFound(ApiResponse.Fail("Không tìm thấy thiết bị."));
 
             await _deviceRepo.DeleteAsync(id);
+
+            var diff = AuditDiffHelper.ComputeDiff<Device>(device, null);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Device", device.Id, device.Name, diff, reason: reason);
+
             return Ok(ApiResponse.Ok("Xóa thiết bị thành công."));
         }
 
-        // POST api/devices/delete-batch  — Xóa mềm hàng loạt
+        // POST api/devices/delete-batch
         [HttpPost("delete-batch")]
-        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0)
                 return BadRequest(ApiResponse.Fail("Danh sách ID không được để trống."));
@@ -160,13 +188,15 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 if (device != null && !device.IsDeleted)
                 {
                     await _deviceRepo.DeleteAsync(id);
+                    var diff = AuditDiffHelper.ComputeDiff<Device>(device, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Device", device.Id, device.Name, diff, reason: reason);
                 }
             }
 
             return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} thiết bị thành công."));
         }
 
-        // POST api/devices/batch  — Nhập hàng loạt từ Excel
+        // POST api/devices/batch
         [HttpPost("batch")]
         public async Task<IActionResult> BatchCreate([FromBody] List<Device> devices)
         {
@@ -179,6 +209,9 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 if (string.IsNullOrWhiteSpace(device.Name)) continue;
                 await _deviceRepo.AddAsync(device);
                 createdCount++;
+
+                var diff = AuditDiffHelper.ComputeDiff<Device>(null, device);
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Device", device.Id, device.Name, diff);
             }
 
             return Ok(ApiResponse.Ok($"Đã nhập {createdCount} thiết bị thành công."));

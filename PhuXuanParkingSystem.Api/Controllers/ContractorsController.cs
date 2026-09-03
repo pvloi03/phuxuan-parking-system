@@ -1,8 +1,14 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Api.Controllers
 {
@@ -12,10 +18,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class ContractorsController : ControllerBase
     {
         private readonly IRepository<Contractor> _contractorRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public ContractorsController(IRepository<Contractor> contractorRepo)
+        public ContractorsController(IRepository<Contractor> contractorRepo, IAuditLogQueue auditQueue)
         {
             _contractorRepo = contractorRepo;
+            _auditQueue = auditQueue;
         }
 
         [HttpGet]
@@ -62,6 +70,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             await _contractorRepo.AddAsync(contractor);
+
+            var diff = AuditDiffHelper.ComputeDiff<Contractor>(null, contractor);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Contractor", contractor.Id, contractor.Name, diff);
+
             return Ok(ApiResponse<Contractor>.Ok(contractor, "Thêm đối tác thành công."));
         }
 
@@ -73,15 +85,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail("Danh sách đối tác rỗng."));
             }
 
+            int addedCount = 0;
             foreach (var cont in contractors)
             {
                 if (!string.IsNullOrWhiteSpace(cont.Name))
                 {
                     await _contractorRepo.AddAsync(cont);
+                    addedCount++;
+                    var diff = AuditDiffHelper.ComputeDiff<Contractor>(null, cont);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Create, "Contractor", cont.Id, cont.Name, diff);
                 }
             }
 
-            return Ok(ApiResponse.Ok($"Nhập thành công {contractors.Count} đối tác từ file."));
+            return Ok(ApiResponse.Ok($"Nhập thành công {addedCount}/{contractors.Count} đối tác từ file."));
         }
 
         [HttpPut("{id}")]
@@ -89,6 +105,8 @@ namespace PhuXuanParkingSystem.Api.Controllers
         {
             var existing = await _contractorRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy đối tác."));
+
+            var snapshot = AuditDiffHelper.TakeSnapshot(existing);
 
             existing.Code = contractor.Code;
             existing.Name = contractor.Name;
@@ -100,27 +118,44 @@ namespace PhuXuanParkingSystem.Api.Controllers
             existing.UpdatedAt = DateTime.Now;
 
             await _contractorRepo.UpdateAsync(existing);
+
+            var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, existing);
+            if (diff.HasChanges)
+            {
+                await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Update, "Contractor", existing.Id, existing.Name, diff);
+            }
+
             return Ok(ApiResponse<Contractor>.Ok(existing, "Cập nhật đối tác thành công."));
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(string id)
+        public async Task<IActionResult> Delete(string id, [FromQuery] string? reason = null)
         {
             var existing = await _contractorRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy đối tác."));
 
             await _contractorRepo.DeleteAsync(id);
+
+            var diff = AuditDiffHelper.ComputeDiff<Contractor>(existing, null);
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Contractor", existing.Id, existing.Name, diff, reason: reason);
+
             return Ok(ApiResponse.Ok("Đã xóa đối tác thành công."));
         }
 
         [HttpPost("delete-batch")]
-        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids)
+        public async Task<IActionResult> DeleteBatch([FromBody] List<string> ids, [FromQuery] string? reason = null)
         {
             if (ids == null || ids.Count == 0) return BadRequest(ApiResponse.Fail("Danh sách ID rỗng."));
 
             foreach (var id in ids)
             {
-                await _contractorRepo.DeleteAsync(id);
+                var existing = await _contractorRepo.GetByIdAsync(id);
+                if (existing != null && !existing.IsDeleted)
+                {
+                    await _contractorRepo.DeleteAsync(id);
+                    var diff = AuditDiffHelper.ComputeDiff<Contractor>(existing, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Delete, "Contractor", existing.Id, existing.Name, diff, reason: reason);
+                }
             }
 
             return Ok(ApiResponse.Ok($"Đã xóa {ids.Count} đối tác thành công."));
