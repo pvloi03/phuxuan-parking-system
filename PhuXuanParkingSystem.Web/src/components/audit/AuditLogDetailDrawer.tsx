@@ -2,8 +2,6 @@ import { useMemo } from 'react'
 import {
   X,
   User,
-  Globe,
-  Monitor,
   Calendar,
   Layers,
   AlertTriangle,
@@ -159,24 +157,12 @@ export function AuditLogDetailDrawer({ log, isOpen, onClose }: AuditLogDetailDra
               </div>
             </div>
 
-            {/* IP & User-Agent */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 space-y-2">
-              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                <Globe className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="font-medium">Địa chỉ IP:</span>
-                <span className="font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                  {log.ipAddress || '127.0.0.1'}
-                </span>
-                <span className="ml-auto text-slate-400 text-[11px]">Nguồn: {log.source}</span>
-              </div>
-              {log.userAgent && (
-                <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <Monitor className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                  <span className="font-mono text-[11px] leading-relaxed break-all">
-                    {log.userAgent}
-                  </span>
-                </div>
-              )}
+            {/* Source */}
+            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1 py-1">
+              <span>Nguồn thực hiện:</span>
+              <span className="font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                {log.source || 'WebAdmin'}
+              </span>
             </div>
 
             {/* Reason or Error Banner */}

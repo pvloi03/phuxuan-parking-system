@@ -344,6 +344,8 @@ export type AuditActionType =
   | 'LicenseUpdate'
   | 'Export'
   | 'ManualOverride'
+  | 'PermanentDelete'
+  | 'Restore'
 
 export interface AuditLog {
   id: string
@@ -351,8 +353,6 @@ export interface AuditLog {
   actorUsername: string
   actorRole: string
   source: string
-  ipAddress?: string
-  userAgent?: string
   actionType: AuditActionType
   targetEntity: string
   targetId?: string

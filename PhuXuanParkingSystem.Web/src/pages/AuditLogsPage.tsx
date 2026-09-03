@@ -263,7 +263,6 @@ export function AuditLogsPage() {
                 <th className="px-4 py-3.5">Hành Động</th>
                 <th className="px-4 py-3.5">Thực Thể</th>
                 <th className="px-4 py-3.5">Đối Tượng</th>
-                <th className="px-4 py-3.5">Địa Chỉ IP</th>
                 <th className="px-4 py-3.5">Trạng Thái</th>
                 <th className="px-4 py-3.5 text-right">Thao Tác</th>
               </tr>
@@ -271,7 +270,7 @@ export function AuditLogsPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     <div className="flex items-center justify-center gap-2">
                       <RefreshCw className="w-5 h-5 animate-spin text-indigo-600" />
                       <span>Đang tải nhật ký kiểm toán...</span>
@@ -280,13 +279,13 @@ export function AuditLogsPage() {
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-rose-600 dark:text-rose-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-rose-600 dark:text-rose-400">
                     Không thể tải dữ liệu: {(error as any)?.response?.data?.message || (error as any)?.message || 'Lỗi kết nối máy chủ'}.
                   </td>
                 </tr>
               ) : logs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
                     Không tìm thấy bản ghi nhật ký kiểm toán nào phù hợp với bộ lọc.
                   </td>
                 </tr>
@@ -344,11 +343,6 @@ export function AuditLogsPage() {
                       {/* Target Display */}
                       <td className="px-4 py-3 text-xs font-mono text-slate-800 dark:text-slate-200 max-w-xs truncate">
                         {log.targetDisplay || log.targetId || '-'}
-                      </td>
-
-                      {/* IP Address */}
-                      <td className="px-4 py-3 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                        {log.ipAddress || '127.0.0.1'}
                       </td>
 
                       {/* Status */}

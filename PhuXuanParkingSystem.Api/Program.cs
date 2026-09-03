@@ -149,11 +149,22 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/captures"
 });
 
+// 7. Phục vụ Web Admin SPA tĩnh từ wwwroot (nếu có bản build)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ParkingRealtimeHub>("/hubs/parking");
+
+// SPA Fallback cho React Router khi truy cập route con hoặc F5
+var wwwrootIndex = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+if (File.Exists(wwwrootIndex))
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();
 

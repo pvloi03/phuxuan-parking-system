@@ -52,6 +52,7 @@ export const RecycleBinPage = () => {
   }>({ isOpen: false, action: 'restore' })
 
   const [emptyTrashModal, setEmptyTrashModal] = useState<boolean>(false)
+  const [actionReason, setActionReason] = useState<string>('')
 
   // 1. Query lấy counts cho từng tab
   const { data: counts, refetch: refetchCounts } = useQuery({
@@ -83,12 +84,14 @@ export const RecycleBinPage = () => {
 
   // --- MUTATIONS ---
   const restoreSingleMutation = useMutation({
-    mutationFn: ({ itemType, id }: ItemKey) => recycleBinService.restoreItem(itemType, id),
+    mutationFn: ({ itemType, id, reason }: ItemKey & { reason?: string }) =>
+      recycleBinService.restoreItem(itemType, id, reason),
     onSuccess: () => {
       handleRefresh()
       // Invalidate all related modules cache
       queryClient.invalidateQueries()
       setSingleActionModal({ isOpen: false, action: 'restore' })
+      setActionReason('')
       notify.success('Khôi phục bản ghi thành công!')
     },
     onError: (err: any) => {
@@ -97,11 +100,13 @@ export const RecycleBinPage = () => {
   })
 
   const hardDeleteSingleMutation = useMutation({
-    mutationFn: ({ itemType, id }: ItemKey) => recycleBinService.hardDeleteItem(itemType, id),
+    mutationFn: ({ itemType, id, reason }: ItemKey & { reason?: string }) =>
+      recycleBinService.hardDeleteItem(itemType, id, reason),
     onSuccess: () => {
       handleRefresh()
       queryClient.invalidateQueries()
       setSingleActionModal({ isOpen: false, action: 'hard-delete' })
+      setActionReason('')
       notify.success('Đã xóa vĩnh viễn bản ghi khỏi hệ thống.')
     },
     onError: (err: any) => {
@@ -110,13 +115,15 @@ export const RecycleBinPage = () => {
   })
 
   const restoreBatchMutation = useMutation({
-    mutationFn: (batch: ItemKey[]) => recycleBinService.restoreBatch(batch),
+    mutationFn: ({ batch, reason }: { batch: ItemKey[]; reason?: string }) =>
+      recycleBinService.restoreBatch(batch, reason),
     onSuccess: (data) => {
       const count = selectedItems.length
       handleRefresh()
       queryClient.invalidateQueries()
       setSelectedItems([])
       setBatchActionModal({ isOpen: false, action: 'restore' })
+      setActionReason('')
       if (data.errors && data.errors.length > 0) {
         notify.warning(`Đã khôi phục thành công nhưng có cảnh báo: ${data.errors.join('; ')}`)
       } else {
@@ -129,13 +136,15 @@ export const RecycleBinPage = () => {
   })
 
   const hardDeleteBatchMutation = useMutation({
-    mutationFn: (batch: ItemKey[]) => recycleBinService.hardDeleteBatch(batch),
+    mutationFn: ({ batch, reason }: { batch: ItemKey[]; reason?: string }) =>
+      recycleBinService.hardDeleteBatch(batch, reason),
     onSuccess: (data) => {
       const count = selectedItems.length
       handleRefresh()
       queryClient.invalidateQueries()
       setSelectedItems([])
       setBatchActionModal({ isOpen: false, action: 'hard-delete' })
+      setActionReason('')
       if (data.errors && data.errors.length > 0) {
         notify.warning(`Đã xóa một số mục, còn lại không thể xóa do ràng buộc: ${data.errors.join('; ')}`)
       } else {
@@ -148,12 +157,14 @@ export const RecycleBinPage = () => {
   })
 
   const emptyTrashMutation = useMutation({
-    mutationFn: (type?: string) => recycleBinService.emptyRecycleBin(type === 'All' ? undefined : type),
+    mutationFn: ({ type, reason }: { type?: string; reason?: string }) =>
+      recycleBinService.emptyRecycleBin(type === 'All' ? undefined : type, reason),
     onSuccess: () => {
       handleRefresh()
       queryClient.invalidateQueries()
       setSelectedItems([])
       setEmptyTrashModal(false)
+      setActionReason('')
       notify.success('Đã dọn sạch thùng rác thành công!')
     },
     onError: (err: any) => {
@@ -605,35 +616,52 @@ export const RecycleBinPage = () => {
       {/* CONFIRM MODAL: SINGLE ACTION */}
       <ConfirmDialog
         open={singleActionModal.isOpen}
-        onOpenChange={(open) => setSingleActionModal((prev) => ({ ...prev, isOpen: open }))}
+        onOpenChange={(open) => {
+          setSingleActionModal((prev) => ({ ...prev, isOpen: open }))
+          if (!open) setActionReason('')
+        }}
         title={
           singleActionModal.action === 'restore'
             ? 'Xác nhận khôi phục bản ghi'
             : 'CẢNH BÁO: Xóa vĩnh viễn bản ghi khỏi CSDL'
         }
         description={
-          singleActionModal.action === 'restore' ? (
-            <div>
-              Bạn có chắc chắn muốn khôi phục {singleActionModal.item?.itemTypeLabel?.toLowerCase()}{' '}
-              <strong className="text-slate-900 dark:text-white font-mono">
-                {singleActionModal.item?.title || singleActionModal.item?.identifier}
-              </strong>{' '}
-              về trạng thái hoạt động bình thường không?
-            </div>
-          ) : (
-            <div className="space-y-2 text-rose-600 dark:text-rose-400">
-              <p>
-                Thao tác này sẽ xóa vĩnh viễn{' '}
-                <strong>
-                  {singleActionModal.item?.itemTypeLabel} ({singleActionModal.item?.title})
+          <div>
+            {singleActionModal.action === 'restore' ? (
+              <div>
+                Bạn có chắc chắn muốn khôi phục {singleActionModal.item?.itemTypeLabel?.toLowerCase()}{' '}
+                <strong className="text-slate-900 dark:text-white font-mono">
+                  {singleActionModal.item?.title || singleActionModal.item?.identifier}
                 </strong>{' '}
-                hoàn toàn khỏi cơ sở dữ liệu MongoDB và <u>KHÔNG THỂ HOÀN TÁC</u>.
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Hệ thống sẽ tự động kiểm tra tính toàn vẹn quan hệ (nếu có bản ghi con đang tham chiếu sẽ bị từ chối xóa để bảo vệ dữ liệu).
-              </p>
+                về trạng thái hoạt động bình thường không?
+              </div>
+            ) : (
+              <div className="space-y-2 text-rose-600 dark:text-rose-400">
+                <p>
+                  Thao tác này sẽ xóa vĩnh viễn{' '}
+                  <strong>
+                    {singleActionModal.item?.itemTypeLabel} ({singleActionModal.item?.title})
+                  </strong>{' '}
+                  hoàn toàn khỏi cơ sở dữ liệu MongoDB và <u>KHÔNG THỂ HOÀN TÁC</u>.
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Hệ thống sẽ tự động kiểm tra tính toàn vẹn quan hệ (nếu có bản ghi con đang tham chiếu sẽ bị từ chối xóa để bảo vệ dữ liệu).
+                </p>
+              </div>
+            )}
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Lý do {singleActionModal.action === 'restore' ? 'khôi phục' : 'xóa vĩnh viễn'} (tùy chọn):
+              </label>
+              <input
+                type="text"
+                placeholder={singleActionModal.action === 'restore' ? 'Lý do khôi phục...' : 'Nhập lý do xóa vĩnh viễn...'}
+                value={actionReason}
+                onChange={(e) => setActionReason(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-hidden focus:ring-1 focus:ring-rose-500 text-slate-900 dark:text-white"
+              />
             </div>
-          )
+          </div>
         }
         confirmText={singleActionModal.action === 'restore' ? 'Khôi phục ngay' : 'Xác nhận XÓA VĨNH VIỄN'}
         variant={singleActionModal.action === 'restore' ? 'default' : 'destructive'}
@@ -648,11 +676,13 @@ export const RecycleBinPage = () => {
             restoreSingleMutation.mutate({
               itemType: singleActionModal.item.itemType,
               id: singleActionModal.item.id,
+              reason: actionReason || undefined,
             })
           } else {
             hardDeleteSingleMutation.mutate({
               itemType: singleActionModal.item.itemType,
               id: singleActionModal.item.id,
+              reason: actionReason || undefined,
             })
           }
         }}
@@ -661,26 +691,43 @@ export const RecycleBinPage = () => {
       {/* CONFIRM MODAL: BATCH ACTION */}
       <ConfirmDialog
         open={batchActionModal.isOpen}
-        onOpenChange={(open) => setBatchActionModal((prev) => ({ ...prev, isOpen: open }))}
+        onOpenChange={(open) => {
+          setBatchActionModal((prev) => ({ ...prev, isOpen: open }))
+          if (!open) setActionReason('')
+        }}
         title={
           batchActionModal.action === 'restore'
             ? `Khôi phục hàng loạt (${selectedItems.length} mục)`
             : `CẢNH BÁO: Xóa vĩnh viễn ${selectedItems.length} mục`
         }
         description={
-          batchActionModal.action === 'restore' ? (
-            <div>
-              Bạn có chắc chắn muốn khôi phục đồng thời{' '}
-              <strong className="text-slate-900 dark:text-white">{selectedItems.length} mục đã chọn</strong> về lại
-              danh mục tương ứng không?
+          <div>
+            {batchActionModal.action === 'restore' ? (
+              <div>
+                Bạn có chắc chắn muốn khôi phục đồng thời{' '}
+                <strong className="text-slate-900 dark:text-white">{selectedItems.length} mục đã chọn</strong> về lại
+                danh mục tương ứng không?
+              </div>
+            ) : (
+              <div className="space-y-2 text-rose-600 dark:text-rose-400">
+                <p>
+                  Thao tác này sẽ xóa vĩnh viễn <strong>{selectedItems.length} bản ghi đã chọn</strong> khỏi CSDL và không thể phục hồi.
+                </p>
+              </div>
+            )}
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Lý do {batchActionModal.action === 'restore' ? 'khôi phục' : 'xóa vĩnh viễn'} (tùy chọn):
+              </label>
+              <input
+                type="text"
+                placeholder="Nhập lý do (tùy chọn)..."
+                value={actionReason}
+                onChange={(e) => setActionReason(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-hidden focus:ring-1 focus:ring-rose-500 text-slate-900 dark:text-white"
+              />
             </div>
-          ) : (
-            <div className="space-y-2 text-rose-600 dark:text-rose-400">
-              <p>
-                Thao tác này sẽ xóa vĩnh viễn <strong>{selectedItems.length} bản ghi đã chọn</strong> khỏi CSDL và không thể phục hồi.
-              </p>
-            </div>
-          )
+          </div>
         }
         confirmText={batchActionModal.action === 'restore' ? 'Khôi phục tất cả' : 'Xóa vĩnh viễn tất cả'}
         variant={batchActionModal.action === 'restore' ? 'default' : 'destructive'}
@@ -691,9 +738,9 @@ export const RecycleBinPage = () => {
         }
         onConfirm={() => {
           if (batchActionModal.action === 'restore') {
-            restoreBatchMutation.mutate(selectedItems)
+            restoreBatchMutation.mutate({ batch: selectedItems, reason: actionReason || undefined })
           } else {
-            hardDeleteBatchMutation.mutate(selectedItems)
+            hardDeleteBatchMutation.mutate({ batch: selectedItems, reason: actionReason || undefined })
           }
         }}
       />
@@ -701,22 +748,39 @@ export const RecycleBinPage = () => {
       {/* CONFIRM MODAL: EMPTY TRASH */}
       <ConfirmDialog
         open={emptyTrashModal}
-        onOpenChange={setEmptyTrashModal}
+        onOpenChange={(open) => {
+          setEmptyTrashModal(open)
+          if (!open) setActionReason('')
+        }}
         title="DỌN SẠCH THÙNG RÁC HỆ THỐNG"
         description={
-          <div className="space-y-2 text-rose-600 dark:text-rose-400">
-            <p>
-              Bạn có chắc chắn muốn dọn sạch toàn bộ thùng rác ({counts?.totalCount || 0} mục bị xóa mềm)?
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Tất cả các dữ liệu xe, nhân sự, đối tác, phòng ban... đang nằm trong thùng rác sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu.
-            </p>
+          <div>
+            <div className="space-y-2 text-rose-600 dark:text-rose-400">
+              <p>
+                Bạn có chắc chắn muốn dọn sạch toàn bộ thùng rác ({counts?.totalCount || 0} mục bị xóa mềm)?
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Tất cả các dữ liệu xe, nhân sự, đối tác, phòng ban... đang nằm trong thùng rác sẽ bị xóa hoàn toàn khỏi cơ sở dữ liệu.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                Lý do dọn sạch (tùy chọn):
+              </label>
+              <input
+                type="text"
+                placeholder="Nhập lý do dọn sạch thùng rác..."
+                value={actionReason}
+                onChange={(e) => setActionReason(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-hidden focus:ring-1 focus:ring-rose-500 text-slate-900 dark:text-white"
+              />
+            </div>
           </div>
         }
         confirmText="Xác nhận DỌN SẠCH"
         variant="destructive"
         isLoading={emptyTrashMutation.isPending}
-        onConfirm={() => emptyTrashMutation.mutate(selectedTab)}
+        onConfirm={() => emptyTrashMutation.mutate({ type: selectedTab, reason: actionReason || undefined })}
       />
     </div>
   )

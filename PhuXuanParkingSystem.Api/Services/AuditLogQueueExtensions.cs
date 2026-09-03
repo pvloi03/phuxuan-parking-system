@@ -44,8 +44,6 @@ namespace PhuXuanParkingSystem.Api.Services
                 NewValues = diff?.NewValues,
                 ChangedProperties = diff?.ChangedProperties ?? new(),
                 Reason = reason,
-                IpAddress = httpContext?.GetClientIp() ?? "127.0.0.1",
-                UserAgent = httpContext?.GetUserAgent() ?? string.Empty,
                 IsSuccess = isSuccess,
                 ErrorMessage = errorMessage,
                 Source = "WebAdmin"

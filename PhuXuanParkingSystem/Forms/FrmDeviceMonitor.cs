@@ -1,7 +1,6 @@
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
-using PhuXuanParkingSystem.Services.Devices;
 using PhuXuanParkingSystem.Services.Devices.Health;
 using PhuXuanParkingSystem.Services.Logging;
 using System;
@@ -143,7 +142,6 @@ namespace PhuXuanParkingSystem.Forms
                 int rowIndex = dgvDevices.Rows.Add(
                     statusText,
                     typeName,
-                    dev.Code,
                     dev.Name,
                     dev.IpAddress,
                     dev.Port > 0 ? dev.Port.ToString() : "-",
@@ -154,7 +152,7 @@ namespace PhuXuanParkingSystem.Forms
 
                 var row = dgvDevices.Rows[rowIndex];
                 row.Tag = dev;
-                row.Cells[0].Style.ForeColor = statusColor;
+                row.Cells[colStatus.Index].Style.ForeColor = statusColor;
             }
 
             UpdateStatsFromStates();
@@ -177,9 +175,9 @@ namespace PhuXuanParkingSystem.Forms
                 // Đánh dấu tất cả row thành Đang kiểm tra
                 foreach (DataGridViewRow row in dgvDevices.Rows)
                 {
-                    row.Cells[0].Value = "🟡 Đang kiểm tra...";
-                    row.Cells[0].Style.ForeColor = Color.FromArgb(200, 140, 0);
-                    row.Cells[6].Value = "...";
+                    row.Cells[colStatus.Index].Value = "🟡 Đang kiểm tra...";
+                    row.Cells[colStatus.Index].Style.ForeColor = Color.FromArgb(200, 140, 0);
+                    row.Cells[colLatency.Index].Value = "...";
                 }
 
                 var results = await _healthService.CheckAllAndSyncAsync(_cts.Token);
@@ -224,22 +222,22 @@ namespace PhuXuanParkingSystem.Forms
                 if (row.Tag is Device dev && dev.Id == result.Device.Id)
                 {
                     var (statusText, statusColor) = GetStateDisplayInfo(state);
-                    row.Cells[0].Value = statusText;
-                    row.Cells[0].Style.ForeColor = statusColor;
+                    row.Cells[colStatus.Index].Value = statusText;
+                    row.Cells[colStatus.Index].Style.ForeColor = statusColor;
 
                     if (result.IsSuccess)
                     {
-                        row.Cells[6].Value = $"{result.LatencyMs} ms";
-                        row.Cells[6].Style.ForeColor = result.LatencyMs < 50 ? Color.FromArgb(40, 140, 70) : Color.FromArgb(200, 140, 0);
-                        row.Cells[7].Value = result.CheckedAt.ToString("HH:mm:ss dd/MM");
-                        row.Cells[8].Value = result.Details;
+                        row.Cells[colLatency.Index].Value = $"{result.LatencyMs} ms";
+                        row.Cells[colLatency.Index].Style.ForeColor = result.LatencyMs < 50 ? Color.FromArgb(40, 140, 70) : Color.FromArgb(200, 140, 0);
+                        row.Cells[colLastHeartbeat.Index].Value = result.CheckedAt.ToString("HH:mm:ss dd/MM");
+                        row.Cells[colDetails.Index].Value = result.Details;
                     }
                     else
                     {
-                        row.Cells[6].Value = $"{result.LatencyMs} ms";
-                        row.Cells[6].Style.ForeColor = Color.FromArgb(200, 40, 40);
-                        row.Cells[7].Value = result.CheckedAt.ToString("HH:mm:ss dd/MM");
-                        row.Cells[8].Value = string.IsNullOrWhiteSpace(result.ErrorMessage) ? "Không có phản hồi" : result.ErrorMessage;
+                        row.Cells[colLatency.Index].Value = $"{result.LatencyMs} ms";
+                        row.Cells[colLatency.Index].Style.ForeColor = Color.FromArgb(200, 40, 40);
+                        row.Cells[colLastHeartbeat.Index].Value = result.CheckedAt.ToString("HH:mm:ss dd/MM");
+                        row.Cells[colDetails.Index].Value = string.IsNullOrWhiteSpace(result.ErrorMessage) ? "Không có phản hồi" : result.ErrorMessage;
                     }
                     break;
                 }
@@ -266,9 +264,9 @@ namespace PhuXuanParkingSystem.Forms
             if (selectedRow.Tag is not Device device) return;
 
             btnCheckSelected.Enabled = false;
-            selectedRow.Cells[0].Value = "🟡 Đang kiểm tra...";
-            selectedRow.Cells[0].Style.ForeColor = Color.FromArgb(200, 140, 0);
-            selectedRow.Cells[6].Value = "...";
+            selectedRow.Cells[colStatus.Index].Value = "🟡 Đang kiểm tra...";
+            selectedRow.Cells[colStatus.Index].Style.ForeColor = Color.FromArgb(200, 140, 0);
+            selectedRow.Cells[colLatency.Index].Value = "...";
             SetStatus($"Đang kiểm tra thiết bị: {device.Name} ({device.IpAddress}:{device.Port})...", true);
 
             try
@@ -414,8 +412,8 @@ namespace PhuXuanParkingSystem.Forms
             // Disable row và hiển thị trạng thái đang restart
             row.Cells[colRestart.Index] = new DataGridViewTextBoxCell { Value = "⏳..." };
             row.Cells[colRestart.Index].Style.BackColor = Color.FromArgb(230, 230, 230);
-            row.Cells[0].Value = "🟡 Đang restart...";
-            row.Cells[0].Style.ForeColor = Color.FromArgb(200, 140, 0);
+            row.Cells[colStatus.Index].Value = "🟡 Đang restart...";
+            row.Cells[colStatus.Index].Style.ForeColor = Color.FromArgb(200, 140, 0);
             SetStatus($"Đang khởi động lại thiết bị: {device.Name}...", true);
 
             try
@@ -425,9 +423,9 @@ namespace PhuXuanParkingSystem.Forms
 
                 if (success)
                 {
-                    row.Cells[0].Value = "🟢 Đã restart";
-                    row.Cells[0].Style.ForeColor = Color.FromArgb(40, 140, 70);
-                    row.Cells[8].Value = "Restart thành công";
+                    row.Cells[colStatus.Index].Value = "🟢 Đã restart";
+                    row.Cells[colStatus.Index].Style.ForeColor = Color.FromArgb(40, 140, 70);
+                    row.Cells[colDetails.Index].Value = "Restart thành công";
 
                     // Sync status lên MongoDB
                     var pingResult = new DevicePingResult
@@ -444,18 +442,18 @@ namespace PhuXuanParkingSystem.Forms
                 }
                 else
                 {
-                    row.Cells[0].Value = "🔴 Restart thất bại";
-                    row.Cells[0].Style.ForeColor = Color.FromArgb(200, 40, 40);
-                    row.Cells[8].Value = "Không thể kết nối sau khi restart";
+                    row.Cells[colStatus.Index].Value = "🔴 Restart thất bại";
+                    row.Cells[colStatus.Index].Style.ForeColor = Color.FromArgb(200, 40, 40);
+                    row.Cells[colDetails.Index].Value = "Không thể kết nối sau khi restart";
 
                     SetStatus($"Khởi động lại thất bại: {device.Name}", false);
                 }
             }
             catch (Exception ex)
             {
-                row.Cells[0].Value = "🔴 Lỗi restart";
-                row.Cells[0].Style.ForeColor = Color.FromArgb(200, 40, 40);
-                row.Cells[8].Value = $"Lỗi: {ex.Message}";
+                row.Cells[colStatus.Index].Value = "🔴 Lỗi restart";
+                row.Cells[colStatus.Index].Style.ForeColor = Color.FromArgb(200, 40, 40);
+                row.Cells[colDetails.Index].Value = $"Lỗi: {ex.Message}";
                 AppLogger.Error(ex, $"Lỗi restart thiết bị {device.Name}");
                 SetStatus($"Lỗi restart: {device.Name} - {ex.Message}", false);
             }

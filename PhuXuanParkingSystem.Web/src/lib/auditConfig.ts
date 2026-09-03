@@ -68,6 +68,18 @@ export const actionTypeConfig: Record<AuditActionType, ActionBadgeConfig> = {
     text: 'text-red-700 dark:text-red-400',
     border: 'border-red-200 dark:border-red-800',
   },
+  PermanentDelete: {
+    label: 'Xóa Vĩnh Viễn',
+    bg: 'bg-rose-100 dark:bg-rose-950/60',
+    text: 'text-rose-800 dark:text-rose-300 font-semibold',
+    border: 'border-rose-300 dark:border-rose-800',
+  },
+  Restore: {
+    label: 'Khôi Phục',
+    bg: 'bg-teal-50 dark:bg-teal-950/30',
+    text: 'text-teal-700 dark:text-teal-400',
+    border: 'border-teal-200 dark:border-teal-800',
+  },
 }
 
 export const targetEntityList = [
@@ -79,5 +91,6 @@ export const targetEntityList = [
   'Contractor',
   'Lane',
   'Device',
+  'ParkingSession',
   'LicenseInfo',
 ]

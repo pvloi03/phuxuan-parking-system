@@ -33,18 +33,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             _auditQueue = auditQueue;
         }
 
-        private string GetClientIp()
-        {
-            return HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault()
-                ?? HttpContext.Connection.RemoteIpAddress?.ToString()
-                ?? "127.0.0.1";
-        }
-
-        private string GetUserAgent()
-        {
-            return HttpContext.Request.Headers["User-Agent"].ToString() ?? string.Empty;
-        }
-
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -79,8 +67,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     request.Username,
                     AuditActionType.Login,
                     isSuccess: false,
-                    ipAddress: GetClientIp(),
-                    userAgent: GetUserAgent(),
                     errorMessage: "Tài khoản không tồn tại hoặc đã bị khóa."));
 
                 return Unauthorized(ApiResponse.Fail("Tài khoản không tồn tại hoặc đã bị khóa."));
@@ -112,8 +98,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     request.Username,
                     AuditActionType.Login,
                     isSuccess: false,
-                    ipAddress: GetClientIp(),
-                    userAgent: GetUserAgent(),
                     actorId: user.Id,
                     actorRole: user.Role.ToString(),
                     errorMessage: "Mật khẩu không chính xác."));
@@ -129,8 +113,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 user.Username,
                 AuditActionType.Login,
                 isSuccess: true,
-                ipAddress: GetClientIp(),
-                userAgent: GetUserAgent(),
                 actorId: user.Id,
                 actorRole: user.Role.ToString()));
 
@@ -187,8 +169,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 username,
                 AuditActionType.Logout,
                 isSuccess: true,
-                ipAddress: GetClientIp(),
-                userAgent: GetUserAgent(),
                 actorId: userId,
                 actorRole: role));
 
@@ -303,8 +283,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 TargetEntity = "User",
                 TargetId = user.Id,
                 TargetDisplay = user.Username,
-                IpAddress = GetClientIp(),
-                UserAgent = GetUserAgent(),
                 IsSuccess = true,
                 Source = "WebAdmin"
             });
