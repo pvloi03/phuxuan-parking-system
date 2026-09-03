@@ -1,5 +1,6 @@
 *.claude
 database_seed/
+.scratch/
 
 ## Visual Studio & .NET Build Artifacts
 [Bb]in/

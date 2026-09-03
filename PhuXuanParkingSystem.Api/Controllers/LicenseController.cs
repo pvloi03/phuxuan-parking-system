@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Licensing;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
@@ -19,6 +21,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
         private readonly IRepository<LicenseInfo> _licenseRepo;
         private readonly IRepository<Lane> _laneRepo;
         private readonly IRepository<Device> _deviceRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
         private static readonly string LicenseFilePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -29,11 +32,13 @@ namespace PhuXuanParkingSystem.Api.Controllers
         public LicenseController(
             IRepository<LicenseInfo> licenseRepo,
             IRepository<Lane> laneRepo,
-            IRepository<Device> deviceRepo)
+            IRepository<Device> deviceRepo,
+            IAuditLogQueue auditQueue)
         {
             _licenseRepo = licenseRepo;
             _laneRepo = laneRepo;
             _deviceRepo = deviceRepo;
+            _auditQueue = auditQueue;
         }
 
         /// <summary>
@@ -160,6 +165,24 @@ namespace PhuXuanParkingSystem.Api.Controllers
             );
 
             await _licenseRepo.AddAsync(newEntity);
+
+            // Ghi nhận AuditLog LicenseUpdate
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.LicenseUpdate,
+                TargetEntity = "LicenseInfo",
+                TargetId = newEntity.Id,
+                TargetDisplay = payload.CustomerName,
+                Reason = "Kích hoạt bản quyền phần mềm mới",
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
 
             return Ok(new
             {

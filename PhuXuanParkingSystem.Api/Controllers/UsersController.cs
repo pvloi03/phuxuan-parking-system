@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using PhuXuanParkingSystem.Api.DTOs;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
@@ -18,10 +21,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IRepository<User> _userRepo;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public UsersController(IRepository<User> userRepo)
+        public UsersController(IRepository<User> userRepo, IAuditLogQueue auditQueue)
         {
             _userRepo = userRepo ?? throw new ArgumentNullException(nameof(userRepo));
+            _auditQueue = auditQueue ?? throw new ArgumentNullException(nameof(auditQueue));
         }
 
         public class CreateUserRequest
@@ -53,7 +58,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
         private string? GetOldPassword(ChangePasswordRequest request)
         {
-            // Hỗ trợ cả hai tên field: OldPassword (frontend) và CurrentPassword (AuthDtos)
             return request.OldPassword ?? request.CurrentPassword;
         }
 
@@ -187,7 +191,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             var cleanUsername = request.Username.Trim().ToLowerInvariant();
-            var exists = await _userRepo.FindOneAsync(u => u.Username.ToLower() == cleanUsername && !u.IsDeleted);
+            var exists = await _userRepo.FindOneAsync(u => u.Username == cleanUsername && !u.IsDeleted);
             if (exists != null)
             {
                 return BadRequest(ApiResponse.Fail($"Tên đăng nhập '{cleanUsername}' đã tồn tại trong hệ thống."));
@@ -216,6 +220,27 @@ namespace PhuXuanParkingSystem.Api.Controllers
             };
 
             await _userRepo.AddAsync(user);
+
+            // Ghi nhận AuditLog Create
+            var diff = AuditDiffHelper.ComputeDiff<User>(null, user);
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.Create,
+                TargetEntity = "User",
+                TargetId = user.Id,
+                TargetDisplay = user.Username,
+                NewValues = diff.NewValues,
+                ChangedProperties = diff.ChangedProperties,
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
+
             return Ok(ApiResponse<UserDto>.Ok(MapToDto(user), "Tạo tài khoản người dùng thành công!"));
         }
 
@@ -231,7 +256,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var user = await _userRepo.GetByIdAsync(id);
             if (user == null || user.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng."));
 
-            // Bảo vệ: Nếu hạ quyền Admin của chính mình
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
             if (user.Id == currentUserId && request.Role != UserRole.Admin)
             {
@@ -248,6 +272,22 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 }
             }
 
+            // Lưu trạng thái cũ để tính Diff
+            var oldState = new User
+            {
+                Id = user.Id,
+                Username = user.Username,
+                PasswordHash = user.PasswordHash,
+                FullName = user.FullName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Role = user.Role,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt
+            };
+
+            var isRoleChanged = user.Role != request.Role;
+
             user.FullName = request.FullName?.Trim() ?? user.FullName;
             user.Email = request.Email?.Trim();
             user.PhoneNumber = request.PhoneNumber?.Trim();
@@ -256,6 +296,31 @@ namespace PhuXuanParkingSystem.Api.Controllers
             user.UpdatedAt = DateTime.Now;
 
             await _userRepo.UpdateAsync(user);
+
+            // Ghi nhận AuditLog Update / ChangeRole
+            var diff = AuditDiffHelper.ComputeDiff(oldState, user);
+            if (diff.HasChanges)
+            {
+                var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+                await _auditQueue.QueueLogAsync(new AuditLog
+                {
+                    ActorId = actorId,
+                    ActorUsername = actorUsername,
+                    ActorRole = actorRole,
+                    ActionType = isRoleChanged ? AuditActionType.ChangeRole : AuditActionType.Update,
+                    TargetEntity = "User",
+                    TargetId = user.Id,
+                    TargetDisplay = user.Username,
+                    OldValues = diff.OldValues,
+                    NewValues = diff.NewValues,
+                    ChangedProperties = diff.ChangedProperties,
+                    IpAddress = HttpContext.GetClientIp(),
+                    UserAgent = HttpContext.GetUserAgent(),
+                    IsSuccess = true,
+                    Source = "WebAdmin"
+                });
+            }
+
             return Ok(ApiResponse<UserDto>.Ok(MapToDto(user), "Cập nhật tài khoản người dùng thành công!"));
         }
 
@@ -290,7 +355,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                              ?? User.FindFirstValue("sub")
                              ?? User.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")?.Value;
 
-            // Đọc role trực tiếp từ claim (tránh lỗi IsInRole() với JWT ClaimTypes.Role URI dài)
             var roleClaim = User.FindFirstValue(ClaimTypes.Role)
                          ?? User.FindFirstValue("http://schemas.microsoft.com/ws/2008/06/identity/claims/role")
                          ?? User.FindFirstValue("role")
@@ -298,15 +362,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var isCurrentUserAdmin = string.Equals(roleClaim, "Admin", StringComparison.OrdinalIgnoreCase)
                                   || roleClaim == "1";
 
-            // Lấy mật khẩu cũ (hỗ trợ cả OldPassword và CurrentPassword)
             var oldPassword = GetOldPassword(request);
 
-            // Quy tắc phân quyền:
-            // - Admin: Được reset mật khẩu cho bất kỳ ai (kể cả chính mình), KHÔNG cần oldPassword.
-            // - Non-Admin: Chỉ được đổi mật khẩu của chính mình, BẮT BUỘC nhập đúng oldPassword.
             if (!isCurrentUserAdmin)
             {
-                // So sánh an toàn: đảm bảo cả hai đều có giá trị và khớp nhau
                 var isSameUser = !string.IsNullOrEmpty(user.Id)
                               && !string.IsNullOrEmpty(currentUserId)
                               && string.Equals(user.Id, currentUserId, StringComparison.OrdinalIgnoreCase);
@@ -328,7 +387,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 }
                 catch
                 {
-                    // Fallback: nếu mật khẩu lưu dạng plain text cũ
                     isOldValid = user.PasswordHash == oldPassword;
                 }
 
@@ -338,23 +396,32 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 }
             }
 
-            // Cập nhật mật khẩu mới (Mã hóa BCrypt an toàn)
-            var newPasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
-            user.PasswordHash = newPasswordHash;
+            // Cập nhật mật khẩu mới
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
             user.UpdatedAt = DateTime.Now;
 
-            // Log để debug
-            Console.WriteLine($"[ChangePassword] User ID: {user.Id}, Username: {user.Username}");
-            Console.WriteLine($"[ChangePassword] New Hash: {newPasswordHash.Substring(0, Math.Min(20, newPasswordHash.Length))}...");
-            Console.WriteLine($"[ChangePassword] Test verify: {BCrypt.Net.BCrypt.Verify(request.NewPassword.Trim(), newPasswordHash)}");
-
             var updateResult = await _userRepo.UpdateAsync(user);
-            Console.WriteLine($"[ChangePassword] Update result: {updateResult}");
-
             if (!updateResult)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ApiResponse.Fail("Không thể cập nhật mật khẩu vào database. Vui lòng thử lại."));
             }
+
+            // Ghi nhận AuditLog ChangePassword
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.ChangePassword,
+                TargetEntity = "User",
+                TargetId = user.Id,
+                TargetDisplay = user.Username,
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
 
             return Ok(ApiResponse.Ok("Đổi mật khẩu tài khoản thành công!"));
         }
@@ -379,6 +446,25 @@ namespace PhuXuanParkingSystem.Api.Controllers
             user.UpdatedAt = DateTime.Now;
 
             await _userRepo.UpdateAsync(user);
+
+            // Ghi nhận AuditLog ToggleStatus
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.Update,
+                TargetEntity = "User",
+                TargetId = user.Id,
+                TargetDisplay = user.Username,
+                Reason = user.IsActive ? "Mở khóa tài khoản" : "Khóa tài khoản",
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
+
             return Ok(ApiResponse<UserDto>.Ok(MapToDto(user), user.IsActive ? "Đã mở khóa tài khoản thành công." : "Đã khóa tài khoản thành công."));
         }
 
@@ -387,7 +473,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
         /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> DeleteUser(string id)
+        public async Task<IActionResult> DeleteUser(string id, [FromQuery] string? reason = null)
         {
             var user = await _userRepo.GetByIdAsync(id);
             if (user == null || user.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy tài khoản người dùng."));
@@ -398,7 +484,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail("Bạn không thể tự xóa tài khoản đang đăng nhập của chính mình."));
             }
 
-            // Kiểm tra: Không cho phép xóa nếu đây là tài khoản Admin duy nhất
             if (user.Role == UserRole.Admin)
             {
                 var adminCount = await _userRepo.CountAsync(u => u.Role == UserRole.Admin && !u.IsDeleted);
@@ -409,6 +494,28 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             await _userRepo.DeleteAsync(id);
+
+            // Ghi nhận AuditLog Delete
+            var diff = AuditDiffHelper.ComputeDiff<User>(user, null);
+            var (actorId, actorUsername, actorRole) = User.GetActorInfo();
+            await _auditQueue.QueueLogAsync(new AuditLog
+            {
+                ActorId = actorId,
+                ActorUsername = actorUsername,
+                ActorRole = actorRole,
+                ActionType = AuditActionType.Delete,
+                TargetEntity = "User",
+                TargetId = user.Id,
+                TargetDisplay = user.Username,
+                OldValues = diff.OldValues,
+                ChangedProperties = diff.ChangedProperties,
+                Reason = reason,
+                IpAddress = HttpContext.GetClientIp(),
+                UserAgent = HttpContext.GetUserAgent(),
+                IsSuccess = true,
+                Source = "WebAdmin"
+            });
+
             return Ok(ApiResponse.Ok("Đã xóa tài khoản người dùng thành công (dữ liệu được chuyển vào thùng rác)."));
         }
     }

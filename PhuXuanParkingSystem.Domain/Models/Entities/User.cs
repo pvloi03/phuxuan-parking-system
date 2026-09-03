@@ -16,6 +16,7 @@ namespace PhuXuanParkingSystem.Models.Entities
         // --- CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
         // =========================================================================
         public string Username { get; set; } = string.Empty;       // [LƯU DB] Tên đăng nhập
+        [SensitiveData]
         public string PasswordHash { get; set; } = string.Empty;   // [LƯU DB] Mật khẩu đã băm (BCrypt / SHA256)
         public string FullName { get; set; } = string.Empty;       // [LƯU DB] Họ và tên hiển thị
         public string? Email { get; set; }                         // [LƯU DB] Email

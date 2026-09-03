@@ -12,6 +12,7 @@ import { PartnersPage } from '@/pages/PartnersPage'
 import { DevicesPage } from '@/pages/DevicesPage'
 import { LanesPage } from '@/pages/LanesPage'
 import { UsersPage } from '@/pages/UsersPage'
+import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import { RecycleBinPage } from '@/pages/RecycleBinPage'
 import { LicensePage } from '@/pages/LicensePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -38,6 +39,7 @@ export function AppRoutes() {
             <Route path="/lanes" element={<LanesPage />} />
             <Route path="/devices" element={<DevicesPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="/license" element={<LicensePage />} />
           </Route>
 

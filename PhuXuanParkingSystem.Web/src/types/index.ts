@@ -331,3 +331,37 @@ export interface RecycleBinPagedResult {
   pageSize: number
   totalPages: number
 }
+
+// --- AUDIT LOG TYPES ---
+export type AuditActionType =
+  | 'Login'
+  | 'Logout'
+  | 'Create'
+  | 'Update'
+  | 'Delete'
+  | 'ChangePassword'
+  | 'ChangeRole'
+  | 'LicenseUpdate'
+  | 'Export'
+  | 'ManualOverride'
+
+export interface AuditLog {
+  id: string
+  actorId?: string
+  actorUsername: string
+  actorRole: string
+  source: string
+  ipAddress?: string
+  userAgent?: string
+  actionType: AuditActionType
+  targetEntity: string
+  targetId?: string
+  targetDisplay?: string
+  oldValues?: string
+  newValues?: string
+  changedProperties: string[]
+  reason?: string
+  isSuccess: boolean
+  errorMessage?: string
+  createdAt: string
+}

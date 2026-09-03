@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PhuXuanParkingSystem.Api.Hubs;
 using PhuXuanParkingSystem.Api.Middlewares;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Data;
 using PhuXuanParkingSystem.Repositories;
 using System.Text;
@@ -17,6 +18,14 @@ var dbName = builder.Configuration["DatabaseName"] ?? "PhuXuanParkingSystemDb";
 builder.Services.AddSingleton(new MongoDbContext(mongoConn, dbName));
 builder.Services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
 builder.Services.AddScoped(typeof(MongoRepository<>));
+
+// 1.1. Cấu hình Hàng đợi AuditLog Channel & Background Worker
+builder.Services.AddSingleton<IAuditLogQueue>(sp =>
+{
+    var capacity = builder.Configuration.GetValue<int>("AuditLog:ChannelCapacity", 5000);
+    return new AuditLogQueue(capacity);
+});
+builder.Services.AddHostedService<AuditLogBackgroundWorker>();
 
 // 2. Cấu hình JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "PhuXuanParkingSystem_Super_Secret_Key_2026_For_JWT_Authentication_Secure!";
