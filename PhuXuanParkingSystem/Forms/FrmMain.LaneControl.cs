@@ -1,6 +1,8 @@
+using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Services.Anpr;
 using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Parking;
 using System;
 using System.Drawing;
 using System.IO;
@@ -14,10 +16,13 @@ namespace PhuXuanParkingSystem.Forms
         // ── 1 Access Controller dùng chung ───────────────────────────
         private readonly IControllerService _controller = new ControllerService();
 
-        // ── Chống rung Radar Debounce ─────────────────────────────────────────
+        // ── Khóa chu kỳ xe & Chống rung Radar Debounce ────────────────────────
+        private bool _isInLaneProcessing = false;
+        private bool _isOutLaneProcessing = false;
         private DateTime _lastInRadarTriggerTime = DateTime.MinValue;
         private DateTime _lastOutRadarTriggerTime = DateTime.MinValue;
         private const int RADAR_DEBOUNCE_MS = 1500;
+        private const int CYCLE_RESET_COOLDOWN_MS = 1500;
 
         #region Xử Lý Sự Kiện Radar AUX (Controller Realtime)
 
@@ -34,25 +39,49 @@ namespace PhuXuanParkingSystem.Forms
                 // LÀN VÀO (Aux 1)
                 if (e.IsActive)
                 {
+                    // Cạnh lên: Xe bắt đầu vào vùng cảm biến radar
+                    bool shouldTrigger = false;
                     lock (_lockDebounce)
                     {
                         var elapsed = (DateTime.Now - _lastInRadarTriggerTime).TotalMilliseconds;
-                        if (elapsed < RADAR_DEBOUNCE_MS)
+                        if (!_isInLaneProcessing && elapsed >= RADAR_DEBOUNCE_MS)
                         {
-                            AppLogger.Debug($"[RADAR LÀN VÀO] Bỏ qua tín hiệu radar rung/lặp (Debounce: {elapsed:F0}ms < {RADAR_DEBOUNCE_MS}ms).");
-                            return;
+                            _isInLaneProcessing = true;
+                            _lastInRadarTriggerTime = DateTime.Now;
+                            shouldTrigger = true;
                         }
-                        _lastInRadarTriggerTime = DateTime.Now;
+                        else
+                        {
+                            AppLogger.Debug($"[RADAR LÀN VÀO] Bỏ qua tín hiệu (Làn đang bận hoặc rung lặp: {elapsed:F0}ms).");
+                        }
                     }
 
-                    lblInStatusVal.Text = "🟢Xe đang đi qua";
-                    lblInStatusVal.ForeColor = Color.SeaGreen;
-                    lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
+                    if (shouldTrigger)
+                    {
+                        lblInStatusVal.Text = "🟢 Phát hiện xe vào - Đang xử lý...";
+                        lblInStatusVal.ForeColor = Color.SeaGreen;
+                        lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
+
+                        // Kích hoạt luồng chụp ảnh, ANPR và ghi nhận phiên vào ngầm
+                        _ = Task.Run(async () => await HandleInLaneTriggerAsync("RADAR"));
+                    }
                 }
                 else
                 {
-                    lblInStatusVal.Text = "⚪ Xe đã đi qua";
+                    // Cạnh xuống: Xe đã đi qua khỏi cảm biến radar
+                    lblInStatusVal.Text = "⚪ Xe đã qua làn vào";
                     lblInStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
+
+                    // Mở khóa chu kỳ xe sau khoảng trễ an toàn
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(CYCLE_RESET_COOLDOWN_MS);
+                        lock (_lockDebounce)
+                        {
+                            _isInLaneProcessing = false;
+                        }
+                        AppLogger.Debug("[RADAR LÀN VÀO] Đã mở khóa sẵn sàng đón xe tiếp theo.");
+                    });
                 }
             }
             else if (e.AuxPort == 2)
@@ -60,25 +89,49 @@ namespace PhuXuanParkingSystem.Forms
                 // LÀN RA (Aux 2)
                 if (e.IsActive)
                 {
+                    // Cạnh lên: Xe bắt đầu vào vùng cảm biến radar làn ra
+                    bool shouldTrigger = false;
                     lock (_lockDebounce)
                     {
                         var elapsed = (DateTime.Now - _lastOutRadarTriggerTime).TotalMilliseconds;
-                        if (elapsed < RADAR_DEBOUNCE_MS)
+                        if (!_isOutLaneProcessing && elapsed >= RADAR_DEBOUNCE_MS)
                         {
-                            AppLogger.Debug($"[RADAR LÀN RA] Bỏ qua tín hiệu radar rung/lặp (Debounce: {elapsed:F0}ms < {RADAR_DEBOUNCE_MS}ms).");
-                            return;
+                            _isOutLaneProcessing = true;
+                            _lastOutRadarTriggerTime = DateTime.Now;
+                            shouldTrigger = true;
                         }
-                        _lastOutRadarTriggerTime = DateTime.Now;
+                        else
+                        {
+                            AppLogger.Debug($"[RADAR LÀN RA] Bỏ qua tín hiệu (Làn đang bận hoặc rung lặp: {elapsed:F0}ms).");
+                        }
                     }
 
-                    lblOutStatusVal.Text = "🔴 Phát hiện xe ra (Radar kích hoạt)";
-                    lblOutStatusVal.ForeColor = Color.SeaGreen;
-                    lblOutTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
+                    if (shouldTrigger)
+                    {
+                        lblOutStatusVal.Text = "🔴 Phát hiện xe ra - Đang xử lý...";
+                        lblOutStatusVal.ForeColor = Color.SeaGreen;
+                        lblOutTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
+
+                        // Kích hoạt luồng chụp ảnh, ANPR và ghi nhận phiên ra ngầm
+                        _ = Task.Run(async () => await HandleOutLaneTriggerAsync("RADAR"));
+                    }
                 }
                 else
                 {
+                    // Cạnh xuống: Xe đã đi qua khỏi cảm biến radar làn ra
                     lblOutStatusVal.Text = "⚪ Xe đã qua làn ra";
                     lblOutStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
+
+                    // Mở khóa chu kỳ xe sau khoảng trễ an toàn
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(CYCLE_RESET_COOLDOWN_MS);
+                        lock (_lockDebounce)
+                        {
+                            _isOutLaneProcessing = false;
+                        }
+                        AppLogger.Debug("[RADAR LÀN RA] Đã mở khóa sẵn sàng đón xe tiếp theo.");
+                    });
                 }
             }
 
@@ -100,185 +153,207 @@ namespace PhuXuanParkingSystem.Forms
 
         #region Chụp Ảnh & Điều Phối Làn Vào / Ra
 
-        private async Task CaptureInLaneAsync(string triggerSource)
+        public async Task HandleInLaneTriggerAsync(string triggerSource)
         {
             AppLogger.Information($"[LÀN VÀO] Bắt đầu kích hoạt chụp ảnh từ nguồn: {triggerSource}...", "LaneControl");
 
             try
             {
-                string todayFolder = Path.Combine(_captureDir, DateTime.Now.ToString("yyyy-MM-dd"));
-                if (!Directory.Exists(todayFolder))
-                {
-                    Directory.CreateDirectory(todayFolder);
-                }
+                var cfg = _deviceConfigService?.CurrentConfig;
+                string inLaneName = cfg?.InLane?.Name ?? "Làn Vào";
+                string? plateDevId = cfg?.InPlateCamera?.Id;
+                string? ovwDevId = cfg?.InOverviewCamera?.Id;
 
-                string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-                string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_plate.jpg");
-                string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_panoramic.jpg");
-
-                var tPlate = _inPlateCam.CaptureToFileAsync(filePlate);
-                var tOverview = _inOverviewCam.CaptureToFileAsync(fileOverview);
-                await Task.WhenAll(tPlate, tOverview);
-
-                bool plateOk = File.Exists(filePlate);
-                bool ovwOk = File.Exists(fileOverview);
-
-                AppLogger.Information($"[LÀN VÀO] Kết quả chụp ảnh: Plate={plateOk} ({filePlate}), Overview={ovwOk} ({fileOverview})", "LaneControl");
-
-                if (ovwOk)
-                {
-                    try
-                    {
-                        byte[] ovwBytes = File.ReadAllBytes(fileOverview);
-                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picInOverview, ovwBytes)));
-                        else SetPictureBoxImage(picInOverview, ovwBytes);
-                    }
-                    catch { }
-                }
-
-                PlateRecognitionResult? anprResult = null;
-                if (plateOk)
-                {
-                    anprResult = await _anprService.RecognizeAsync(filePlate);
-                    AppLogger.Information($"[LÀN VÀO ANPR] Nhận diện biển số: {anprResult?.FormattedPlate ?? "Không đọc được"} (Độ tin cậy: {anprResult?.Confidence:P1})", "ANPR");
-                }
-                else
-                {
-                    AppLogger.Warning($"[LÀN VÀO] Không thể chụp ảnh biển số (Camera Biển Số có thể đang Offline hoặc chưa kết nối).", "LaneControl");
-                }
-
-                if (anprResult?.CroppedPlateImage != null)
-                {
-                    DisplayCapturedBitmap(picInPlate, anprResult.CroppedPlateImage);
-                }
-                else if (plateOk)
-                {
-                    try
-                    {
-                        byte[] pltBytes = File.ReadAllBytes(filePlate);
-                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picInPlate, pltBytes)));
-                        else SetPictureBoxImage(picInPlate, pltBytes);
-                    }
-                    catch { }
-                }
+                var res = await _laneService.ProcessInLaneAsync(
+                    inLaneName: inLaneName,
+                    plateCam: _inPlateCam,
+                    overviewCam: _inOverviewCam,
+                    plateDeviceId: plateDevId,
+                    overviewDeviceId: ovwDevId,
+                    triggerSource: triggerSource,
+                    captureDir: _captureDir
+                );
 
                 void UpdateInUi()
                 {
-                    lblInTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-                    if (anprResult != null && anprResult.IsSuccess)
+                    // 1. Cập nhật ảnh Toàn cảnh (ưu tiên từ byte array nếu file đã dọn dẹp)
+                    if (res.OverviewImageBytes != null && res.OverviewImageBytes.Length > 0)
                     {
-                        txtInPlate.Text = anprResult.FormattedPlate;
-                        lblInStatusVal.Text = "🟢 Đã nhận diện biển số";
-                        lblInStatusVal.ForeColor = Color.SeaGreen;
+                        DisplayCapturedBytes(picInOverview, res.OverviewImageBytes);
+                    }
+                    else if (!string.IsNullOrEmpty(res.OverviewImagePath) && File.Exists(res.OverviewImagePath))
+                    {
+                        DisplayCapturedImage(picInOverview, res.OverviewImagePath!);
+                    }
+
+                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh từ Bitmap nhận diện)
+                    if (res.CroppedPlateImage != null)
+                    {
+                        DisplayCapturedBitmap(picInPlate, res.CroppedPlateImage);
+                    }
+                    else if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
+                    {
+                        DisplayCapturedImage(picInPlate, res.PlateImagePath!);
+                    }
+
+                    // 3. Cập nhật thông tin nhận diện
+                    txtInPlate.Text = res.PlateNumber;
+                    lblInTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
+                    lblInOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
+                    lblInDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
+                    lblInTypeVal.Text = GetPersonTypeDisplay(res.PersonType, res.IsRegisteredVehicle);
+
+                    // 4. Trạng thái kết quả
+                    if (res.IsCrossLaneIgnored)
+                    {
+                        lblInStatusVal.Text = "🟡 Thao tác quá nhanh";
+                        lblInStatusVal.ForeColor = Color.DarkOrange;
+                    }
+                    else if (res.IsAlreadyInLot)
+                    {
+                        lblInStatusVal.Text = $"⚠️ XE ĐANG TRONG BÃI";
+                        lblInStatusVal.ForeColor = Color.Crimson;
+                    }
+                    else if (res.Success)
+                    {
+                        lblInStatusVal.Text = res.PlateCamSuccess ? "🟢 Đã ghi nhận phiên vào" : "⚠️ Vào (Cam biển lỗi)";
+                        lblInStatusVal.ForeColor = res.PlateCamSuccess ? Color.SeaGreen : Color.FromArgb(200, 120, 30);
                     }
                     else
                     {
-                        txtInPlate.Text = plateOk ? "Không đọc được" : "";
-                        lblInStatusVal.Text = plateOk ? "⚪ Không đọc được biển" : "❌ Camera biển số lỗi";
-                        lblInStatusVal.ForeColor = Color.FromArgb(200, 120, 30);
+                        lblInStatusVal.Text = "❌ Lỗi ghi nhận phiên vào";
+                        lblInStatusVal.ForeColor = Color.Crimson;
                     }
                 }
 
                 if (InvokeRequired) BeginInvoke(new Action(UpdateInUi));
                 else UpdateInUi();
 
-                SetFooterStatus($"📸 Đã chụp và xử lý LÀN VÀO lúc {DateTime.Now:HH:mm:ss.fff}");
+                if (res.IsAlreadyInLot)
+                {
+                    SetFooterStatus($"⚠️ [CẢNH BÁO LÀN VÀO] Xe [{res.PlateNumber}] ĐANG Ở TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})!", isError: true);
+                }
+                else
+                {
+                    SetFooterStatus($"📸 LÀN VÀO ({triggerSource}): Biển [{res.PlateNumber}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
+                }
             }
             catch (Exception ex)
             {
                 AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Vào: {ex.Message}", "LaneControl");
-                SetFooterStatus($"Lỗi chụp ảnh Làn Vào: {ex.Message}");
+                SetFooterStatus($"Lỗi chụp ảnh Làn Vào: {ex.Message}", isError: true);
             }
         }
 
-        private async Task CaptureOutLaneAsync(string triggerSource)
+        public async Task HandleOutLaneTriggerAsync(string triggerSource)
         {
             AppLogger.Information($"[LÀN RA] Bắt đầu kích hoạt chụp ảnh từ nguồn: {triggerSource}...", "LaneControl");
 
             try
             {
-                string todayFolder = Path.Combine(_captureDir, DateTime.Now.ToString("yyyy-MM-dd"));
-                if (!Directory.Exists(todayFolder))
-                {
-                    Directory.CreateDirectory(todayFolder);
-                }
+                var cfg = _deviceConfigService?.CurrentConfig;
+                string outLaneName = cfg?.OutLane?.Name ?? "Làn Ra";
+                string? plateDevId = cfg?.OutPlateCamera?.Id;
+                string? ovwDevId = cfg?.OutOverviewCamera?.Id;
 
-                string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-                string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_plate.jpg");
-                string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_panoramic.jpg");
-
-                var tPlate = _outPlateCam.CaptureToFileAsync(filePlate);
-                var tOverview = _outOverviewCam.CaptureToFileAsync(fileOverview);
-                await Task.WhenAll(tPlate, tOverview);
-
-                bool plateOk = File.Exists(filePlate);
-                bool ovwOk = File.Exists(fileOverview);
-
-                AppLogger.Information($"[LÀN RA] Kết quả chụp ảnh: Plate={plateOk} ({filePlate}), Overview={ovwOk} ({fileOverview})", "LaneControl");
-
-                if (ovwOk)
-                {
-                    try
-                    {
-                        byte[] ovwBytes = File.ReadAllBytes(fileOverview);
-                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picOutOverview, ovwBytes)));
-                        else SetPictureBoxImage(picOutOverview, ovwBytes);
-                    }
-                    catch { }
-                }
-
-                PlateRecognitionResult? anprResult = null;
-                if (plateOk)
-                {
-                    anprResult = await _anprService.RecognizeAsync(filePlate);
-                    AppLogger.Information($"[LÀN RA ANPR] Nhận diện biển số: {anprResult?.FormattedPlate ?? "Không đọc được"} (Độ tin cậy: {anprResult?.Confidence:P1})", "ANPR");
-                }
-                else
-                {
-                    AppLogger.Warning($"[LÀN RA] Không thể chụp ảnh biển số (Camera Biển Số có thể đang Offline hoặc chưa kết nối).", "LaneControl");
-                }
-
-                if (anprResult?.CroppedPlateImage != null)
-                {
-                    DisplayCapturedBitmap(picOutPlate, anprResult.CroppedPlateImage);
-                }
-                else if (plateOk)
-                {
-                    try
-                    {
-                        byte[] pltBytes = File.ReadAllBytes(filePlate);
-                        if (InvokeRequired) BeginInvoke(new Action(() => SetPictureBoxImage(picOutPlate, pltBytes)));
-                        else SetPictureBoxImage(picOutPlate, pltBytes);
-                    }
-                    catch { }
-                }
+                var res = await _laneService.ProcessOutLaneAsync(
+                    outLaneName: outLaneName,
+                    plateCam: _outPlateCam,
+                    overviewCam: _outOverviewCam,
+                    plateDeviceId: plateDevId,
+                    overviewDeviceId: ovwDevId,
+                    triggerSource: triggerSource,
+                    captureDir: _captureDir
+                );
 
                 void UpdateOutUi()
                 {
-                    lblOutTimeVal.Text = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-                    if (anprResult != null && anprResult.IsSuccess)
+                    // 1. Cập nhật ảnh Toàn cảnh
+                    if (!string.IsNullOrEmpty(res.OverviewImagePath) && File.Exists(res.OverviewImagePath))
                     {
-                        txtOutPlate.Text = anprResult.FormattedPlate;
-                        lblOutStatusVal.Text = "🔴 Đã nhận diện biển số ra";
+                        DisplayCapturedImage(picOutOverview, res.OverviewImagePath!);
+                    }
+
+                    // 2. Cập nhật ảnh Biển số (Ưu tiên hiển thị ảnh cắt biển số nhỏ zoom cận cảnh từ Bitmap nhận diện)
+                    if (res.CroppedPlateImage != null)
+                    {
+                        DisplayCapturedBitmap(picOutPlate, res.CroppedPlateImage);
+                    }
+                    else if (!string.IsNullOrEmpty(res.PlateImagePath) && File.Exists(res.PlateImagePath))
+                    {
+                        DisplayCapturedImage(picOutPlate, res.PlateImagePath!);
+                    }
+
+                    // 3. Cập nhật thông tin nhận diện
+                    txtOutPlate.Text = res.PlateNumber;
+                    lblOutTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
+                    lblOutOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
+                    lblOutDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
+                    lblOutTypeVal.Text = GetPersonTypeDisplay(res.PersonType, res.IsRegisteredVehicle);
+
+                    // 4. Trạng thái kết quả phiên xe ra
+                    if (res.IsCrossLaneIgnored)
+                    {
+                        lblOutStatusVal.Text = "🟡 Thao tác quá nhanh";
+                        lblOutStatusVal.ForeColor = Color.DarkOrange;
+                    }
+                    else if (res.Session?.Status == ParkingSessionStatus.Completed)
+                    {
+                        var durationMin = res.Session.Duration?.TotalMinutes ?? 0;
+                        lblOutStatusVal.Text = $"🔴 Hoàn tất xe ra ({durationMin:F0} phút)";
+                        lblOutStatusVal.ForeColor = Color.SeaGreen;
+                    }
+                    else if (res.Session?.Status == ParkingSessionStatus.UnmatchedOut)
+                    {
+                        lblOutStatusVal.Text = "⚠️ Xe ra không có lượt vào!";
+                        lblOutStatusVal.ForeColor = Color.Crimson;
+                    }
+                    else if (res.Success)
+                    {
+                        lblOutStatusVal.Text = "🟢 Đã xử lý xe ra";
                         lblOutStatusVal.ForeColor = Color.SeaGreen;
                     }
                     else
                     {
-                        txtOutPlate.Text = plateOk ? "Không đọc được" : "";
-                        lblOutStatusVal.Text = plateOk ? "⚪ Không đọc được biển" : "❌ Camera biển số lỗi";
-                        lblOutStatusVal.ForeColor = Color.FromArgb(200, 120, 30);
+                        lblOutStatusVal.Text = "❌ Lỗi xử lý phiên xe ra";
+                        lblOutStatusVal.ForeColor = Color.Crimson;
                     }
                 }
 
                 if (InvokeRequired) BeginInvoke(new Action(UpdateOutUi));
                 else UpdateOutUi();
 
-                SetFooterStatus($"📸 Đã chụp và xử lý LÀN RA lúc {DateTime.Now:HH:mm:ss.fff}");
+                SetFooterStatus($"📸 LÀN RA ({triggerSource}): Biển [{res.PlateNumber}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
             }
             catch (Exception ex)
             {
                 AppLogger.Error(ex, $"Lỗi chụp ảnh Làn Ra: {ex.Message}", "LaneControl");
-                SetFooterStatus($"Lỗi chụp ảnh Làn Ra: {ex.Message}");
+                SetFooterStatus($"Lỗi chụp ảnh Làn Ra: {ex.Message}", isError: true);
+            }
+        }
+
+        private static string GetPersonTypeDisplay(PersonType personType, bool isRegistered)
+        {
+            return personType switch
+            {
+                PersonType.Employee => "Cán bộ / Nhân viên",
+                PersonType.Contractor => "Đối tác / Nhà thầu",
+                PersonType.VIP => "Khách VIP",
+                PersonType.Visitor => isRegistered ? "Khách đã đăng ký" : "Khách vãng lai",
+                _ => "Khách vãng lai"
+            };
+        }
+
+        private void DisplayCapturedBytes(PictureBox picBox, byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return;
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => SetPictureBoxImage(picBox, bytes)));
+            }
+            else
+            {
+                SetPictureBoxImage(picBox, bytes);
             }
         }
 
@@ -298,9 +373,9 @@ namespace PhuXuanParkingSystem.Forms
                     SetPictureBoxImage(picBox, bytes);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Xử lý an toàn
+                AppLogger.Warning($"Lỗi hiển thị ảnh {filePath}: {ex.Message}");
             }
         }
 

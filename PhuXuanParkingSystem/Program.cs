@@ -117,6 +117,9 @@ namespace PhuXuanParkingSystem
             // Device Config Service (Nạp cấu hình động từ MongoDB + Reload khi Web Admin thay đổi)
             services.AddSingleton<Services.Devices.Config.IDeviceConfigService, Services.Devices.Config.DeviceConfigService>();
 
+            // Parking Lane Business Service (Điều phối làn xe, chụp ảnh, ANPR, lưu ParkingSession)
+            services.AddSingleton<Services.Parking.IParkingLaneService, Services.Parking.ParkingLaneService>();
+
             // Forms
             services.AddTransient<FrmMain>();
             services.AddTransient<FrmDeviceMonitor>();

@@ -155,26 +155,6 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ParkingRealtimeHub>("/hubs/parking");
 
-// Tự động kiểm tra và gắn ảnh thực tế cho các phiên xe để Web Admin luôn xem được đầy đủ 4 ảnh
-//try
-//{
-//    using var scope = app.Services.CreateScope();
-//    var sessionRepo = scope.ServiceProvider.GetRequiredService<IRepository<ParkingSession>>();
-//    var allSessions = await sessionRepo.FindAsync(s => !s.IsDeleted);
-//    foreach (var s in allSessions)
-//    {
-//        if (s.InOverviewImagePath == null || s.InOverviewImagePath.IsEmpty || string.IsNullOrWhiteSpace(s.InOverviewImagePath.Path))
-//        {
-//            s.InOverviewImagePath = "2026-08-25/20260825_172833_366_MANUAL_LAN_VAO_panoramic.jpg";
-//            s.InPlateImagePath = "2026-08-25/20260825_172833_366_MANUAL_LAN_VAO_plate.jpg";
-//            s.OutOverviewImagePath = "2026-08-25/20260825_172813_901_RADAR_LAN_RA_panoramic.jpg";
-//            s.OutPlateImagePath = "2026-08-25/20260825_172813_901_RADAR_LAN_RA_plate.jpg";
-//            await sessionRepo.UpdateAsync(s);
-//        }
-//    }
-//}
-//catch { }
-
 app.Run();
 
 public partial class Program { }

@@ -11,6 +11,7 @@ using PhuXuanParkingSystem.Services.Devices.Health;
 using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.License;
 using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Parking;
 using System;
 using System.Drawing;
 using System.Threading.Tasks;
@@ -36,6 +37,7 @@ namespace PhuXuanParkingSystem.Forms
         private readonly IDeviceConfigService _deviceConfigService = null!;
         private readonly IDeviceAdapterFactory _adapterFactory;
         private readonly LicenseManager _licenseManager;
+        private readonly IParkingLaneService _laneService;
 
         // ── Quản lý Thiết bị & Camera Slots động (Mở rộng cho N thiết bị/làn) ──
         private readonly Dictionary<string, Device> _activeDevices = new();
@@ -67,6 +69,16 @@ namespace PhuXuanParkingSystem.Forms
                 _adapterFactory = Program.ServiceProvider.GetService<IDeviceAdapterFactory>() ?? new DeviceAdapterFactory();
                 _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
                 _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
+                _laneService = Program.ServiceProvider.GetService<IParkingLaneService>() ??
+                    new ParkingLaneService(
+                        new MongoRepository<ParkingSession>(),
+                        new MongoRepository<Vehicle>(),
+                        new MongoRepository<Person>(),
+                        new MongoRepository<Department>(),
+                        _anprService,
+                        _deviceHealthService,
+                        _deviceRepo,
+                        _laneRepo);
             }
             else
             {
@@ -76,6 +88,15 @@ namespace PhuXuanParkingSystem.Forms
                 _adapterFactory = new DeviceAdapterFactory();
                 _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
                 _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
+                _laneService = new ParkingLaneService(
+                    new MongoRepository<ParkingSession>(),
+                    new MongoRepository<Vehicle>(),
+                    new MongoRepository<Person>(),
+                    new MongoRepository<Department>(),
+                    _anprService,
+                    _deviceHealthService,
+                    _deviceRepo,
+                    _laneRepo);
             }
 
             // Đăng ký sự kiện khi cấu hình thay đổi (Web Admin sửa IP, etc.)
@@ -83,6 +104,8 @@ namespace PhuXuanParkingSystem.Forms
 
             // Đăng ký sự kiện Controller ZKTeco
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
+            KeyPreview = true;
+            KeyDown += FrmMain_KeyDown;
         }
 
         public FrmMain(
@@ -90,7 +113,8 @@ namespace PhuXuanParkingSystem.Forms
             IRepository<Device> deviceRepo,
             IRepository<Lane>? laneRepo = null,
             IDeviceHealthMonitorService? deviceHealthService = null,
-            IDeviceAdapterFactory? adapterFactory = null)
+            IDeviceAdapterFactory? adapterFactory = null,
+            IParkingLaneService? laneService = null)
         {
             InitializeComponent();
 
@@ -102,9 +126,35 @@ namespace PhuXuanParkingSystem.Forms
             _deviceHealthService = deviceHealthService ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
             _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
             _deviceConfigService.OnConfigChanged += DeviceConfigService_OnConfigChanged;
+            _laneService = laneService ??
+                new ParkingLaneService(
+                    new MongoRepository<ParkingSession>(),
+                    new MongoRepository<Vehicle>(),
+                    new MongoRepository<Person>(),
+                    new MongoRepository<Department>(),
+                    _anprService,
+                    _deviceHealthService,
+                    _deviceRepo);
 
             _controller.OnAuxInputTriggered += Controller_OnAuxInputTriggered;
             KeyPreview = true;
+            KeyDown += FrmMain_KeyDown;
+        }
+
+        private void FrmMain_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.F1)
+            {
+                // Phím tắt chụp thủ công Làn Vào (F1)
+                _ = Task.Run(async () => await HandleInLaneTriggerAsync("MANUAL"));
+                e.Handled = true;
+            }
+            else if (e.KeyCode == Keys.F2)
+            {
+                // Phím tắt chụp thủ công Làn Ra (F2)
+                _ = Task.Run(async () => await HandleOutLaneTriggerAsync("MANUAL"));
+                e.Handled = true;
+            }
         }
 
         private void FrmMain_Load(object sender, EventArgs e)

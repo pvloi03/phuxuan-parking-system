@@ -177,8 +177,8 @@ namespace PhuXuanParkingSystem.Services.Devices.Camera
                         byte[] localBuffer = new byte[CaptureBufferSize];
                         var jpegPara = new CHCNetSDK.NET_DVR_JPEGPARA
                         {
-                            wPicQuality = 2, // Chất lượng cao nhất
-                            wPicSize = 0xff  // Giữ nguyên độ phân giải
+                            wPicQuality = 2, // 2: Mức chất lượng trung bình (Normal/Average - chuẩn SDK Hikvision tối ưu tốc độ & dung lượng)
+                            wPicSize = 0xff  // 0xff: Kích thước phân giải tiêu chuẩn của channel
                         };
 
                         uint imageSizeRet = 0;
