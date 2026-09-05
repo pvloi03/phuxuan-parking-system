@@ -5,6 +5,8 @@ wwwroot/
 docs/
 scripts/
 *AGENTS.md
+*CLAUDE.md
+*CONTEXT.md
 .scratch/
 tests/
 
