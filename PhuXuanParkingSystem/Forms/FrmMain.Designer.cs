@@ -81,6 +81,7 @@ namespace PhuXuanParkingSystem.Forms
             this.lblFooterMachineCode = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterLicense = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerClock = new System.Windows.Forms.Timer(this.components);
+            this.panel1 = new System.Windows.Forms.Panel();
             this.pnlHeader.SuspendLayout();
             this.tblMainLayout.SuspendLayout();
             this.grpInLane.SuspendLayout();
@@ -96,12 +97,13 @@ namespace PhuXuanParkingSystem.Forms
             this.grpOutInfo.SuspendLayout();
             this.tblOutInfo.SuspendLayout();
             this.statusStrip.SuspendLayout();
+            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // pnlHeader
             // 
             this.pnlHeader.BackColor = System.Drawing.Color.Teal;
-            this.pnlHeader.Controls.Add(this.btnDeviceMonitor);
+            this.pnlHeader.Controls.Add(this.panel1);
             this.pnlHeader.Controls.Add(this.lblClock);
             this.pnlHeader.Controls.Add(this.lblSystemStatus);
             this.pnlHeader.Controls.Add(this.lblAppTitle);
@@ -115,14 +117,14 @@ namespace PhuXuanParkingSystem.Forms
             // 
             this.btnDeviceMonitor.BackColor = System.Drawing.Color.Coral;
             this.btnDeviceMonitor.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDeviceMonitor.Dock = System.Windows.Forms.DockStyle.Right;
+            this.btnDeviceMonitor.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnDeviceMonitor.FlatAppearance.BorderSize = 0;
             this.btnDeviceMonitor.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeviceMonitor.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnDeviceMonitor.Font = new System.Drawing.Font("Segoe UI Semibold", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnDeviceMonitor.ForeColor = System.Drawing.Color.White;
-            this.btnDeviceMonitor.Location = new System.Drawing.Point(933, 0);
+            this.btnDeviceMonitor.Location = new System.Drawing.Point(10, 10);
             this.btnDeviceMonitor.Name = "btnDeviceMonitor";
-            this.btnDeviceMonitor.Size = new System.Drawing.Size(229, 48);
+            this.btnDeviceMonitor.Size = new System.Drawing.Size(180, 28);
             this.btnDeviceMonitor.TabIndex = 3;
             this.btnDeviceMonitor.Text = "📡 Giám Sát Thiết Bị";
             this.btnDeviceMonitor.UseVisualStyleBackColor = false;
@@ -744,7 +746,7 @@ namespace PhuXuanParkingSystem.Forms
             // lblFooterLicenseSpring
             // 
             this.lblFooterLicenseSpring.Name = "lblFooterLicenseSpring";
-            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(676, 25);
+            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(725, 25);
             this.lblFooterLicenseSpring.Spring = true;
             // 
             // lblFooterMachineCode
@@ -760,7 +762,7 @@ namespace PhuXuanParkingSystem.Forms
             this.lblFooterLicense.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblFooterLicense.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.lblFooterLicense.Name = "lblFooterLicense";
-            this.lblFooterLicense.Size = new System.Drawing.Size(352, 25);
+            this.lblFooterLicense.Size = new System.Drawing.Size(303, 25);
             this.lblFooterLicense.Text = "🛡️ Thời gian sử dụng: Đang kiểm tra...";
             this.lblFooterLicense.DoubleClick += new System.EventHandler(this.LblFooterLicense_DoubleClick);
             // 
@@ -769,6 +771,17 @@ namespace PhuXuanParkingSystem.Forms
             this.timerClock.Enabled = true;
             this.timerClock.Interval = 1000;
             this.timerClock.Tick += new System.EventHandler(this.TimerClock_Tick);
+            // 
+            // panel1
+            // 
+            this.panel1.Controls.Add(this.btnDeviceMonitor);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Right;
+            this.panel1.Location = new System.Drawing.Point(962, 0);
+            this.panel1.Margin = new System.Windows.Forms.Padding(0);
+            this.panel1.Name = "panel1";
+            this.panel1.Padding = new System.Windows.Forms.Padding(10);
+            this.panel1.Size = new System.Drawing.Size(200, 48);
+            this.panel1.TabIndex = 4;
             // 
             // FrmMain
             // 
@@ -806,6 +819,7 @@ namespace PhuXuanParkingSystem.Forms
             this.tblOutInfo.PerformLayout();
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
+            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -865,5 +879,6 @@ namespace PhuXuanParkingSystem.Forms
         private System.Windows.Forms.ToolStripStatusLabel lblFooterLicense;
         private System.Windows.Forms.Timer timerClock;
         private System.Windows.Forms.Button btnDeviceMonitor;
+        private System.Windows.Forms.Panel panel1;
     }
 }

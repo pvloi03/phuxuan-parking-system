@@ -150,7 +150,7 @@ namespace PhuXuanParkingSystem.Services.Parking
                              Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
 
                 var activeSessions = await _sessionRepo.FindAsync(filter, Builders<ParkingSession>.Sort.Descending(s => s.InTime));
-                var existingActive = activeSessions.FirstOrDefault();
+                var existingActive = activeSessions?.FirstOrDefault();
 
                 if (existingActive != null)
                 {

@@ -133,13 +133,13 @@ namespace PhuXuanParkingSystem.Api.Controllers
             ws.Cells["A1"].Style.Font.Size = 14;
             ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-            ws.Cells["A2:I2"].Merge = true;
+            ws.Cells["A2:H2"].Merge = true;
             ws.Cells["A2"].Value = $"Thời gian xuất báo cáo: {DateTime.Now:dd/MM/yyyy HH:mm:ss} | Tổng số bản ghi: {logs.Count}";
             ws.Cells["A2"].Style.Font.Italic = true;
             ws.Cells["A2"].Style.Font.Size = 10;
             ws.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-            string[] headers = { "STT", "Thời Gian", "Người Thực Hiện", "Vai Trò", "Hành Động", "Thực Thể", "Đối Tượng / Lý Do", "Địa Chỉ IP", "Kết Quả" };
+            string[] headers = { "STT", "Thời Gian", "Người Thực Hiện", "Vai Trò", "Hành Động", "Thực Thể", "Đối Tượng / Lý Do", "Kết Quả" };
             for (int i = 0; i < headers.Length; i++)
             {
                 ws.Cells[4, i + 1].Value = headers[i];
@@ -161,15 +161,13 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 ws.Cells[row, 5].Value = log.ActionType.ToString();
                 ws.Cells[row, 6].Value = log.TargetEntity;
                 ws.Cells[row, 7].Value = !string.IsNullOrWhiteSpace(log.Reason) ? $"{log.TargetDisplay} (Lý do: {log.Reason})" : (log.TargetDisplay ?? "-");
-                ws.Cells[row, 8].Value = log.IpAddress ?? "127.0.0.1";
-                ws.Cells[row, 9].Value = log.IsSuccess ? "Thành công" : "Thất bại";
+                ws.Cells[row, 8].Value = log.IsSuccess ? "Thành công" : "Thất bại";
 
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 9].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 row++;
             }
 

@@ -2,9 +2,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using PhuXuanParkingSystem.Api.Helpers;
+using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Common;
 using PhuXuanParkingSystem.Models.Data;
 using PhuXuanParkingSystem.Models.Entities;
+using PhuXuanParkingSystem.Models.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,10 +20,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class RecycleBinController : ControllerBase
     {
         private readonly MongoDbContext _context;
+        private readonly IAuditLogQueue _auditQueue;
 
-        public RecycleBinController(MongoDbContext context)
+        public RecycleBinController(MongoDbContext context, IAuditLogQueue auditQueue)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            _auditQueue = auditQueue ?? throw new ArgumentNullException(nameof(auditQueue));
         }
 
         public class RecycleBinItemDto
@@ -407,21 +412,28 @@ namespace PhuXuanParkingSystem.Api.Controllers
         }
 
         /// <summary>
+        /// <summary>
         /// Khôi phục 1 mục đã xóa mềm
         /// </summary>
         [HttpPost("restore")]
-        public async Task<IActionResult> RestoreItem([FromBody] RestoreItemRequest request)
+        public async Task<IActionResult> RestoreItem([FromBody] RestoreItemRequest request, [FromQuery] string? reason = null)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.Id) || string.IsNullOrWhiteSpace(request.ItemType))
             {
                 return BadRequest(new { success = false, message = "Dữ liệu yêu cầu không hợp lệ." });
             }
 
+            var (oldEntity, identifier) = await GetEntityWithIdentifierAsync(request.ItemType, request.Id);
             var (success, message) = await RestoreSingleInternalAsync(request.ItemType, request.Id);
             if (!success)
             {
                 return BadRequest(new { success = false, message });
             }
+
+            var (restoredEntity, _) = await GetEntityWithIdentifierAsync(request.ItemType, request.Id);
+            var diff = AuditDiffHelper.ComputeDiff(oldEntity, restoredEntity);
+            string effectiveReason = string.IsNullOrWhiteSpace(reason) ? "Khôi phục từ Thùng rác" : reason;
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Restore, request.ItemType, request.Id, identifier, diff, reason: effectiveReason);
 
             return Ok(new { success = true, message = "Khôi phục dữ liệu thành công!" });
         }
@@ -430,7 +442,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
         /// Khôi phục nhiều mục đã xóa mềm
         /// </summary>
         [HttpPost("restore-batch")]
-        public async Task<IActionResult> RestoreBatch([FromBody] BatchActionRequest request)
+        public async Task<IActionResult> RestoreBatch([FromBody] BatchActionRequest request, [FromQuery] string? reason = null)
         {
             if (request?.Items == null || request.Items.Count == 0)
             {
@@ -439,11 +451,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             int restoredCount = 0;
             var errors = new List<string>();
+            string effectiveReason = string.IsNullOrWhiteSpace(reason) ? "Khôi phục hàng loạt từ Thùng rác" : reason;
 
             foreach (var item in request.Items)
             {
+                var (oldEntity, identifier) = await GetEntityWithIdentifierAsync(item.ItemType, item.Id);
                 var (success, msg) = await RestoreSingleInternalAsync(item.ItemType, item.Id);
-                if (success) restoredCount++;
+                if (success)
+                {
+                    restoredCount++;
+                    var (restoredEntity, _) = await GetEntityWithIdentifierAsync(item.ItemType, item.Id);
+                    var diff = AuditDiffHelper.ComputeDiff(oldEntity, restoredEntity);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.Restore, item.ItemType, item.Id, identifier, diff, reason: effectiveReason);
+                }
                 else errors.Add(msg);
             }
 
@@ -460,18 +480,23 @@ namespace PhuXuanParkingSystem.Api.Controllers
         /// Xóa vĩnh viễn 1 mục khỏi CSDL (Hard Delete có kiểm tra ràng buộc quan hệ)
         /// </summary>
         [HttpDelete("hard-delete/{itemType}/{id}")]
-        public async Task<IActionResult> HardDeleteItem(string itemType, string id)
+        public async Task<IActionResult> HardDeleteItem(string itemType, string id, [FromQuery] string? reason = null)
         {
             if (string.IsNullOrWhiteSpace(itemType) || string.IsNullOrWhiteSpace(id))
             {
                 return BadRequest(new { success = false, message = "Thông số không hợp lệ." });
             }
 
+            var (entity, identifier) = await GetEntityWithIdentifierAsync(itemType, id);
             var (success, message) = await HardDeleteSingleInternalAsync(itemType, id);
             if (!success)
             {
                 return BadRequest(new { success = false, message });
             }
+
+            var diff = AuditDiffHelper.ComputeDiff(entity, null);
+            string effectiveReason = string.IsNullOrWhiteSpace(reason) ? "Xóa vĩnh viễn từ Thùng rác" : reason;
+            await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.PermanentDelete, itemType, id, identifier, diff, reason: effectiveReason);
 
             return Ok(new { success = true, message = "Đã xóa vĩnh viễn dữ liệu khỏi CSDL." });
         }
@@ -480,7 +505,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
         /// Xóa vĩnh viễn nhiều mục khỏi CSDL
         /// </summary>
         [HttpPost("hard-delete-batch")]
-        public async Task<IActionResult> HardDeleteBatch([FromBody] BatchActionRequest request)
+        public async Task<IActionResult> HardDeleteBatch([FromBody] BatchActionRequest request, [FromQuery] string? reason = null)
         {
             if (request?.Items == null || request.Items.Count == 0)
             {
@@ -489,11 +514,18 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             int deletedCount = 0;
             var errors = new List<string>();
+            string effectiveReason = string.IsNullOrWhiteSpace(reason) ? "Xóa vĩnh viễn từ Thùng rác" : reason;
 
             foreach (var item in request.Items)
             {
+                var (entity, identifier) = await GetEntityWithIdentifierAsync(item.ItemType, item.Id);
                 var (success, msg) = await HardDeleteSingleInternalAsync(item.ItemType, item.Id);
-                if (success) deletedCount++;
+                if (success)
+                {
+                    deletedCount++;
+                    var diff = AuditDiffHelper.ComputeDiff(entity, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.PermanentDelete, item.ItemType, item.Id, identifier, diff, reason: effectiveReason);
+                }
                 else errors.Add(msg);
             }
 
@@ -510,65 +542,102 @@ namespace PhuXuanParkingSystem.Api.Controllers
         /// Dọn sạch toàn bộ thùng rác (Hard delete toàn bộ mục IsDeleted = true)
         /// </summary>
         [HttpDelete("empty")]
-        public async Task<IActionResult> EmptyRecycleBin([FromQuery] string? itemType = null)
+        public async Task<IActionResult> EmptyRecycleBin([FromQuery] string? itemType = null, [FromQuery] string? reason = null)
         {
             int totalDeleted = 0;
+            string effectiveReason = string.IsNullOrWhiteSpace(reason) ? "Dọn sạch thùng rác" : reason;
+
+            async Task PurgeEntitiesAsync<T>(IMongoCollection<T> collection, string entityName, Func<T, string> getIdentifier) where T : BaseEntity
+            {
+                var deletedEntities = await collection.Find(Builders<T>.Filter.Eq(x => x.IsDeleted, true)).ToListAsync();
+                if (deletedEntities.Count == 0) return;
+
+                foreach (var e in deletedEntities)
+                {
+                    var diff = AuditDiffHelper.ComputeDiff(e, null);
+                    await _auditQueue.LogActivityAsync(User, HttpContext, AuditActionType.PermanentDelete, entityName, e.Id, getIdentifier(e), diff, reason: effectiveReason);
+                }
+
+                var res = await collection.DeleteManyAsync(Builders<T>.Filter.Eq(x => x.IsDeleted, true));
+                totalDeleted += (int)res.DeletedCount;
+            }
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Vehicle", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Vehicles.DeleteManyAsync(Builders<Vehicle>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Vehicles, "Vehicle", v => v.PlateNumber);
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Person", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Persons.DeleteManyAsync(Builders<Person>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Persons, "Person", p => $"{p.FullName} ({p.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Contractor", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Contractors.DeleteManyAsync(Builders<Contractor>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Contractors, "Contractor", c => $"{c.Name} ({c.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Department", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Departments.DeleteManyAsync(Builders<Department>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Departments, "Department", d => $"{d.Name} ({d.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Company", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Companies.DeleteManyAsync(Builders<Company>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Companies, "Company", comp => $"{comp.Name} ({comp.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Device", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Devices.DeleteManyAsync(Builders<Device>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Devices, "Device", dev => $"{dev.Name} ({dev.IpAddress})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Lane", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Lanes.DeleteManyAsync(Builders<Lane>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Lanes, "Lane", l => $"{l.Name} ({l.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("ParkingSession", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.ParkingSessions.DeleteManyAsync(Builders<ParkingSession>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.ParkingSessions, "ParkingSession", ps => ps.PlateNumber);
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("User", StringComparison.OrdinalIgnoreCase))
-            {
-                var res = await _context.Users.DeleteManyAsync(Builders<User>.Filter.Eq(x => x.IsDeleted, true));
-                totalDeleted += (int)res.DeletedCount;
-            }
+                await PurgeEntitiesAsync(_context.Users, "User", u => $"{u.FullName} ({u.Username})");
 
             return Ok(new { success = true, message = $"Đã dọn sạch thùng rác (xóa {totalDeleted} mục vĩnh viễn).", totalDeleted });
+        }
+
+        private async Task<(object? Entity, string Identifier)> GetEntityWithIdentifierAsync(string itemType, string id)
+        {
+            if (string.IsNullOrWhiteSpace(itemType) || string.IsNullOrWhiteSpace(id))
+                return (null, id);
+
+            switch (itemType.ToLowerInvariant())
+            {
+                case "vehicle":
+                    var v = await _context.Vehicles.Find(BuildIdFilter<Vehicle>(id)).FirstOrDefaultAsync();
+                    return (v, v?.PlateNumber ?? id);
+
+                case "person":
+                    var p = await _context.Persons.Find(BuildIdFilter<Person>(id)).FirstOrDefaultAsync();
+                    return (p, p != null ? $"{p.FullName} ({p.Code})" : id);
+
+                case "contractor":
+                    var c = await _context.Contractors.Find(BuildIdFilter<Contractor>(id)).FirstOrDefaultAsync();
+                    return (c, c != null ? $"{c.Name} ({c.Code})" : id);
+
+                case "department":
+                    var d = await _context.Departments.Find(BuildIdFilter<Department>(id)).FirstOrDefaultAsync();
+                    return (d, d != null ? $"{d.Name} ({d.Code})" : id);
+
+                case "company":
+                    var comp = await _context.Companies.Find(BuildIdFilter<Company>(id)).FirstOrDefaultAsync();
+                    return (comp, comp != null ? $"{comp.Name} ({comp.Code})" : id);
+
+                case "device":
+                    var dev = await _context.Devices.Find(BuildIdFilter<Device>(id)).FirstOrDefaultAsync();
+                    return (dev, dev != null ? $"{dev.Name} ({dev.IpAddress})" : id);
+
+                case "lane":
+                    var l = await _context.Lanes.Find(BuildIdFilter<Lane>(id)).FirstOrDefaultAsync();
+                    return (l, l != null ? $"{l.Name} ({l.Code})" : id);
+
+                case "parkingsession":
+                    var ps = await _context.ParkingSessions.Find(BuildIdFilter<ParkingSession>(id)).FirstOrDefaultAsync();
+                    return (ps, ps?.PlateNumber ?? id);
+
+                case "user":
+                    var u = await _context.Users.Find(BuildIdFilter<User>(id)).FirstOrDefaultAsync();
+                    return (u, u != null ? $"{u.FullName} ({u.Username})" : id);
+
+                default:
+                    return (null, id);
+            }
         }
 
         // =====================================================================

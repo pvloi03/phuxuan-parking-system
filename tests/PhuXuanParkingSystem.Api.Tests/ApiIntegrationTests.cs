@@ -550,5 +550,86 @@ namespace PhuXuanParkingSystem.Api.Tests
             compLog!.ActionType.Should().Be(AuditActionType.Create);
             compLog.NewValues.Should().Contain(compName);
         }
+
+        [Fact]
+        public async Task Test_14_HardDelete_And_Restore_In_RecycleBin_Generates_PermanentDelete_And_Restore_AuditLogs()
+        {
+            var token = await AuthenticateAsAdminAsync();
+            var rand = Guid.NewGuid().ToString("N")[..6].ToUpper();
+            var plate = $"75AHARD{rand}";
+
+            // 1. Tạo Vehicle mới
+            var createReq = new HttpRequestMessage(HttpMethod.Post, "/api/vehicles")
+            {
+                Content = JsonContent.Create(new Vehicle
+                {
+                    PlateNumber = plate,
+                    Type = VehicleType.Car,
+                    IsActive = true
+                })
+            };
+            createReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var createRes = await _client.SendAsync(createReq);
+            createRes.StatusCode.Should().Be(HttpStatusCode.OK);
+            var createApiRes = await createRes.Content.ReadFromJsonAsync<ApiResponse<Vehicle>>(JsonOptions);
+            var vehicleId = createApiRes!.Data!.Id;
+
+            // 2. Xóa mềm (đưa vào thùng rác)
+            var softDelReq = new HttpRequestMessage(HttpMethod.Delete, $"/api/vehicles/{vehicleId}?reason=DuaVaoThungRac");
+            softDelReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var softDelRes = await _client.SendAsync(softDelReq);
+            softDelRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // 3. Khôi phục từ thùng rác kèm reason
+            var restoreReq = new HttpRequestMessage(HttpMethod.Post, "/api/recycle-bin/restore?reason=KhoiPhucKiemThu")
+            {
+                Content = JsonContent.Create(new { itemType = "Vehicle", id = vehicleId })
+            };
+            restoreReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var restoreRes = await _client.SendAsync(restoreReq);
+            restoreRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            await Task.Delay(800);
+
+            // 4. Kiểm tra AuditLog Khôi phục (Restore)
+            var restoreAuditReq = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/audit-logs?targetEntity=Vehicle&actionType=Restore&search={plate}");
+            restoreAuditReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var restoreAuditRes = await _client.SendAsync(restoreAuditReq);
+            restoreAuditRes.StatusCode.Should().Be(HttpStatusCode.OK);
+            var restoreAuditApiRes = await restoreAuditRes.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AuditLog>>>(JsonOptions);
+            restoreAuditApiRes!.Data!.Items.Should().NotBeEmpty();
+            var restoreLog = restoreAuditApiRes.Data.Items.FirstOrDefault(x => x.TargetId == vehicleId);
+            restoreLog.Should().NotBeNull();
+            restoreLog!.ActionType.Should().Be(AuditActionType.Restore);
+            restoreLog.Reason.Should().Be("KhoiPhucKiemThu");
+
+            // 5. Xóa mềm lần 2 để chuẩn bị xóa vĩnh viễn
+            var softDelReq2 = new HttpRequestMessage(HttpMethod.Delete, $"/api/vehicles/{vehicleId}?reason=DuaVaoThungRac2");
+            softDelReq2.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var softDelRes2 = await _client.SendAsync(softDelReq2);
+            softDelRes2.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            // 6. Xóa vĩnh viễn (Hard Delete) từ Thùng rác kèm reason
+            var hardDelReq = new HttpRequestMessage(HttpMethod.Delete, $"/api/recycle-bin/hard-delete/Vehicle/{vehicleId}?reason=XoaVinhVienKiemToan");
+            hardDelReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var hardDelRes = await _client.SendAsync(hardDelReq);
+            hardDelRes.StatusCode.Should().Be(HttpStatusCode.OK);
+
+            await Task.Delay(800);
+
+            // 7. Kiểm tra AuditLog Xóa vĩnh viễn (PermanentDelete)
+            var hardDelAuditReq = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/audit-logs?targetEntity=Vehicle&actionType=PermanentDelete&search={plate}");
+            hardDelAuditReq.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var hardDelAuditRes = await _client.SendAsync(hardDelAuditReq);
+            hardDelAuditRes.StatusCode.Should().Be(HttpStatusCode.OK);
+            var hardDelAuditApiRes = await hardDelAuditRes.Content.ReadFromJsonAsync<ApiResponse<PagedResult<AuditLog>>>(JsonOptions);
+            hardDelAuditApiRes!.Data!.Items.Should().NotBeEmpty();
+            var hardDelLog = hardDelAuditApiRes.Data.Items.FirstOrDefault(x => x.TargetId == vehicleId);
+            hardDelLog.Should().NotBeNull();
+            hardDelLog!.ActionType.Should().Be(AuditActionType.PermanentDelete);
+            hardDelLog.Reason.Should().Be("XoaVinhVienKiemToan");
+            hardDelLog.OldValues.Should().NotBeNullOrWhiteSpace();
+            hardDelLog.OldValues.Should().Contain(plate);
+        }
     }
 }

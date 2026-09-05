@@ -25,8 +25,6 @@ namespace PhuXuanParkingSystem.Models.Entities
         // --- NGUỒN & MÔI TRƯỜNG THỰC HIỆN (SOURCE / ENVIRONMENT) ---
         // =========================================================================
         public string Source { get; set; } = "WebAdmin";
-        public string? IpAddress { get; set; }
-        public string? UserAgent { get; set; }
 
         // =========================================================================
         // --- HÀNH ĐỘNG & THỰC THỂ TÁC ĐỘNG (ACTION & TARGET) ---
@@ -59,8 +57,6 @@ namespace PhuXuanParkingSystem.Models.Entities
             string username,
             AuditActionType actionType,
             bool isSuccess,
-            string? ipAddress = null,
-            string? userAgent = null,
             string? actorId = null,
             string? actorRole = null,
             string? errorMessage = null)
@@ -74,8 +70,6 @@ namespace PhuXuanParkingSystem.Models.Entities
                 TargetEntity = "User",
                 TargetDisplay = username,
                 TargetId = actorId,
-                IpAddress = ipAddress,
-                UserAgent = userAgent,
                 IsSuccess = isSuccess,
                 ErrorMessage = errorMessage,
                 Source = "WebAdmin"

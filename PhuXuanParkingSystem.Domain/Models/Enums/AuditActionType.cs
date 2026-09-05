@@ -14,6 +14,8 @@ namespace PhuXuanParkingSystem.Models.Enums
         ChangeRole = 7,         // Thay đổi vai trò phân quyền
         LicenseUpdate = 8,      // Cập nhật bản quyền
         Export = 9,             // Xuất dữ liệu / báo cáo
-        ManualOverride = 10     // Can thiệp thủ công / mở barie khẩn cấp
+        ManualOverride = 10,    // Can thiệp thủ công / mở barie khẩn cấp
+        PermanentDelete = 11,   // Xóa vĩnh viễn dữ liệu khỏi CSDL
+        Restore = 12            // Khôi phục dữ liệu từ thùng rác
     }
 }

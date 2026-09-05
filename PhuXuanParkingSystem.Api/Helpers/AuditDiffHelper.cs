@@ -107,6 +107,57 @@ namespace PhuXuanParkingSystem.Api.Helpers
             return result;
         }
 
+        public static AuditDiffResult ComputeDiff(object? oldEntity, object? newEntity)
+        {
+            var result = new AuditDiffResult();
+
+            if (oldEntity == null && newEntity != null)
+            {
+                var (dict, props) = ExtractProperties(newEntity);
+                result.NewValues = JsonSerializer.Serialize(dict);
+                result.ChangedProperties = props;
+                return result;
+            }
+
+            if (oldEntity != null && newEntity == null)
+            {
+                var (dict, props) = ExtractProperties(oldEntity);
+                result.OldValues = JsonSerializer.Serialize(dict);
+                result.ChangedProperties = props;
+                return result;
+            }
+
+            if (oldEntity == null || newEntity == null) return result;
+
+            var properties = oldEntity.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && !IgnoredPropertyNames.Contains(p.Name));
+
+            var oldChanges = new Dictionary<string, object?>();
+            var newChanges = new Dictionary<string, object?>();
+
+            foreach (var prop in properties)
+            {
+                var oldVal = prop.GetValue(oldEntity);
+                var newVal = newEntity.GetType().GetProperty(prop.Name)?.GetValue(newEntity);
+
+                if (!AreValuesEqual(oldVal, newVal))
+                {
+                    result.ChangedProperties.Add(prop.Name);
+                    var isSensitive = IsSensitive(prop);
+                    oldChanges[prop.Name] = isSensitive ? "******" : FormatValue(oldVal);
+                    newChanges[prop.Name] = isSensitive ? "******" : FormatValue(newVal);
+                }
+            }
+
+            if (result.ChangedProperties.Count > 0)
+            {
+                result.OldValues = JsonSerializer.Serialize(oldChanges);
+                result.NewValues = JsonSerializer.Serialize(newChanges);
+            }
+
+            return result;
+        }
+
         public static AuditDiffResult ComputeDiff<T>(T? oldEntity, T? newEntity) where T : class
         {
             var result = new AuditDiffResult();
