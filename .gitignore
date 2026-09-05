@@ -2,15 +2,18 @@
 database_seed/
 publish/
 wwwroot/
+docs/
+scripts/
+*AGENTS.md
+.scratch/
+tests/
 
 ## Configuration & Environment Secrets
-appsettings.json
+appsettings.json*
 appsettings.*.json
 !appsettings.example.json
 !appsettings.*.example.json
-PhuXuanParkingSystem/App.config
-!PhuXuanParkingSystem/App.config.example
-*.config.local
+*.config
 .env
 .env.*
 !.env.example
