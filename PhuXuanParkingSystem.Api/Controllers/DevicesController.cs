@@ -20,16 +20,13 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class DevicesController : ControllerBase
     {
         private readonly IRepository<Device> _deviceRepo;
-        private readonly IRepository<LicenseInfo> _licenseRepo;
         private readonly IAuditLogQueue _auditQueue;
 
         public DevicesController(
             IRepository<Device> deviceRepo,
-            IRepository<LicenseInfo> licenseRepo,
             IAuditLogQueue auditQueue)
         {
             _deviceRepo = deviceRepo;
-            _licenseRepo = licenseRepo;
             _auditQueue = auditQueue;
         }
 
@@ -98,26 +95,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(device.IpAddress))
                 return BadRequest(ApiResponse.Fail("Địa chỉ IP không được để trống."));
 
-            // Kiểm tra giới hạn bản quyền MaxCameras / MaxControllers
-            var payload = await Helpers.LicenseValidationHelper.GetCurrentPayloadAsync(_licenseRepo);
-            var allDevices = await _deviceRepo.GetAllAsync();
-
-            if (device.Type == DeviceType.PlateCamera || device.Type == DeviceType.OverviewCamera)
-            {
-                int cameraCount = allDevices.Count(d => !d.IsDeleted && (d.Type == DeviceType.PlateCamera || d.Type == DeviceType.OverviewCamera));
-                if (cameraCount >= payload.MaxCameras)
-                {
-                    return BadRequest(ApiResponse.Fail($"Số lượng Camera đã đạt tối đa giới hạn bản quyền ({payload.MaxCameras} camera). Vui lòng liên hệ nhà cung cấp để nâng cấp gói bản quyền."));
-                }
-            }
-            else if (device.Type == DeviceType.Controller)
-            {
-                int controllerCount = allDevices.Count(d => !d.IsDeleted && d.Type == DeviceType.Controller);
-                if (controllerCount >= payload.MaxControllers)
-                {
-                    return BadRequest(ApiResponse.Fail($"Số lượng Bộ điều khiển đã đạt tối đa giới hạn bản quyền ({payload.MaxControllers} bộ). Vui lòng liên hệ nhà cung cấp để nâng cấp gói bản quyền."));
-                }
-            }
 
             await _deviceRepo.AddAsync(device);
 

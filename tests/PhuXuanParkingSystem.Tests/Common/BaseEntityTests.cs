@@ -19,7 +19,8 @@ namespace PhuXuanParkingSystem.Tests.Common
             var entity = new TestEntity { Name = "Test" };
 
             // Assert
-            entity.Id.Should().BeEmpty();
+            entity.Id.Should().NotBeNullOrWhiteSpace();
+            MongoDB.Bson.ObjectId.TryParse(entity.Id, out _).Should().BeTrue();
             entity.IsDeleted.Should().BeFalse();
             entity.DeletedAt.Should().BeNull();
             entity.UpdatedAt.Should().BeNull();

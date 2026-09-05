@@ -73,10 +73,12 @@ namespace PhuXuanParkingSystem.Forms
         {
             try
             {
-                // Thư mục lưu trữ ảnh chụp biển số & toàn cảnh (Hỗ trợ Biến Môi Trường hoặc App.config, UNC mạng \\server\share)
-                string rawPath = Environment.GetEnvironmentVariable("CaptureSavePath")
-                    ?? ConfigurationManager.AppSettings["CaptureSavePath"]
-                    ?? "Captures";
+                // Thư mục lưu trữ ảnh chụp biển số & toàn cảnh (Đọc từ App.config, hỗ trợ đường dẫn cục bộ hoặc UNC mạng \\server\share)
+                string rawPath = ConfigurationManager.AppSettings["CaptureSavePath"];
+                if (string.IsNullOrWhiteSpace(rawPath))
+                {
+                    rawPath = "Captures";
+                }
                 _captureDir = Path.IsPathRooted(rawPath) ? rawPath : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rawPath);
                 if (!Directory.Exists(_captureDir))
                 {

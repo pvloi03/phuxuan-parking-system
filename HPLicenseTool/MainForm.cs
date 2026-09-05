@@ -1,21 +1,14 @@
 using PhuXuanParkingSystem.Licensing;
 
-namespace PhuXuanParkingSystem.LicenseTool
+namespace HPLicenseTool
 {
     public partial class MainForm : Form
     {
         private string _currentPrivateKeyXml = string.Empty;
         private string _currentPublicKeyXml = string.Empty;
-        private readonly string _keyStoragePath;
-
         public MainForm()
         {
             InitializeComponent();
-            _keyStoragePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "PhuXuanParkingSystem",
-                "VendorKeys"
-            );
             EnsureKeysLoaded();
         }
 
@@ -23,34 +16,25 @@ namespace PhuXuanParkingSystem.LicenseTool
         {
             try
             {
-                if (!Directory.Exists(_keyStoragePath))
-                    Directory.CreateDirectory(_keyStoragePath);
+                // Nạp cặp khóa RSA 3072-bit từ 1 nguồn duy nhất: file App.config
+                _currentPrivateKeyXml = LicenseCrypto.GetConfiguredPrivateKey();
+                _currentPublicKeyXml = LicenseCrypto.GetConfiguredPublicKey();
 
-                string privFile = Path.Combine(_keyStoragePath, "vendor_private_key.xml");
-                string pubFile = Path.Combine(_keyStoragePath, "vendor_public_key.xml");
-
-                if (File.Exists(privFile) && File.Exists(pubFile))
-                {
-                    _currentPrivateKeyXml = File.ReadAllText(privFile);
-                    _currentPublicKeyXml = File.ReadAllText(pubFile);
-                }
-                else
-                {
-                    // Tự động sinh cặp khóa mới lần đầu tiên
-                    var (pub, priv) = LicenseCrypto.GenerateKeyPair();
-                    _currentPublicKeyXml = pub;
-                    _currentPrivateKeyXml = priv;
-
-                    File.WriteAllText(pubFile, pub);
-                    File.WriteAllText(privFile, priv);
-                }
-
-                lblKeyStatus.Text = "Khóa RSA 3072-bit: Đã sẵn sàng";
+                lblKeyStatus.Text = "Khóa RSA 3072-bit: Đã nạp từ App.config";
             }
             catch (Exception ex)
             {
-                lblKeyStatus.Text = "Lỗi nạp khóa: " + ex.Message;
+                _currentPrivateKeyXml = string.Empty;
+                _currentPublicKeyXml = string.Empty;
+                lblKeyStatus.Text = "Lỗi nạp khóa từ App.config: " + ex.Message;
                 lblKeyStatus.ForeColor = Color.Red;
+
+                MessageBox.Show(
+                    "Không thể nạp khóa bản quyền:\n" + ex.Message + "\n\nVui lòng cấu hình License_PrivateKey và License_PublicKey trong file App.config của Tool.",
+                    "Lỗi Cấu Hình Khóa Bản Quyền",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error
+                );
             }
         }
 
@@ -128,40 +112,17 @@ namespace PhuXuanParkingSystem.LicenseTool
                     return;
                 }
 
-                var features = new List<string>();
-                if (chkAnpr.Checked) features.Add("ANPR_Vietnam");
-                if (chkBarrier.Checked) features.Add("AutoBarrier");
-                if (chkDualCamera.Checked) features.Add("DualCameraPerLane");
-                if (chkAdvancedReport.Checked) features.Add("AdvancedReport");
-
                 var payload = new LicensePayload
                 {
                     CustomerName = customerName,
                     MachineCode = machineCode,
                     ExpiryDate = dtpExpiryDate.Value,
                     IssuedAt = DateTime.Now,
-                    MaxLanes = (int)numMaxLanes.Value,
-                    MaxCameras = (int)numMaxCameras.Value,
-                    MaxControllers = (int)numMaxControllers.Value,
-                    Features = features,
                     Note = txtNote.Text.Trim()
                 };
 
                 string licenseKey = LicenseCrypto.SignLicense(payload, _currentPrivateKeyXml);
                 txtGeneratedKey.Text = licenseKey;
-
-                // Tự động giải mã để kiểm tra lại
-                var valResult = LicenseCrypto.ValidateLicense(licenseKey, _currentPublicKeyXml, machineCode);
-                if (valResult.IsValid)
-                {
-                    lblStatusMessage.Text = $"Tạo Key thành công cho [{customerName}]! Hạn dùng: {(payload.IsPermanent ? "Vĩnh viễn" : payload.ExpiryDate.ToString("dd/MM/yyyy"))}";
-                    lblStatusMessage.ForeColor = Color.DarkGreen;
-                }
-                else
-                {
-                    lblStatusMessage.Text = "Cảnh báo xác thực: " + valResult.Message;
-                    lblStatusMessage.ForeColor = Color.OrangeRed;
-                }
             }
             catch (Exception ex)
             {
@@ -220,10 +181,6 @@ namespace PhuXuanParkingSystem.LicenseTool
                     $"• Ngày cấp: {p.IssuedAt:dd/MM/yyyy HH:mm:ss}\r\n" +
                     $"• Hạn sử dụng: {(p.IsPermanent ? "VĨNH VIỄN" : p.ExpiryDate.ToString("dd/MM/yyyy HH:mm:ss"))}\r\n" +
                     $"• Số ngày còn lại: {(p.IsPermanent ? "Không giới hạn" : result.DaysRemaining + " ngày")}\r\n" +
-                    $"• Giới hạn Làn xe: {p.MaxLanes} làn\r\n" +
-                    $"• Giới hạn Camera: {p.MaxCameras} camera\r\n" +
-                    $"• Giới hạn Controller: {p.MaxControllers} bộ điều khiển\r\n" +
-                    $"• Tính năng: {string.Join(", ", p.Features)}\r\n" +
                     $"• Ghi chú: {p.Note ?? "--"}\r\n" +
                     $"------------------------------------------------------\r\n" +
                     $"• TRẠNG THÁI: {(result.IsValid ? "✅ HỢP LỆ & KHỚP CHỮ KÝ" : "❌ KHÔNG HỢP LỆ / HẾT HẠN")}\r\n" +

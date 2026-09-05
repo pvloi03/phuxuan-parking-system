@@ -6,8 +6,8 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>PhuXuanParkingSystem.LicenseTool</RootNamespace>
-    <AssemblyName>PhuXuanParkingSystem.LicenseTool</AssemblyName>
+    <RootNamespace>HPLicenseTool</RootNamespace>
+    <AssemblyName>HPLicenseTool</AssemblyName>
     <ApplicationIcon></ApplicationIcon>
   </PropertyGroup>
 

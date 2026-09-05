@@ -19,8 +19,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
     public class LicenseController : ControllerBase
     {
         private readonly IRepository<LicenseInfo> _licenseRepo;
-        private readonly IRepository<Lane> _laneRepo;
-        private readonly IRepository<Device> _deviceRepo;
         private readonly IAuditLogQueue _auditQueue;
 
         private static readonly string LicenseFilePath = Path.Combine(
@@ -31,13 +29,9 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
         public LicenseController(
             IRepository<LicenseInfo> licenseRepo,
-            IRepository<Lane> laneRepo,
-            IRepository<Device> deviceRepo,
             IAuditLogQueue auditQueue)
         {
             _licenseRepo = licenseRepo;
-            _laneRepo = laneRepo;
-            _deviceRepo = deviceRepo;
             _auditQueue = auditQueue;
         }
 
@@ -58,18 +52,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                     Message = "Hệ thống chưa được kích hoạt bản quyền."
                 };
 
-            // Đếm số lượng thực tế trong cơ sở dữ liệu
-            var allLanes = await _laneRepo.GetAllAsync();
-            int currentLanes = allLanes.Count(l => !l.IsDeleted);
-
-            var allDevices = await _deviceRepo.GetAllAsync();
-            int currentCameras = allDevices.Count(d => !d.IsDeleted && (d.Type == DeviceType.PlateCamera || d.Type == DeviceType.OverviewCamera));
-            int currentControllers = allDevices.Count(d => !d.IsDeleted && d.Type == DeviceType.Controller);
-
-            int maxLanes = validation.Payload?.MaxLanes ?? 2;
-            int maxCameras = validation.Payload?.MaxCameras ?? 4;
-            int maxControllers = validation.Payload?.MaxControllers ?? 1;
-
             return Ok(new
             {
                 machineCode = currentMachineCode,
@@ -80,22 +62,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 customerName = validation.Payload?.CustomerName ?? licenseEntity?.CustomerName ?? "Chưa kích hoạt",
                 expiryDate = validation.Payload?.ExpiryDate ?? licenseEntity?.ExpiryDate,
                 issuedAt = validation.Payload?.IssuedAt ?? licenseEntity?.IssuedAt,
-                message = validation.Message,
-                quota = new
-                {
-                    maxLanes,
-                    currentLanes,
-                    isLanesLimitReached = currentLanes >= maxLanes,
-                    
-                    maxCameras,
-                    currentCameras,
-                    isCamerasLimitReached = currentCameras >= maxCameras,
-
-                    maxControllers,
-                    currentControllers,
-                    isControllersLimitReached = currentControllers >= maxControllers
-                },
-                features = validation.Payload?.Features ?? licenseEntity?.Features ?? new()
+                message = validation.Message
             });
         }
 
@@ -157,11 +124,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 customerName: payload.CustomerName,
                 machineCode: payload.MachineCode,
                 expiryDate: payload.ExpiryDate,
-                licenseKey: request.LicenseKey.Trim(),
-                maxLanes: payload.MaxLanes,
-                maxCameras: payload.MaxCameras,
-                maxControllers: payload.MaxControllers,
-                features: payload.Features
+                licenseKey: request.LicenseKey.Trim()
             );
 
             await _licenseRepo.AddAsync(newEntity);
@@ -176,10 +139,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 customerName = payload.CustomerName,
                 expiryDate = payload.ExpiryDate,
                 daysRemaining = validation.DaysRemaining,
-                isPermanent = payload.IsPermanent,
-                maxLanes = payload.MaxLanes,
-                maxCameras = payload.MaxCameras,
-                maxControllers = payload.MaxControllers
+                isPermanent = payload.IsPermanent
             });
         }
 

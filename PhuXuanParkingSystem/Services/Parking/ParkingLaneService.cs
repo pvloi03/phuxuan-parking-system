@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using PhuXuanParkingSystem.Models.Data;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Models.ValueObjects;
@@ -7,6 +8,7 @@ using PhuXuanParkingSystem.Services.Anpr;
 using PhuXuanParkingSystem.Services.Devices.Camera;
 using PhuXuanParkingSystem.Services.Devices.Health;
 using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Offline;
 using System;
 using System.Collections.Concurrent;
 using System.Drawing;
@@ -26,6 +28,7 @@ namespace PhuXuanParkingSystem.Services.Parking
         private readonly IRepository<Lane>? _laneRepo;
         private readonly IPlateRecognitionService _anprService;
         private readonly IDeviceHealthMonitorService? _healthService;
+        private readonly IServerHealthTracker _healthTracker;
 
         // Bộ nhớ đệm chống chụp chéo 2 làn cạnh nhau: Plate -> (Thời điểm xử lý, Loại làn "IN" | "OUT")
         private readonly ConcurrentDictionary<string, (DateTime ProcessTime, string LaneType)> _lastProcessedPlates = new();
@@ -39,7 +42,8 @@ namespace PhuXuanParkingSystem.Services.Parking
             IPlateRecognitionService anprService,
             IDeviceHealthMonitorService? healthService = null,
             IRepository<Device>? deviceRepo = null,
-            IRepository<Lane>? laneRepo = null)
+            IRepository<Lane>? laneRepo = null,
+            IServerHealthTracker? healthTracker = null)
         {
             _sessionRepo = sessionRepo ?? throw new ArgumentNullException(nameof(sessionRepo));
             _vehicleRepo = vehicleRepo ?? throw new ArgumentNullException(nameof(vehicleRepo));
@@ -49,6 +53,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             _healthService = healthService;
             _deviceRepo = deviceRepo;
             _laneRepo = laneRepo;
+            _healthTracker = healthTracker ?? ServerHealthTracker.Instance;
         }
 
         public async Task<LaneProcessResult> ProcessInLaneAsync(
@@ -80,19 +85,10 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
             if (string.IsNullOrWhiteSpace(inLaneName)) inLaneName = "Làn Vào";
 
-            // 1. Chuẩn bị thư mục lưu trữ ảnh
-            string baseDir = string.IsNullOrWhiteSpace(captureDir)
-                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Captures")
-                : captureDir;
-            string todayFolder = Path.Combine(baseDir, DateTime.Now.ToString("yyyy-MM-dd"));
-            if (!Directory.Exists(todayFolder))
-            {
-                Directory.CreateDirectory(todayFolder);
-            }
-
+            // 1. Chuẩn bị thư mục lưu trữ ảnh (tự động fallback sang OfflineCaptures nếu server mất mạng)
             string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-            string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_plate.jpg");
-            string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_in_overview.jpg");
+            var (filePlate, fileOverview, isLocalFallback, dateFolder, fileNamePlate, fileNameOvw) =
+                PrepareCapturePaths(captureDir, timeStamp, triggerSource, "in");
 
             // 2. Chụp ảnh song song với cơ chế chống chịu lỗi (Graceful Degradation)
             var (plateOk, ovwOk) = await CaptureSnapshotsAsync(plateCam, overviewCam, filePlate, fileOverview, plateDeviceId, overviewDeviceId);
@@ -100,6 +96,9 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.OverviewCamSuccess = ovwOk;
             result.PlateImagePath = plateOk ? filePlate : null;
             result.OverviewImagePath = ovwOk ? fileOverview : null;
+
+            // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
+            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
 
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = "Không đọc được";
@@ -145,12 +144,21 @@ namespace PhuXuanParkingSystem.Services.Parking
             if (detectedPlate != "Không đọc được")
             {
                 var clean = PlateNumber.Clean(detectedPlate);
-                var filter = Builders<ParkingSession>.Filter.Eq(s => s.PlateNumber, clean) &
-                             Builders<ParkingSession>.Filter.Eq(s => s.Status, ParkingSessionStatus.Active) &
-                             Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
+                ParkingSession? existingActive = null;
 
-                var activeSessions = await _sessionRepo.FindAsync(filter, Builders<ParkingSession>.Sort.Descending(s => s.InTime));
-                var existingActive = activeSessions?.FirstOrDefault();
+                if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
+                {
+                    existingActive = await hybridRepo.GetActiveSessionByPlateAsync(clean).ConfigureAwait(false);
+                }
+                else
+                {
+                    var filter = Builders<ParkingSession>.Filter.Eq(s => s.PlateNumber, clean) &
+                                 Builders<ParkingSession>.Filter.Eq(s => s.Status, ParkingSessionStatus.Active) &
+                                 Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
+
+                    var activeSessions = await _sessionRepo.FindAsync(filter, Builders<ParkingSession>.Sort.Descending(s => s.InTime));
+                    existingActive = activeSessions?.FirstOrDefault();
+                }
 
                 if (existingActive != null)
                 {
@@ -189,7 +197,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.PersonType = personType;
             result.IsRegisteredVehicle = isRegistered;
 
-            // 7. Tạo phiên đỗ xe (ParkingSession) và lưu vào MongoDB
+            // 7. Tạo phiên đỗ xe (ParkingSession) và lưu (Hybrid: MongoDB hoặc LiteDB < 2ms)
             string? note = null;
             if (!plateOk && !ovwOk) note = "Cả 2 camera mất kết nối hoặc lỗi lúc chụp";
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
@@ -209,7 +217,15 @@ namespace PhuXuanParkingSystem.Services.Parking
                 personType: personType
             );
 
-            await _sessionRepo.AddAsync(session);
+            if (_sessionRepo is IHybridParkingSessionRepository sessionHybridRepo)
+            {
+                await sessionHybridRepo.CheckInAsync(session).ConfigureAwait(false);
+            }
+            else
+            {
+                await _sessionRepo.AddAsync(session);
+            }
+
             result.Session = session;
             result.Success = true;
 
@@ -252,19 +268,10 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
             if (string.IsNullOrWhiteSpace(outLaneName)) outLaneName = "Làn Ra";
 
-            // 1. Chuẩn bị thư mục lưu trữ ảnh
-            string baseDir = string.IsNullOrWhiteSpace(captureDir)
-                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Captures")
-                : captureDir;
-            string todayFolder = Path.Combine(baseDir, DateTime.Now.ToString("yyyy-MM-dd"));
-            if (!Directory.Exists(todayFolder))
-            {
-                Directory.CreateDirectory(todayFolder);
-            }
-
+            // 1. Chuẩn bị thư mục lưu trữ ảnh (tự động fallback sang OfflineCaptures nếu server mất mạng)
             string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-            string filePlate = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_plate.jpg");
-            string fileOverview = Path.Combine(todayFolder, $"{timeStamp}_{triggerSource}_out_overview.jpg");
+            var (filePlate, fileOverview, isLocalFallback, dateFolder, fileNamePlate, fileNameOvw) =
+                PrepareCapturePaths(captureDir, timeStamp, triggerSource, "out");
 
             // 2. Chụp ảnh song song với cơ chế chống chịu lỗi
             var (plateOk, ovwOk) = await CaptureSnapshotsAsync(plateCam, overviewCam, filePlate, fileOverview, plateDeviceId, overviewDeviceId);
@@ -272,6 +279,9 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.OverviewCamSuccess = ovwOk;
             result.PlateImagePath = plateOk ? filePlate : null;
             result.OverviewImagePath = ovwOk ? fileOverview : null;
+
+            // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
+            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
 
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = "Không đọc được";
@@ -324,17 +334,24 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.PersonType = personType;
             result.IsRegisteredVehicle = isRegistered;
 
-            // 6. Tìm kiếm phiên Active trong bãi khớp 100% biển số
+            // 6. Tìm kiếm phiên Active trong bãi khớp 100% biển số (Kiểm tra cả Mongo lẫn LiteDB)
             ParkingSession? activeSession = null;
             if (detectedPlate != "Không đọc được")
             {
                 var clean = PlateNumber.Clean(detectedPlate);
-                var filter = Builders<ParkingSession>.Filter.Eq(s => s.PlateNumber, clean) &
-                             Builders<ParkingSession>.Filter.Eq(s => s.Status, ParkingSessionStatus.Active) &
-                             Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
+                if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
+                {
+                    activeSession = await hybridRepo.GetActiveSessionByPlateAsync(clean).ConfigureAwait(false);
+                }
+                else
+                {
+                    var filter = Builders<ParkingSession>.Filter.Eq(s => s.PlateNumber, clean) &
+                                 Builders<ParkingSession>.Filter.Eq(s => s.Status, ParkingSessionStatus.Active) &
+                                 Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
 
-                var candidates = await _sessionRepo.FindAsync(filter, Builders<ParkingSession>.Sort.Descending(s => s.InTime));
-                activeSession = candidates.FirstOrDefault();
+                    var candidates = await _sessionRepo.FindAsync(filter, Builders<ParkingSession>.Sort.Descending(s => s.InTime));
+                    activeSession = candidates.FirstOrDefault();
+                }
             }
 
             string? note = null;
@@ -352,7 +369,15 @@ namespace PhuXuanParkingSystem.Services.Parking
                     note: note
                 );
 
-                await _sessionRepo.UpdateAsync(activeSession);
+                if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
+                {
+                    await hybridRepo.CheckOutAsync(activeSession).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _sessionRepo.UpdateAsync(activeSession);
+                }
+
                 result.Session = activeSession;
                 result.Success = true;
                 AppLogger.Information($"[LÀN RA] Hoàn tất Check-out cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {activeSession.Id}, Thời gian gửi: {activeSession.Duration?.TotalMinutes:F0} phút.", "ParkingLaneService");
@@ -374,7 +399,15 @@ namespace PhuXuanParkingSystem.Services.Parking
                     personType: personType
                 );
 
-                await _sessionRepo.AddAsync(unmatchedSession);
+                if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
+                {
+                    await hybridRepo.CheckInAsync(unmatchedSession).ConfigureAwait(false);
+                }
+                else
+                {
+                    await _sessionRepo.AddAsync(unmatchedSession);
+                }
+
                 result.Session = unmatchedSession;
                 result.Success = true;
                 AppLogger.Warning($"[LÀN RA] Tạo phiên UNMATCHED-OUT cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {unmatchedSession.Id}.", "ParkingLaneService");
@@ -553,6 +586,71 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
 
             return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
+        }
+
+        private (string plateFile, string ovwFile, bool isLocalFallback, string dateFolder, string fileNamePlate, string fileNameOvw) PrepareCapturePaths(
+            string captureDir, string timeStamp, string triggerSource, string laneType)
+        {
+            string dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
+            string fileNamePlate = $"{timeStamp}_{triggerSource}_{laneType}_plate.jpg";
+            string fileNameOvw = $"{timeStamp}_{triggerSource}_{laneType}_overview.jpg";
+
+            string primaryBase = string.IsNullOrWhiteSpace(captureDir) ? "Captures" : captureDir;
+            string primaryDir = Path.IsPathRooted(primaryBase) ? primaryBase : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, primaryBase);
+
+            if (_healthTracker == null || _healthTracker.IsServerOnline)
+            {
+                try
+                {
+                    string primaryDateFolder = Path.Combine(primaryDir, dateFolder);
+                    if (!Directory.Exists(primaryDateFolder)) Directory.CreateDirectory(primaryDateFolder);
+                    return (Path.Combine(primaryDateFolder, fileNamePlate), Path.Combine(primaryDateFolder, fileNameOvw), false, dateFolder, fileNamePlate, fileNameOvw);
+                }
+                catch
+                {
+                    // Lỗi I/O thư mục mạng máy chủ -> fallback
+                }
+            }
+
+            // Fallback lưu vào thư mục Offline cục bộ trên máy bốt
+            string offlineDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures", dateFolder);
+            if (!Directory.Exists(offlineDir)) Directory.CreateDirectory(offlineDir);
+
+            return (Path.Combine(offlineDir, fileNamePlate), Path.Combine(offlineDir, fileNameOvw), true, dateFolder, fileNamePlate, fileNameOvw);
+        }
+
+        private void QueueOfflineImageSync(bool isLocalFallback, bool plateOk, bool ovwOk, string filePlate, string fileOverview, string dateFolder, string fileNamePlate, string fileNameOvw)
+        {
+            if (!isLocalFallback) return;
+
+            try
+            {
+                var col = LiteDbContext.Instance.GetImageSyncTasks();
+                if (plateOk && File.Exists(filePlate))
+                {
+                    col.Insert(new OfflineImageSyncTask
+                    {
+                        LocalFilePath = filePlate,
+                        RemoteRelativePath = Path.Combine(dateFolder, fileNamePlate),
+                        CreatedAt = DateTime.Now,
+                        IsSynced = false
+                    });
+                }
+                if (ovwOk && File.Exists(fileOverview))
+                {
+                    col.Insert(new OfflineImageSyncTask
+                    {
+                        LocalFilePath = fileOverview,
+                        RemoteRelativePath = Path.Combine(dateFolder, fileNameOvw),
+                        CreatedAt = DateTime.Now,
+                        IsSynced = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"Không thể xếp hàng đồng bộ ảnh offline: {ex.Message}");
+            }
         }
 
         #endregion

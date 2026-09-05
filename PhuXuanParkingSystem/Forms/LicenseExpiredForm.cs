@@ -87,8 +87,7 @@ namespace PhuXuanParkingSystem.Forms
             MessageBox.Show(
                 $"Chúc mừng! Bản quyền phần mềm đã được kích hoạt thành công!\n\n" +
                 $"• Đơn vị: {result.Payload?.CustomerName}\n" +
-                $"• Thời hạn: {durationText}\n" +
-                $"• Giới hạn: {result.Payload?.MaxLanes} làn xe, {result.Payload?.MaxCameras} camera\n\n" +
+                $"• Thời hạn: {durationText}\n\n" +
                 $"Hệ thống sẽ chuyển sang giao diện vận hành bãi đỗ xe.",
                 "Kích Hoạt Thành Công",
                 MessageBoxButtons.OK,

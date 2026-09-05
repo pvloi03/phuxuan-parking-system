@@ -21,18 +21,15 @@ namespace PhuXuanParkingSystem.Api.Controllers
     {
         private readonly IRepository<Lane> _laneRepo;
         private readonly IRepository<Device> _deviceRepo;
-        private readonly IRepository<LicenseInfo> _licenseRepo;
         private readonly IAuditLogQueue _auditQueue;
 
         public LanesController(
             IRepository<Lane> laneRepo,
             IRepository<Device> deviceRepo,
-            IRepository<LicenseInfo> licenseRepo,
             IAuditLogQueue auditQueue)
         {
             _laneRepo = laneRepo;
             _deviceRepo = deviceRepo;
-            _licenseRepo = licenseRepo;
             _auditQueue = auditQueue;
         }
 
@@ -97,14 +94,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail("Mã làn không được để trống."));
             }
 
-            // Kiểm tra giới hạn bản quyền MaxLanes
-            var payload = await Helpers.LicenseValidationHelper.GetCurrentPayloadAsync(_licenseRepo);
-            var existingLanes = await _laneRepo.GetAllAsync();
-            int activeCount = existingLanes.Count(l => !l.IsDeleted);
-            if (activeCount >= payload.MaxLanes)
-            {
-                return BadRequest(ApiResponse.Fail($"Số lượng làn xe đã đạt tối đa giới hạn bản quyền ({payload.MaxLanes} làn). Vui lòng liên hệ nhà cung cấp để nâng cấp gói bản quyền."));
-            }
 
             lane.Code = lane.Code.Trim().ToUpperInvariant();
             var exists = await _laneRepo.FindOneAsync(l => l.Code == lane.Code && !l.IsDeleted);

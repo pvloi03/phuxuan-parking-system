@@ -27,17 +27,6 @@ namespace PhuXuanParkingSystem.Models.Entities
         public string? Signature { get; set; }                        // [LƯU DB] Chữ ký số điện tử xác thực tính toàn vẹn
         public bool IsActive { get; set; } = true;                    // [LƯU DB] Trạng thái hiệu lực
 
-        // --- CÁC GIỚI HẠN BẢN QUYỀN (QUOTA LIMITS) ---
-        public int MaxLanes { get; set; } = 2;                        // [LƯU DB] Số làn xe tối đa (Mặc định 2: 1 vào, 1 ra)
-        public int MaxCameras { get; set; } = 4;                      // [LƯU DB] Số camera tối đa (2 biển số + 2 toàn cảnh)
-        public int MaxControllers { get; set; } = 1;                  // [LƯU DB] Số bộ điều khiển tối đa (1 ZKTeco / Relay)
-        public List<string> Features { get; set; } = new()            // [LƯU DB] Danh sách tính năng được cấp phép
-        {
-            "ANPR_Vietnam",
-            "AutoBarrier",
-            "DualCameraPerLane"
-        };
-
         // =========================================================================
         // --- 2. CÁC THUỘC TÍNH TÍNH TOÁN TRONG RAM (COMPUTED GETTERS) ---
         // =========================================================================
@@ -81,21 +70,13 @@ namespace PhuXuanParkingSystem.Models.Entities
             string machineCode,
             DateTime expiryDate,
             string licenseKey,
-            string? signature = null,
-            int maxLanes = 2,
-            int maxCameras = 4,
-            int maxControllers = 1,
-            List<string>? features = null)
+            string? signature = null)
         {
             CustomerName = customerName;
             MachineCode = machineCode;
             ExpiryDate = expiryDate;
             LicenseKey = licenseKey;
             Signature = signature;
-            MaxLanes = maxLanes;
-            MaxCameras = maxCameras;
-            MaxControllers = maxControllers;
-            if (features != null) Features = features;
             IssuedAt = DateTime.Now;
             IsActive = true;
         }

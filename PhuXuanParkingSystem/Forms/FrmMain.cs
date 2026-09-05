@@ -4,20 +4,18 @@ using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Models.Enums;
 using PhuXuanParkingSystem.Repositories;
 using PhuXuanParkingSystem.Services.Anpr;
-using PhuXuanParkingSystem.Services.Devices;
-using PhuXuanParkingSystem.Services.Devices.Camera;
 using PhuXuanParkingSystem.Services.Devices.Config;
 using PhuXuanParkingSystem.Services.Devices.Health;
-using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.License;
 using PhuXuanParkingSystem.Services.Logging;
+using PhuXuanParkingSystem.Services.Offline;
 using PhuXuanParkingSystem.Services.Parking;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace PhuXuanParkingSystem.Forms
 {
@@ -69,16 +67,48 @@ namespace PhuXuanParkingSystem.Forms
                 _adapterFactory = Program.ServiceProvider.GetService<IDeviceAdapterFactory>() ?? new DeviceAdapterFactory();
                 _deviceHealthService = Program.ServiceProvider.GetService<IDeviceHealthMonitorService>() ?? new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
                 _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
+
+                var sessionRepo = Program.ServiceProvider.GetService<IRepository<ParkingSession>>() ??
+                                  (IRepository<ParkingSession>)new HybridParkingSessionRepository();
+                var vehicleRepo = Program.ServiceProvider.GetService<IRepository<Vehicle>>() ?? new MongoRepository<Vehicle>();
+                var personRepo = Program.ServiceProvider.GetService<IRepository<Person>>() ?? new MongoRepository<Person>();
+                var deptRepo = Program.ServiceProvider.GetService<IRepository<Department>>() ?? new MongoRepository<Department>();
+
                 _laneService = Program.ServiceProvider.GetService<IParkingLaneService>() ??
                     new ParkingLaneService(
-                        new MongoRepository<ParkingSession>(),
-                        new MongoRepository<Vehicle>(),
-                        new MongoRepository<Person>(),
-                        new MongoRepository<Department>(),
+                        sessionRepo,
+                        vehicleRepo,
+                        personRepo,
+                        deptRepo,
                         _anprService,
                         _deviceHealthService,
                         _deviceRepo,
-                        _laneRepo);
+                        _laneRepo,
+                        ServerHealthTracker.Instance);
+
+                // Lắng nghe sự kiện đồng bộ ngoại tuyến & trạng thái máy chủ
+                var syncWorker = Program.ServiceProvider.GetService<Services.Background.OfflineSyncBackgroundWorker>();
+                if (syncWorker != null)
+                {
+                    syncWorker.SyncStatusChanged += (s, args) =>
+                    {
+                        void UpdateUi()
+                        {
+                            lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {args.StatusMessage}";
+                            if (args.IsServerOnline)
+                            {
+                                lblFooterStatus.ForeColor = args.PendingRecordCount > 0 ? Color.DodgerBlue : Color.FromArgb(40, 167, 69);
+                            }
+                            else
+                            {
+                                lblFooterStatus.ForeColor = Color.DarkOrange;
+                            }
+                        }
+
+                        if (InvokeRequired) BeginInvoke(new Action(UpdateUi));
+                        else UpdateUi();
+                    };
+                }
             }
             else
             {
@@ -89,14 +119,15 @@ namespace PhuXuanParkingSystem.Forms
                 _deviceHealthService = new DeviceHealthMonitorService(_deviceRepo, _adapterFactory);
                 _deviceConfigService = new DeviceConfigService(_laneRepo, _deviceRepo);
                 _laneService = new ParkingLaneService(
-                    new MongoRepository<ParkingSession>(),
+                    new HybridParkingSessionRepository(),
                     new MongoRepository<Vehicle>(),
                     new MongoRepository<Person>(),
                     new MongoRepository<Department>(),
                     _anprService,
                     _deviceHealthService,
                     _deviceRepo,
-                    _laneRepo);
+                    _laneRepo,
+                    ServerHealthTracker.Instance);
             }
 
             // Đăng ký sự kiện khi cấu hình thay đổi (Web Admin sửa IP, etc.)
@@ -235,9 +266,23 @@ namespace PhuXuanParkingSystem.Forms
                     var newValidation = LicenseCrypto.ValidateLicense(expiredForm.ActivatedKey);
                     if (newValidation.Payload != null)
                     {
-                        await _licenseManager.SaveLicenseKeyAsync(expiredForm.ActivatedKey, newValidation.Payload);
-                        UpdateLicenseFooter(newValidation);
-                        return;
+                        try
+                        {
+                            await _licenseManager.SaveLicenseKeyAsync(expiredForm.ActivatedKey, newValidation.Payload);
+                            UpdateLicenseFooter(newValidation);
+                            return;
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(
+                                $"Không thể lưu KEY bản quyền vào CSDL MongoDB: {ex.Message}\n\nVui lòng kiểm tra lại kết nối mạng hoặc máy chủ cơ sở dữ liệu.",
+                                "Lỗi Lưu KEY Bản Quyền",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                            Environment.Exit(0);
+                            return;
+                        }
                     }
                 }
                 else
@@ -285,9 +330,21 @@ namespace PhuXuanParkingSystem.Forms
                     var newValidation = LicenseCrypto.ValidateLicense(activateForm.ActivatedKey);
                     if (newValidation.Payload != null)
                     {
-                        await _licenseManager.SaveLicenseKeyAsync(activateForm.ActivatedKey, newValidation.Payload);
-                        UpdateLicenseFooter(newValidation);
-                        MessageBox.Show("Đã cập nhật bản quyền mới thành công!", "Thông Báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        try
+                        {
+                            await _licenseManager.SaveLicenseKeyAsync(activateForm.ActivatedKey, newValidation.Payload);
+                            UpdateLicenseFooter(newValidation);
+                            MessageBox.Show("Đã cập nhật bản quyền mới thành công!", "Thông Báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(
+                                $"Không thể lưu bản quyền vào CSDL MongoDB: {ex.Message}\n\nVui lòng kiểm tra lại kết nối máy chủ cơ sở dữ liệu.",
+                                "Lỗi Lưu Bản Quyền",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error
+                            );
+                        }
                     }
                 }
             }

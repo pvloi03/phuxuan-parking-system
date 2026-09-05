@@ -30,11 +30,7 @@ namespace PhuXuanParkingSystem.Tests.Licensing
             {
                 CustomerName = "Bãi Đỗ Xe Phú Xuân",
                 MachineCode = machineCode,
-                ExpiryDate = DateTime.Now.AddDays(30),
-                MaxLanes = 2,
-                MaxCameras = 4,
-                MaxControllers = 1,
-                Features = new List<string> { "ANPR_Vietnam", "AutoBarrier" }
+                ExpiryDate = DateTime.Now.AddDays(30)
             };
 
             string licenseKey = LicenseCrypto.SignLicense(payload, privateKey);
@@ -46,9 +42,7 @@ namespace PhuXuanParkingSystem.Tests.Licensing
             Assert.False(validation.IsExpired);
             Assert.True(validation.IsMachineMatched);
             Assert.Equal(30, validation.DaysRemaining);
-            Assert.Equal(2, validation.Payload?.MaxLanes);
-            Assert.Equal(4, validation.Payload?.MaxCameras);
-            Assert.Equal(1, validation.Payload?.MaxControllers);
+            Assert.Equal("Bãi Đỗ Xe Phú Xuân", validation.Payload?.CustomerName);
         }
 
         [Fact]
@@ -62,7 +56,6 @@ namespace PhuXuanParkingSystem.Tests.Licensing
                 CustomerName = "Khách Hàng Hết Hạn",
                 MachineCode = machineCode,
                 ExpiryDate = DateTime.Now.AddDays(-1), // Đã hết hạn hôm qua
-                MaxLanes = 2,
             };
 
             string licenseKey = LicenseCrypto.SignLicense(payload, privateKey);
@@ -117,35 +110,47 @@ namespace PhuXuanParkingSystem.Tests.Licensing
         }
 
         [Fact]
-        public void DefaultPublicKeyXml_ShouldBeValidRsaKey()
+        public void GetConfiguredPublicKey_ShouldLoadFromAppConfig()
         {
-            Assert.False(string.IsNullOrWhiteSpace(LicenseCrypto.DefaultPublicKeyXml));
-            using (var rsa = System.Security.Cryptography.RSA.Create())
-            {
-                // Không được ném ngoại lệ Base64 hoặc XML Format
-                rsa.FromXmlString(LicenseCrypto.DefaultPublicKeyXml);
-                Assert.Equal(3072, rsa.KeySize);
-            }
+            string pubKey = LicenseCrypto.GetConfiguredPublicKey();
+            Assert.False(string.IsNullOrWhiteSpace(pubKey));
+            Assert.Contains("<RSAKeyValue>", pubKey);
+            Assert.Contains("<Modulus>", pubKey);
+            Assert.DoesNotContain("<D>", pubKey); // Public key không chứa thành phần private D
         }
 
         [Fact]
-        public void Validate_WithDefaultPublicKeyXml_ShouldSucceed()
+        public void GetConfiguredPrivateKey_ShouldLoadFromAppConfig()
         {
-            // Kiểm tra validate với publicKeyXml = null (dùng DefaultPublicKeyXml mặc định)
-            var (publicKey, privateKey) = LicenseCrypto.GenerateKeyPair();
+            string privKey = LicenseCrypto.GetConfiguredPrivateKey();
+            Assert.False(string.IsNullOrWhiteSpace(privKey));
+            Assert.Contains("<RSAKeyValue>", privKey);
+            Assert.Contains("<Modulus>", privKey);
+            Assert.Contains("<D>", privKey); // Private key chứa thành phần private D
+        }
+
+        [Fact]
+        public void Validate_WithAppConfigPublicKey_ShouldSucceed()
+        {
+            // Kiểm tra validate với publicKeyXml = null (Client nạp duy nhất từ App.config)
             string machineCode = HardwareFingerprint.GetMachineCode();
 
             var payload = new LicensePayload
             {
-                CustomerName = "Khách Hàng Test",
+                CustomerName = "Khách Hàng Phú Xuân Test",
                 MachineCode = machineCode,
                 ExpiryDate = DateTime.Now.AddDays(30)
             };
 
-            // Ký số với private key bất kỳ và validate với public key tương ứng
-            string key = LicenseCrypto.SignLicense(payload, privateKey);
-            var result = LicenseCrypto.ValidateLicense(key, publicKey, machineCode);
+            // Ký số và xác thực nạp khóa duy nhất từ App.config
+            string key = LicenseCrypto.SignLicense(payload);
+            var result = LicenseCrypto.ValidateLicense(key, null, machineCode);
+
             Assert.True(result.IsValid);
+            Assert.True(result.IsMachineMatched);
+            Assert.False(result.IsExpired);
+            Assert.Equal(30, result.DaysRemaining);
+            Assert.Equal("Khách Hàng Phú Xuân Test", result.Payload?.CustomerName);
         }
     }
 }

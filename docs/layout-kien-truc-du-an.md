@@ -80,7 +80,7 @@ PhuXuanParkingSystem/
 │   │   └── FrmLicenseExpired.cs                 # License Expired Form
 │   └── Program.cs                                 # Composition Root (DI Container)
 │
-├── PhuXuanParkingSystem.LicenseTool/             # WinForms Tool tạo License Key (RSA-3072)
+├── HPLicenseTool/                                # WinForms Tool tạo License Key (RSA-3072)
 │
 └── tests/
     └── PhuXuanParkingSystem.Tests/               # xUnit Tests

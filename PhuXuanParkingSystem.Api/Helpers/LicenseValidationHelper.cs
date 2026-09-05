@@ -55,10 +55,7 @@ namespace PhuXuanParkingSystem.Api.Helpers
             {
                 CustomerName = "Dùng Thử / Chưa Kích Hoạt",
                 MachineCode = machineCode,
-                ExpiryDate = DateTime.Now.AddDays(7),
-                MaxLanes = 2,
-                MaxCameras = 4,
-                MaxControllers = 1
+                ExpiryDate = DateTime.Now.AddDays(7)
             };
         }
     }

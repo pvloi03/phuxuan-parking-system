@@ -16,7 +16,14 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.8.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
     <PackageReference Include="EPPlus" Version="7.3.2" />
   </ItemGroup>
+
+  <!-- Tự động tạo appsettings.json từ appsettings.example.json nếu chưa có trên máy dev -->
+  <Target Name="EnsureAppSettings" BeforeTargets="BeforeBuild" Condition="!Exists('appsettings.json') And Exists('appsettings.example.json')">
+    <Copy SourceFiles="appsettings.example.json" DestinationFiles="appsettings.json" />
+  </Target>
 
 </Project>

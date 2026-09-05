@@ -1,8 +1,5 @@
-import { Sun, Moon, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { Sun, Moon } from 'lucide-react'
 import { useThemeStore } from '@/stores/useThemeStore'
-import { licenseService } from '@/services/licenseService'
 
 interface HeaderProps {
   title?: string
@@ -11,12 +8,6 @@ interface HeaderProps {
 
 export function Header({ title = 'Bảng Điều Khiển', subtitle }: HeaderProps) {
   const { isDark, toggleTheme } = useThemeStore()
-
-  const { data: license } = useQuery({
-    queryKey: ['header-license-status'],
-    queryFn: () => licenseService.getStatus(),
-    refetchInterval: 60000,
-  })
 
   return (
     <header className="h-14 border-b border-slate-100 dark:border-[#1e2d3d] bg-white/95 dark:bg-[#0c1220]/95 backdrop-blur-sm px-6 flex items-center justify-between sticky top-0 z-40">
@@ -32,37 +23,6 @@ export function Header({ title = 'Bảng Điều Khiển', subtitle }: HeaderPro
       </div>
 
       <div className="flex items-center gap-3">
-        {/* License Status Badge */}
-        {license && (
-          <Link
-            to="/license"
-            className={`hidden md:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition border ${
-              !license.isValid || license.isExpired
-                ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50'
-                : !license.isPermanent && license.daysRemaining <= 15
-                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900/50'
-            }`}
-            title="Nhấp để xem chi tiết bản quyền và hạn mức"
-          >
-            {!license.isValid || license.isExpired ? (
-              <>
-                <ShieldX className="w-3.5 h-3.5 text-red-600" />
-                <span>Hết Hạn Bản Quyền</span>
-              </>
-            ) : !license.isPermanent && license.daysRemaining <= 15 ? (
-              <>
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
-                <span>Bản Quyền: Còn {license.daysRemaining} ngày</span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{license.isPermanent ? 'Bản Quyền Vĩnh Viễn' : `Bản Quyền: Còn ${license.daysRemaining} ngày`}</span>
-              </>
-            )}
-          </Link>
-        )}
 
         {/* Live Indicator */}
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/50">

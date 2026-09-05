@@ -7,7 +7,7 @@ Triển khai hệ thống Bản quyền (License Key) sử dụng chữ ký số
 - `MaxControllers`: 1 (ZKTeco/Relay)
 - WinForms Khách: Footer label "Thời gian sử dụng: ... ngày", tự chuyển sang `LicenseExpiredForm` khi hết hạn.
 - Web Admin: Header Badge, trang quản lý và nạp key `LicensePage.tsx`.
-- Tool WinForms riêng `PhuXuanParkingSystem.LicenseTool` để sinh key bản quyền.
+- Tool WinForms riêng `HPLicenseTool` để sinh key bản quyền.
 
 ## 2. Checklist Tiến Độ
 - [x] **Bước 1: Core Licensing Library (`PhuXuanParkingSystem.Domain` / `PhuXuanParkingSystem.Licensing`)**
@@ -15,8 +15,8 @@ Triển khai hệ thống Bản quyền (License Key) sử dụng chữ ký số
   - [x] Thuật toán `HardwareFingerprint.cs` (WMI: CPU, Motherboard, Disk, BIOS Serial).
   - [x] Ký số RSA & Xác thực `LicenseCrypto.cs` (RSA 3072-bit, SHA256).
   - [x] Viết unit tests kiểm thử chữ ký số, sai mã máy, hết hạn, giả mạo key.
-- [x] **Bước 2: WinForms Tool Tạo Key (`PhuXuanParkingSystem.LicenseTool`)**
-  - [x] Tạo project WinForms .NET 8 `PhuXuanParkingSystem.LicenseTool`.
+- [x] **Bước 2: WinForms Tool Tạo Key (`HPLicenseTool`)**
+  - [x] Tạo project WinForms .NET 8 `HPLicenseTool`.
   - [x] Giao diện phát hành key: nhập khách hàng, mã máy, chọn thời hạn (30 ngày, 90 ngày, 1 năm, 3 năm, vĩnh viễn), cấu hình số làn / camera / controller.
   - [x] Tự động sinh khóa RSA 3072-bit, xuất file `.lic`, sao chép key.
   - [x] Tab giải mã & kiểm tra tính toàn vẹn chữ ký số của key / file `.lic`.

@@ -2,6 +2,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Configuration;
 #if NET6_0_OR_GREATER
 using System.Runtime.Versioning;
 #endif
@@ -19,7 +20,33 @@ namespace PhuXuanParkingSystem.Licensing
         private const int KeySize = 3072;
         public const string LicensePrefix = "PX-LIC-";
 
-        public const string DefaultPublicKeyXml = @"<RSAKeyValue><Modulus>ngkRE8TrNYUW5hyaHEdG0B9Ez+pV28ewRYCiGxDlu5uZapISLi03JAbhdvSYP1pTjU3o2+ygMOxyCKjt4QA0iXQ6qhGsPKAJP5tASkCbHaqc7pyJb2+lpVkTiusMl+XJTXJPsfdUMkusP43hHUO4NdXV+yDvWhzOKfkjhIvLv5au2DttvQmluxCqmHPbwygt4sZjmqR7EIPtMRBFe5tPUN6045dVpBQXeKr6joTbkPB9/XtTlMjOcq1e4JfTHTJw9AyMRGoDlSVkMiaIQCfR6GLs0nfUbfWzpvm998UrYHZWaWJCIkZF7HOYb9t23OJzJ/jFN9q2tZ2jGy4keP9OkYSgoNMC1MiCUMXeXRIidNVxIp9VtcBV/Il1sxZVzoXX/k0K6WQaOu2EM2sD06U8Hi9CUgBFSX1MT0ie9OnzWk1ALC8mzF6efuTgalp600DRn5ZFCHIWb+2Yz179Y6VZ7H8/+46ZDQJxufeVNMXN2rQo/iS7qW+WzS/KJ2SC/EEh</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+        /// <summary>
+        /// Lấy Public Key từ file App.config (nguồn cấu hình duy nhất)
+        /// </summary>
+        public static string GetConfiguredPublicKey()
+        {
+            string? configKey = ConfigurationManager.AppSettings["License_PublicKey"];
+            if (!string.IsNullOrWhiteSpace(configKey))
+            {
+                return configKey.Trim();
+            }
+
+            throw new InvalidOperationException("Khóa công khai (License_PublicKey) chưa được cấu hình trong file App.config.");
+        }
+
+        /// <summary>
+        /// Lấy Private Key từ file App.config (nguồn cấu hình duy nhất)
+        /// </summary>
+        public static string GetConfiguredPrivateKey()
+        {
+            string? configKey = ConfigurationManager.AppSettings["License_PrivateKey"];
+            if (!string.IsNullOrWhiteSpace(configKey))
+            {
+                return configKey.Trim();
+            }
+
+            throw new InvalidOperationException("Khóa riêng tư (License_PrivateKey) chưa được cấu hình trong file App.config.");
+        }
 
         /// <summary>
         /// Sinh cặp khóa RSA 3072-bit mới (Dành cho Tool Tạo Key)
@@ -36,10 +63,12 @@ namespace PhuXuanParkingSystem.Licensing
         /// <summary>
         /// Ký số và tạo chuỗi License Key hoàn chỉnh từ Payload
         /// </summary>
-        public static string SignLicense(LicensePayload payload, string privateKeyXml)
+        public static string SignLicense(LicensePayload payload, string? privateKeyXml = null)
         {
             if (payload == null) throw new ArgumentNullException(nameof(payload));
-            if (string.IsNullOrWhiteSpace(privateKeyXml)) throw new ArgumentException("Private Key không được rỗng.", nameof(privateKeyXml));
+            string privKey = string.IsNullOrWhiteSpace(privateKeyXml)
+                ? (GetConfiguredPrivateKey() ?? throw new ArgumentException("Private Key không được rỗng (chưa cấu hình trong App.config hoặc tham số).", nameof(privateKeyXml)))
+                : privateKeyXml!;
 
             string jsonPayload = JsonSerializer.Serialize(payload, new JsonSerializerOptions
             {
@@ -50,7 +79,7 @@ namespace PhuXuanParkingSystem.Licensing
 
             using (var rsa = RSA.Create())
             {
-                rsa.FromXmlString(privateKeyXml);
+                rsa.FromXmlString(privKey);
                 byte[] signatureBytes = rsa.SignData(dataBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
                 string signatureBase64 = Convert.ToBase64String(signatureBytes);
 
@@ -100,8 +129,8 @@ namespace PhuXuanParkingSystem.Licensing
                 string jsonPayload = parts[0];
                 string signatureBase64 = parts[1];
 
-                // 2. Xác thực chữ ký số RSA với Public Key
-                string pubKey = string.IsNullOrWhiteSpace(publicKeyXml) ? DefaultPublicKeyXml : publicKeyXml!;
+                // 2. Xác thực chữ ký số RSA với Public Key (Ưu tiên từ App.config)
+                string pubKey = string.IsNullOrWhiteSpace(publicKeyXml) ? GetConfiguredPublicKey() : publicKeyXml!;
                 byte[] dataBytes = Encoding.UTF8.GetBytes(jsonPayload);
                 byte[] signatureBytes = Convert.FromBase64String(signatureBase64);
 

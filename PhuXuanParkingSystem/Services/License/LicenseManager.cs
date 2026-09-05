@@ -1,93 +1,67 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using MongoDB.Driver;
 using PhuXuanParkingSystem.Licensing;
 using PhuXuanParkingSystem.Models.Entities;
 using PhuXuanParkingSystem.Repositories;
+using PhuXuanParkingSystem.Services.Logging;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Services.License
 {
-    public class LicenseManager
+    /// <summary>
+    /// Quản lý License bản quyền của hệ thống: Chỉ lưu và truy vấn trực tiếp từ CSDL MongoDB
+    /// </summary>
+    public class LicenseManager(IRepository<LicenseInfo>? licenseRepo = null)
     {
-        private static readonly string LicenseFilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "PhuXuanParkingSystem",
-            "license.lic"
-        );
+        private readonly IRepository<LicenseInfo> _licenseRepo = licenseRepo ?? new MongoRepository<LicenseInfo>();
 
-        private readonly MongoRepository<LicenseInfo>? _licenseRepo;
-
-        public LicenseManager(MongoRepository<LicenseInfo>? licenseRepo = null)
-        {
-            _licenseRepo = licenseRepo;
-        }
-
+        /// <summary>
+        /// Lấy LicenseKey đang kích hoạt gần nhất trực tiếp từ MongoDB
+        /// </summary>
         public async Task<string?> GetCurrentLicenseKeyAsync()
         {
-            // 1. Thử đọc từ MongoDB trước
-            if (_licenseRepo != null)
+            try
             {
-                try
+                var filter = Builders<LicenseInfo>.Filter.Where(l => l.IsActive && !l.IsDeleted);
+                var sort = Builders<LicenseInfo>.Sort.Descending(l => l.CreatedAt);
+                var licenses = await _licenseRepo.FindAsync(filter, sort);
+                var activeLicense = licenses.FirstOrDefault();
+
+                if (activeLicense != null && !string.IsNullOrWhiteSpace(activeLicense.LicenseKey))
                 {
-                    var all = await _licenseRepo.GetAllAsync();
-                    var activeLicense = all.Where(l => l.IsActive && !l.IsDeleted).OrderByDescending(l => l.CreatedAt).FirstOrDefault();
-                    if (activeLicense != null && !string.IsNullOrWhiteSpace(activeLicense.LicenseKey))
-                    {
-                        return activeLicense.LicenseKey;
-                    }
-                }
-                catch
-                {
-                    // Fallback to local file nếu chưa kết nối được DB
+                    return activeLicense.LicenseKey;
                 }
             }
-
-            // 2. Thử đọc từ file cục bộ
-            if (File.Exists(LicenseFilePath))
+            catch (Exception ex)
             {
-                try
-                {
-                    string key = File.ReadAllText(LicenseFilePath).Trim();
-                    if (!string.IsNullOrWhiteSpace(key))
-                        return key;
-                }
-                catch { }
+                AppLogger.Error(ex, "Lỗi khi truy vấn LicenseKey từ CSDL MongoDB", "LicenseManager");
             }
 
             return null;
         }
 
+        /// <summary>
+        /// Lưu thông tin License mới kích hoạt trực tiếp vào MongoDB
+        /// </summary>
         public async Task SaveLicenseKeyAsync(string licenseKey, LicensePayload payload)
         {
-            // 1. Lưu file cục bộ
             try
             {
-                string dir = Path.GetDirectoryName(LicenseFilePath)!;
-                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                File.WriteAllText(LicenseFilePath, licenseKey);
+                var entity = new LicenseInfo(
+                    customerName: payload.CustomerName,
+                    machineCode: payload.MachineCode,
+                    expiryDate: payload.ExpiryDate,
+                    licenseKey: licenseKey
+                );
+
+                await _licenseRepo.AddAsync(entity);
+                AppLogger.Information($"Đã lưu License bản quyền cho khách hàng [{payload.CustomerName}] vào MongoDB.", "LicenseManager");
             }
-            catch { }
-
-            // 2. Lưu vào MongoDB
-            if (_licenseRepo != null)
+            catch (Exception ex)
             {
-                try
-                {
-                    var entity = new LicenseInfo(
-                        customerName: payload.CustomerName,
-                        machineCode: payload.MachineCode,
-                        expiryDate: payload.ExpiryDate,
-                        licenseKey: licenseKey,
-                        maxLanes: payload.MaxLanes,
-                        maxCameras: payload.MaxCameras,
-                        maxControllers: payload.MaxControllers,
-                        features: payload.Features
-                    );
-
-                    await _licenseRepo.AddAsync(entity);
-                }
-                catch { }
+                AppLogger.Error(ex, "Lỗi khi lưu License bản quyền vào CSDL MongoDB", "LicenseManager");
+                throw;
             }
         }
     }

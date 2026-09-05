@@ -8,7 +8,7 @@
   </Folder>
   <Project Path="PhuXuanParkingSystem.Api/PhuXuanParkingSystem.Api.csproj" />
   <Project Path="PhuXuanParkingSystem.Domain/PhuXuanParkingSystem.Domain.csproj" />
-  <Project Path="PhuXuanParkingSystem.LicenseTool/PhuXuanParkingSystem.LicenseTool.csproj" />
+  <Project Path="HPLicenseTool/HPLicenseTool.csproj" />
   <Project Path="PhuXuanParkingSystem/PhuXuanParkingSystem.csproj" Id="c2d7eea6-036f-4a8c-b688-bd55ff8ccaa1">
     <Platform Solution="*|x86" Project="x86" />
   </Project>

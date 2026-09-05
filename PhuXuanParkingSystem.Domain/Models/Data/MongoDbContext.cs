@@ -1,14 +1,11 @@
-using PhuXuanParkingSystem.Models.Entities;
+using Humanizer;
 using MongoDB.Driver;
 using System;
 using System.Configuration;
-using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Models.Data
 {
-    /// <summary>
-    /// Database Context quản lý kết nối MongoDB và các Collection đối tượng trong hệ thống
-    /// </summary>
+    // Database Context quản lý kết nối MongoDB và các Collection đối tượng trong hệ thống
     public class MongoDbContext
     {
         private static readonly Lazy<MongoDbContext> _instance = new(() => new MongoDbContext());
@@ -20,64 +17,62 @@ namespace PhuXuanParkingSystem.Models.Data
         public IMongoClient Client => _client;
         public IMongoDatabase Database => _database;
 
-        // --- CÁC COLLECTIONS QUẢN LÝ ---
-        public IMongoCollection<ParkingSession> ParkingSessions => _database.GetCollection<ParkingSession>("ParkingSessions");
-        public IMongoCollection<Vehicle> Vehicles => _database.GetCollection<Vehicle>("Vehicles");
-        public IMongoCollection<Person> Persons => _database.GetCollection<Person>("People");
-        public IMongoCollection<Department> Departments => _database.GetCollection<Department>("Departments");
-        public IMongoCollection<Company> Companies => _database.GetCollection<Company>("Companies");
-        public IMongoCollection<Contractor> Contractors => _database.GetCollection<Contractor>("Contractors");
-        public IMongoCollection<Lane> Lanes => _database.GetCollection<Lane>("Lanes");
-        public IMongoCollection<Device> Devices => _database.GetCollection<Device>("Devices");
-        public IMongoCollection<User> Users => _database.GetCollection<User>("Users");
+        private readonly string _serverHost = "127.0.0.1";
+        private readonly int _serverPort = 27017;
+
+        public string ServerHost => _serverHost;
+        public int ServerPort => _serverPort;
+
+        // Tự động lấy Collection theo tên Type được số nhiều hóa (Pluralize) qua Humanizer
+        public IMongoCollection<T> GetCollection<T>() => _database.GetCollection<T>(typeof(T).Name.Pluralize());
 
         public MongoDbContext() : this(
-            Environment.GetEnvironmentVariable("MongoDb_ConnectionString")
-                ?? ConfigurationManager.AppSettings?["MongoDb_ConnectionString"]
-                ?? "mongodb://localhost:27017",
-            Environment.GetEnvironmentVariable("MongoDb_DatabaseName")
-                ?? ConfigurationManager.AppSettings?["MongoDb_DatabaseName"]
-                ?? "PhuXuanParkingSystemDb")
+            ConfigurationManager.AppSettings?["MongoDb_ConnectionString"] is string connStr && !string.IsNullOrWhiteSpace(connStr)
+                ? connStr
+                : throw new InvalidOperationException("Chưa cấu hình chuỗi kết nối 'MongoDb_ConnectionString' trong file cấu hình."),
+            ConfigurationManager.AppSettings?["MongoDb_DatabaseName"] is string dbName && !string.IsNullOrWhiteSpace(dbName)
+                ? dbName
+                : "PhuXuanParkingSystemDb")
         {
         }
 
         public MongoDbContext(string connectionString, string databaseName)
         {
-            var settings = MongoClientSettings.FromConnectionString(string.IsNullOrWhiteSpace(connectionString) ? "mongodb://localhost:27017" : connectionString);
-            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentException("Chuỗi kết nối MongoDB không được để trống.", nameof(connectionString));
+            }
+
+            var settings = MongoClientSettings.FromConnectionString(connectionString);
+            settings.ServerSelectionTimeout = TimeSpan.FromSeconds(3);
+
+            if (settings.Server != null)
+            {
+                _serverHost = settings.Server.Host;
+                _serverPort = settings.Server.Port;
+            }
 
             _client = new MongoClient(settings);
             _database = _client.GetDatabase(string.IsNullOrWhiteSpace(databaseName) ? "PhuXuanParkingSystemDb" : databaseName);
-
-            // Tự động khởi tạo Index hỗ trợ truy vấn siêu nhanh
-            _ = CreateIndexesAsync();
         }
 
         /// <summary>
-        /// Tạo các Index tìm kiếm tối ưu cho bãi đỗ xe
+        /// Kiểm tra nhanh trạng thái sẵn sàng của dịch vụ MongoDB bằng lệnh ping
         /// </summary>
-        private async Task CreateIndexesAsync()
+        public async System.Threading.Tasks.Task<bool> PingAsync(int timeoutMs = 1500, System.Threading.CancellationToken cancellationToken = default)
         {
             try
             {
-                // Index cho ParkingSessions: Biển số, Trạng thái, Thời gian vào
-                var sessionIndexKeys = Builders<ParkingSession>.IndexKeys
-                    .Ascending(s => s.PlateNumber)
-                    .Ascending(s => s.Status)
-                    .Descending(s => s.InTime);
-                await ParkingSessions.Indexes.CreateOneAsync(new CreateIndexModel<ParkingSession>(sessionIndexKeys));
+                using var cts = System.Threading.CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(timeoutMs);
 
-                // Index cho Vehicles: Biển số duy nhất
-                var vehicleIndexKeys = Builders<Vehicle>.IndexKeys.Ascending(v => v.PlateNumber);
-                await Vehicles.Indexes.CreateOneAsync(new CreateIndexModel<Vehicle>(vehicleIndexKeys));
-
-                // Index cho Persons: Mã nhân viên
-                var personIndexKeys = Builders<Person>.IndexKeys.Ascending(p => p.Code);
-                await Persons.Indexes.CreateOneAsync(new CreateIndexModel<Person>(personIndexKeys));
+                var pingCommand = new MongoDB.Bson.BsonDocument("ping", 1);
+                await _database.RunCommandAsync<MongoDB.Bson.BsonDocument>(pingCommand, cancellationToken: cts.Token);
+                return true;
             }
             catch
             {
-                // Bỏ qua nếu Index đã tồn tại hoặc chưa bật MongoDB service
+                return false;
             }
         }
     }

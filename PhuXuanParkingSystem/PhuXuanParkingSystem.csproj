@@ -89,4 +89,10 @@
       <Visible>false</Visible>
     </None>
   </ItemGroup>
-  </Project>
+
+  <!-- Tự động tạo App.config từ App.config.example nếu chưa có trên máy dev -->
+  <Target Name="EnsureAppConfig" BeforeTargets="BeforeBuild" Condition="!Exists('App.config') And Exists('App.config.example')">
+    <Copy SourceFiles="App.config.example" DestinationFiles="App.config" />
+  </Target>
+
+</Project>

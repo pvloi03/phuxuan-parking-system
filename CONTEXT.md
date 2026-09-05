@@ -20,7 +20,7 @@
 | **Contractor** | Đơn vị nhà thầu/đối tác bên ngoài. | Nhà thầu | |
 | **User** | Tài khoản đăng nhập hệ thống Web Admin/WinForms. Phân quyền theo UserRole. | Tài khoản | Khác với Person |
 | **AuditLog** | Bản ghi nhật ký kiểm toán (Aggregate Root). Ghi lại các hoạt động quản trị, bảo mật và thay đổi dữ liệu trên Web Admin (Append-Only). | Nhật ký kiểm toán, Audit trail | |
-| **LicenseInfo** | Bản quyền phần mềm. Chứa Hardware Fingerprint, ExpiryDate, Quota limits (MaxLanes, MaxCameras, MaxControllers). | Bản quyền, License | |
+| **LicenseInfo** | Bản quyền phần mềm. Chứa Hardware Fingerprint, ExpiryDate, LicenseKey ký số RSA-3072. | Bản quyền, License | |
 
 ### Value Objects
 
