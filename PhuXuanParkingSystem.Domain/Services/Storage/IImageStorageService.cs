@@ -43,5 +43,10 @@ namespace PhuXuanParkingSystem.Services.Storage
         /// Đồng bộ các file ảnh đang lưu tạm ở máy bốt lên máy chủ
         /// </summary>
         Task<int> SyncPendingImagesAsync();
+
+        /// <summary>
+        /// Dọn dẹp các thư mục ảnh cũ trên máy client (OfflineCaptures hoặc thư mục lưu cục bộ) vượt quá số ngày quy định
+        /// </summary>
+        int CleanupOldLocalImages(int retentionDays = 30);
     }
 }
