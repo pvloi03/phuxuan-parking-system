@@ -37,6 +37,7 @@ namespace PhuXuanParkingSystem.Services.Background
         private Task? _workerTask;
         private bool _isSyncing = false;
         private bool _disposed = false;
+        private DateTime _lastCleanupTime = DateTime.MinValue;
 
         public event EventHandler<SyncStatusEventArgs>? SyncStatusChanged;
 
@@ -103,7 +104,24 @@ namespace PhuXuanParkingSystem.Services.Background
                         NotifyStatus();
                     }
 
-                    // 3. Nghỉ theo chu kỳ thích ứng (3s nếu Online, 5s nếu Offline)
+                    // 3. Định kỳ quét dọn dẹp ảnh cũ trên máy client (mỗi 6 giờ quét 1 lần)
+                    if (DateTime.Now - _lastCleanupTime > TimeSpan.FromHours(6))
+                    {
+                        _lastCleanupTime = DateTime.Now;
+                        int retentionDays = 30;
+                        if (int.TryParse(System.Configuration.ConfigurationManager.AppSettings["Captures_RetainedDays"], out int days) && days > 0)
+                        {
+                            retentionDays = days;
+                        }
+
+                        int deleted = _imageStorage.CleanupOldLocalImages(retentionDays);
+                        if (deleted > 0)
+                        {
+                            AppLogger.Information($"[CLEANUP] Đã tự động dọn dẹp {deleted} thư mục ảnh cũ trên máy client (hạn lưu: {retentionDays} ngày).", "BackgroundSync");
+                        }
+                    }
+
+                    // 4. Nghỉ theo chu kỳ thích ứng (3s nếu Online, 5s nếu Offline)
                     int delayMs = isOnline ? 3000 : 5000;
                     await Task.Delay(delayMs, token).ConfigureAwait(false);
                 }
@@ -181,6 +199,14 @@ namespace PhuXuanParkingSystem.Services.Background
                     {
                         AppLogger.Information($"[SYNC] Đã đồng bộ thành công {syncedRecords} lượt xe lên máy chủ MongoDB.", "BackgroundSync");
                     }
+
+                    // Dọn dẹp các task đồng bộ bản ghi đã hoàn tất quá 3 ngày trong LiteDB
+                    try
+                    {
+                        var cutoff = DateTime.Now.AddDays(-3);
+                        syncTasksCol.DeleteMany(t => t.IsSynced && t.SyncedAt < cutoff);
+                    }
+                    catch { }
                 }
             }
             finally

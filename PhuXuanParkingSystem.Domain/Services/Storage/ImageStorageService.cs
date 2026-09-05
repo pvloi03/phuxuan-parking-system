@@ -1,7 +1,9 @@
 using PhuXuanParkingSystem.Models.Data;
 using System;
 using System.Configuration;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Services.Storage
@@ -167,6 +169,23 @@ namespace PhuXuanParkingSystem.Services.Storage
                         await sourceStream.CopyToAsync(destStream).ConfigureAwait(false);
                     }
 
+                    // XÓA FILE ẢNH TẠM CỤC BỘ TRÊN MÁY BỐT ĐỂ TIẾT KIỆM BỘ NHỚ
+                    try
+                    {
+                        if (File.Exists(task.LocalFilePath))
+                        {
+                            File.Delete(task.LocalFilePath);
+                        }
+
+                        // Xóa thư mục con nếu đã trống
+                        string? parentDir = Path.GetDirectoryName(task.LocalFilePath);
+                        if (!string.IsNullOrEmpty(parentDir) && Directory.Exists(parentDir) && !Directory.EnumerateFileSystemEntries(parentDir).Any())
+                        {
+                            Directory.Delete(parentDir);
+                        }
+                    }
+                    catch { }
+
                     task.IsSynced = true;
                     task.SyncedAt = DateTime.Now;
                     taskCollection.Update(task);
@@ -182,7 +201,74 @@ namespace PhuXuanParkingSystem.Services.Storage
                 }
             }
 
+            // Dọn dẹp các task đồng bộ ảnh đã hoàn tất quá 3 ngày trong LiteDB
+            try
+            {
+                var cutoff = DateTime.Now.AddDays(-3);
+                taskCollection.DeleteMany(t => t.IsSynced && t.SyncedAt < cutoff);
+            }
+            catch { }
+
             return syncedCount;
+        }
+
+        public int CleanupOldLocalImages(int retentionDays = 30)
+        {
+            if (retentionDays <= 0) return 0;
+            int totalDeleted = 0;
+
+            // 1. Dọn dẹp thư mục OfflineCaptures
+            totalDeleted += CleanupDirectoryByRetention(_offlinePath, retentionDays);
+
+            // 2. Nếu thư mục lưu chính PrimaryPath là thư mục cục bộ (không phải mạng UNC \\), dọn dẹp nếu quá hạn
+            if (!string.IsNullOrWhiteSpace(_primaryPath) && !_primaryPath.StartsWith(@"\\") && Directory.Exists(_primaryPath))
+            {
+                totalDeleted += CleanupDirectoryByRetention(_primaryPath, retentionDays);
+            }
+
+            return totalDeleted;
+        }
+
+        private static int CleanupDirectoryByRetention(string rootDir, int retentionDays)
+        {
+            if (string.IsNullOrWhiteSpace(rootDir) || !Directory.Exists(rootDir) || retentionDays <= 0)
+                return 0;
+
+            int deleted = 0;
+            var cutoffDate = DateTime.Today.AddDays(-retentionDays);
+
+            try
+            {
+                var subDirs = Directory.GetDirectories(rootDir);
+                foreach (var dir in subDirs)
+                {
+                    var dirName = Path.GetFileName(dir);
+                    bool isExpired = false;
+
+                    if (DateTime.TryParseExact(dirName, new[] { "yyyy-MM-dd", "yyyyMMdd", "yyyy-MM", "yyyy" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out var folderDate))
+                    {
+                        if (folderDate < cutoffDate) isExpired = true;
+                    }
+                    else
+                    {
+                        var dirInfo = new DirectoryInfo(dir);
+                        if (dirInfo.LastWriteTime < cutoffDate) isExpired = true;
+                    }
+
+                    if (isExpired)
+                    {
+                        try
+                        {
+                            Directory.Delete(dir, recursive: true);
+                            deleted++;
+                        }
+                        catch { }
+                    }
+                }
+            }
+            catch { }
+
+            return deleted;
         }
 
         private static void EnsureDirectoryExists(string dirPath)
