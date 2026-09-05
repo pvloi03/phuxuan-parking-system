@@ -13,10 +13,11 @@ Tài liệu thiết kế và hướng dẫn từng bước cấu hình triển k
        +------------------------------+-------------------------------+------------------------------+
        |                              |                               |                              |
 [ MÁY CHỦ VẬT LÝ ]           [ MÁY BỐT 1 (CỔNG CHÍNH) ]       [ THIẾT BỊ LÀN 1 ]             [ THIẾT BỊ LÀN 2 ]
-IP: 192.168.1.10             IP: 192.168.1.21                 IP: 192.168.1.101 (Cam BS Vào)  IP: 192.168.1.103 (Cam BS Ra)
-- MongoDB Database           - WinForms App                   IP: 192.168.1.102 (Cam TC Vào)  IP: 192.168.1.104 (Cam TC Ra)
-- Web API + Web Admin        - Kết nối Camera & Barrier       IP: 192.168.1.201 (Controller)  IP: 192.168.1.202 (Controller)
-- Ổ D:\Captures (SMB Share)  - Lưu ảnh vào \\192.168.1.10     IP: 192.168.1.221 (Radar Vào)   IP: 192.168.1.222 (Radar Ra)
+IP: 192.168.1.254            IP: 192.168.1.21                 IP: 192.168.1.101 (Cam BS Vào)  IP: 192.168.1.103 (Cam BS Ra)
+- CSDL MongoDB (Port 27017)  - WinForms App (Làn xe)          IP: 192.168.1.102 (Cam TC Vào)  IP: 192.168.1.104 (Cam TC Ra)
+- Web API + Web Admin SPA    - Kết nối Camera & Controller    IP: 192.168.1.201 (Controller)  IP: 192.168.1.202 (Controller)
+  (Tiến trình đơn: Cổng 80)  - Lưu ảnh vào máy chủ:           IP: 192.168.1.221 (Radar Vào)   IP: 192.168.1.222 (Radar Ra)
+- Ổ đĩa D:\Captures (SMB)      \\192.168.1.254\Captures
 ```
 
 ### Bảng Quy Hoạch IP Tĩnh (Static IP Allocation)
@@ -24,31 +25,60 @@ IP: 192.168.1.10             IP: 192.168.1.21                 IP: 192.168.1.101 
 | Thiết bị / Máy tính | Địa chỉ IP Tĩnh | Cổng dịch vụ (Port) | Chức năng |
 |----------------------|-----------------|---------------------|-----------|
 | **Router / Gateway** | `192.168.1.1` | - | Bộ định tuyến trung tâm |
-| **Máy Chủ Vật Lý (Server)** | `192.168.1.10` | 27017 (Mongo), 5005 (Web), 445 (SMB) | Chạy CSDL, Web Admin và lưu trữ ảnh |
-| **Máy Bốt 1 (Vào/Ra)** | `192.168.1.21` | - | Máy tính bảo vệ điều khiển làn |
-| **Máy Bốt 2 (Dự phòng/Cổng phụ)** | `192.168.1.22` | - | Máy tính bảo vệ cổng 2 (nếu có) |
+| **Máy Chủ Vật Lý (Server)** | `192.168.1.254` | **80** (HTTP Web Admin/API), **27017** (MongoDB), **445** (SMB) | Chạy CSDL, Web Admin và lưu trữ ảnh |
+| **Máy Bốt 1 (Vào/Ra)** | `192.168.1.21` | - | Máy tính bảo vệ điều khiển làn 1 |
+| **Máy Bốt 2 (Dự phòng/Cổng 2)**| `192.168.1.22` | - | Máy tính bảo vệ cổng 2 |
 | **Camera Biển Số Làn Vào** | `192.168.1.101` | 8000 (Hikvision SDK) | Đọc biển số xe vào |
 | **Camera Toàn Cảnh Làn Vào** | `192.168.1.102` | 8000 | Chụp toàn cảnh xe & tài xế vào |
 | **Camera Biển Số Làn Ra** | `192.168.1.103` | 8000 | Đọc biển số xe ra |
 | **Camera Toàn Cảnh Làn Ra** | `192.168.1.104` | 8000 | Chụp toàn cảnh xe & tài xế ra |
-| **Bộ Điều Khiển Barrier (Controller)** | `192.168.1.201` | 4370 (ZKTeco TCP) | Kích đóng/mở barrier |
-| **Radar Phát Hiện Xe** | `192.168.1.221` | Cổng I/O hoặc Aux | Kích hoạt chụp ảnh tự động |
-| **Dải DHCP phụ (Wifi nội bộ)** | `192.168.1.230 - 254` | - | Dành riêng cho điện thoại/laptop kỹ thuật |
+| **Bộ Điều Khiển Barrier (Controller)** | `192.168.1.201` | 4370 (ZKTeco TCP) | Kích đóng/mở barrier làn vào |
+| **Bộ Điều Khiển Barrier Làn Ra** | `192.168.1.202` | 4370 | Kích đóng/mở barrier làn ra |
+| **Dải DHCP phụ (Wifi nội bộ)** | `192.168.1.230 - 250` | - | Dành riêng cho điện thoại/laptop kỹ thuật |
 
 ---
 
-## 2. Cấu Hình Trên Máy Chủ Vật Lý (Central Server)
+## 2. Kiến Trúc Tiến Trình Đơn (Monolithic Hosting)
 
-### Bước 2.1: Cấu hình CSDL MongoDB Server
-1. Cài đặt MongoDB Community Server phiên bản 6.0 hoặc 7.0 (chọn chạy dạng Windows Service).
-2. Mở file cấu hình `C:\Program Files\MongoDB\Server\X.X\bin\mongod.cfg`:
+Toàn bộ hệ thống Web Admin (React 19 + Vite) được biên dịch thành HTML/CSS/JS tĩnh và nhúng trực tiếp vào thư mục `wwwroot` của ASP.NET Core Web API:
+
+1. **Không CORS**: Cả Web Admin SPA, REST API (`/api/*`), Realtime Hub (`/hubs/parking`) và Ảnh chụp (`/captures/*`) đều phục vụ từ cùng 1 Host và Port.
+2. **Cổng 80 HTTP Tiêu Chuẩn**: Người dùng trong mạng LAN chỉ cần gõ `http://192.168.1.254` trên Chrome/Edge là vào thẳng cổng quản trị, không cần nhớ số cổng.
+3. **SPA Fallback & Bảo Vệ 404**: Mọi route giao diện React Router (F5 hoặc truy cập trực tiếp) đều fallback về `index.html`. Riêng các truy cập lỗi vào `/api`, `/captures`, `/hubs` được bảo vệ trả về đúng mã lỗi **HTTP 404 (Not Found)**.
+4. **Bảo Mật Swagger**: Trang Swagger UI được tắt tự động trong môi trường Production trên máy chủ LAN để đảm bảo an ninh tối đa.
+5. **Đóng Gói Self-Contained win-x64**: Đi kèm toàn bộ .NET 8 Runtime, máy chủ không cần cài thêm bất kỳ SDK hay Runtime nào.
+6. **Graceful Shutdown & Background Workers**: 
+   - Tích hợp `UseWindowsService()` hỗ trợ xả sạch hàng đợi `AuditLogQueue` khi tắt/khởi động lại máy.
+   - Tích hợp `CapturesCleanupBackgroundWorker` quét dọn dẹp các thư mục ảnh cũ quá hạn (mặc định 365 ngày) vào lúc 02:00 AM mỗi ngày.
+7. **Nhật Ký Vận Hành (Serilog)**: Tự động cuộn theo ngày `logs/api-yyyyMMdd.log`, lưu trữ 30 ngày gần nhất và giới hạn 10MB/file.
+
+---
+
+## 3. Quy Trình Đóng Gói (Publish Package)
+
+Chỉ cần chạy 1 lệnh duy nhất trên máy phát triển (Dev PC):
+
+```powershell
+.\scripts\publish-lan-server.ps1
+```
+
+**Kịch bản tự động thực hiện:**
+1. Chạy `npm run build` trong `PhuXuanParkingSystem.Web`.
+2. Đồng bộ toàn bộ file trong `dist/` vào `PhuXuanParkingSystem.Api\wwwroot`.
+3. Chạy `dotnet publish` theo chế độ `Release`, nền tảng `win-x64`, `self-contained true` ra thư mục `publish\server\`.
+4. Copy sẵn bộ script cài đặt máy chủ (`setup-lan-server.ps1`, `uninstall-lan-server.ps1`) vào `publish\server\scripts\`.
+
+---
+
+## 4. Quy Trình Cài Đặt Trên Máy Chủ Vật Lý (Server Provisioning)
+
+### Bước 4.1: Cài đặt MongoDB Server
+1. Cài đặt MongoDB Community Server (chọn cài đặt dạng Windows Service, tên dịch vụ: `MongoDB`).
+2. Mở file `C:\Program Files\MongoDB\Server\X.X\bin\mongod.cfg`:
    ```yaml
-   # Cho phép lắng nghe từ tất cả máy trong mạng LAN
    net:
      port: 27017
      bindIp: 0.0.0.0
-   
-   # Bật xác thực bảo mật
    security:
      authorization: enabled
    ```
@@ -68,179 +98,87 @@ IP: 192.168.1.10             IP: 192.168.1.21                 IP: 192.168.1.101 
 
 ---
 
-### Bước 2.2: Tạo Thư Mục Lưu Trữ Ảnh & Chia Sẻ Mạng (Windows SMB / UNC Path)
-1. Trên máy chủ, tạo thư mục lưu ảnh chuyên dụng trên ổ đĩa dữ liệu (không nên lưu ổ C hệ điều hành):
-   - Đường dẫn: `D:\Captures`
-2. Chia sẻ thư mục qua mạng LAN:
-   - Chuột phải thư mục `D:\Captures` -> Chọn **Properties** -> Tab **Sharing** -> Bấm **Advanced Sharing**.
-   - Tích chọn **Share this folder**, đặt Share name là `Captures`.
-   - Bấm **Permissions** -> Cấp quyền **Full Control** (hoặc Read + Change) cho tài khoản Windows sử dụng chung trong mạng LAN (hoặc tạo user riêng tên `parking_client` / `Everyone` trong LAN cô lập).
-3. Kiểm tra từ máy bốt: Mở File Explorer trên máy bốt gõ `\\192.168.1.10\Captures` và thử tạo một file text để kiểm tra quyền đọc/ghi.
+### Bước 4.2: Tạo Thư Mục Captures & SMB Share Thủ Công
+1. Tạo thư mục vật lý lưu ảnh trên máy chủ (Khuyên dùng `D:\Captures`).
+2. Chia sẻ thư mục qua mạng LAN (Properties -> Sharing -> Advanced Sharing):
+   - Đặt tên Share: `Captures` (đường dẫn mạng: `\\192.168.1.254\Captures`).
+   - Cấp quyền đọc/ghi (Full Control hoặc Read/Change) cho các máy bốt làn xe.
 
 ---
 
-### Bước 2.3: Cấu Hình Web API Bằng Lệnh CLI (Không Cần Sửa File `appsettings.json`)
+### Bước 4.3: Cài Đặt Web API & Windows Service (1 Click)
 
-Hệ thống .NET 8 hỗ trợ ghi đè mọi cấu hình thông qua **tham số dòng lệnh (CLI Arguments)** với độ ưu tiên cao nhất, giúp kỹ thuật viên không cần mở file `appsettings.json` tránh rủi ro gõ sai định dạng JSON.
+1. Sao chép toàn bộ thư mục `publish\server\` sang máy chủ (Ví dụ: `D:\PhuXuanServer`).
+2. Mở **PowerShell (Run as Administrator)** tại thư mục `D:\PhuXuanServer\scripts\`.
+3. Chạy lệnh cài đặt:
 
-#### Lựa chọn Cổng Web API / Web Admin:
-- **Cổng 80 (Khuyên dùng 100% trong LAN)**:
-  - Đây là cổng HTTP tiêu chuẩn của trình duyệt web.
-  - **Lợi ích**: Mọi người trong mạng LAN (kế toán, bảo vệ, quản lý) chỉ cần mở Chrome/Edge gõ thẳng địa chỉ IP:
-    👉 `http://192.168.1.10` (rất dễ nhớ, không cần phải gõ thêm số cổng `:5005` hay `:8080`).
-- **Cổng 5005**: Dùng nếu trên máy chủ cổng 80 đã bị ứng dụng khác sử dụng (truy cập qua `http://192.168.1.10:5005`).
-
-#### Lệnh Chạy Web API Trực Tiếp Bằng CLI:
-```cmd
-PhuXuanParkingSystem.Api.exe --urls "http://0.0.0.0:80" --CapturesFolder "D:\Captures" --ConnectionStrings:MongoDb "mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
-```
-
----
-
-### Bước 2.4: Đóng Gói Web Admin & Cài Đặt Windows Service Bằng Lệnh CLI (Tự Động 100%)
-
-Để Web API tự động phục vụ Web Admin và tự khởi động cùng Windows 24/7, thực hiện hoàn toàn bằng các lệnh CLI:
-
-1. **Build và copy Web Admin vào Web API (chạy 1 lần trên máy build)**:
-   ```cmd
-   cd PhuXuanParkingSystem.Web
-   npm run build
-   xcopy /E /I /Y dist ..\PhuXuanParkingSystem.Api\wwwroot
-   ```
-
-2. **Cài đặt Web API làm Windows Service bằng lệnh CLI (sử dụng NSSM)**:
-   Mở Command Prompt (Admin) và chạy lần lượt các lệnh sau:
-   ```cmd
-   :: 1. Tạo dịch vụ trỏ vào file exe
-   nssm install PhuXuanParkingApi "D:\PhuXuanServer\PhuXuanParkingSystem.Api.exe"
-
-   :: 2. Đặt thư mục làm việc
-   nssm set PhuXuanParkingApi AppDirectory "D:\PhuXuanServer"
-
-   :: 3. Cấu hình tự động khởi động cùng Windows
-   nssm set PhuXuanParkingApi Start SERVICE_AUTO_START
-   ```
-
-   **Lựa chọn A: Cấu hình qua Biến Môi Trường Riêng Biệt (Environment Variables - Khuyên Dùng Nhất)**:
-   > NSSM hỗ trợ tính năng `AppEnvironmentExtra`, gán biến môi trường chỉ cho riêng dịch vụ `PhuXuanParkingApi`. Ưu điểm vượt trội là **bảo mật cao** (mật khẩu không bị lộ khi ai đó xem Command Line trong Task Manager/Process Explorer) và cú pháp rất sạch sẽ:
-   ```cmd
-   nssm set PhuXuanParkingApi AppEnvironmentExtra "ASPNETCORE_URLS=http://0.0.0.0:80" "CapturesFolder=D:\Captures" "ConnectionStrings__MongoDb=mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
-   ```
-   *(Lưu ý quy tắc .NET: Các mục lồng nhau như `ConnectionStrings:MongoDb` trong JSON được biểu diễn bằng 2 dấu gạch dưới `ConnectionStrings__MongoDb` trong Biến Môi Trường).*
-
-   **Lựa chọn B: Cấu hình qua Tham Số Dòng Lệnh (CLI AppParameters)**:
-   ```cmd
-   nssm set PhuXuanParkingApi AppParameters "--urls http://0.0.0.0:80 --CapturesFolder D:\Captures --ConnectionStrings:MongoDb mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
-   ```
-
-   **Khởi động dịch vụ**:
-   ```cmd
-   nssm start PhuXuanParkingApi
-   ```
-
-3. **Khi cần thay đổi cấu hình (ví dụ đổi cổng hoặc đổi mật khẩu DB)**:
-   Chỉ cần chạy lệnh cập nhật và restart dịch vụ:
-   ```cmd
-   :: Cập nhật lại Biến Môi Trường trong Service:
-   nssm set PhuXuanParkingApi AppEnvironmentExtra "ASPNETCORE_URLS=http://0.0.0.0:5005" "CapturesFolder=D:\Captures" "ConnectionStrings__MongoDb=mongodb://phuxuan_app:NewPassword!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin"
-
-   :: Restart dịch vụ để nhận cấu hình mới:
-   nssm restart PhuXuanParkingApi
-   ```
-
----
-
-### Bước 2.4.1: (Tùy Chọn) Đặt Biến Môi Trường Cấp Hệ Thống (System-wide)
-Nếu muốn thiết lập biến môi trường áp dụng cho toàn bộ máy chủ Windows:
-- **Bằng PowerShell (Admin)**:
-  ```powershell
-  [Environment]::SetEnvironmentVariable("ASPNETCORE_URLS", "http://0.0.0.0:80", "Machine")
-  [Environment]::SetEnvironmentVariable("CapturesFolder", "D:\Captures", "Machine")
-  [Environment]::SetEnvironmentVariable("ConnectionStrings__MongoDb", "mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin", "Machine")
-  ```
-- **Bằng Command Prompt (Admin)**:
-  ```cmd
-  setx ASPNETCORE_URLS "http://0.0.0.0:80" /M
-  setx CapturesFolder "D:\Captures" /M
-  setx ConnectionStrings__MongoDb "mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin" /M
-  ```
-
----
-
-### Bước 2.5: Mở Cổng Tường Lửa (Windows Firewall) Trên Máy Chủ
-Chạy lệnh PowerShell (Admin) trên máy chủ:
 ```powershell
-# 1. Cổng MongoDB
-New-NetFirewallRule -DisplayName "PhuXuan_MongoDB" -Direction Inbound -LocalPort 27017 -Protocol TCP -Action Allow
+.\setup-lan-server.ps1
+```
 
-# 2. Cổng Web API & Web Admin
-New-NetFirewallRule -DisplayName "PhuXuan_Web_API" -Direction Inbound -LocalPort 5005 -Protocol TCP -Action Allow
+*(Bạn có thể chạy trực tiếp `.\setup-lan-server.ps1` để được script hướng dẫn từng bước tương tác, hoặc truyền trước tham số: `.\setup-lan-server.ps1 -CapturesDir "D:\Captures" -Port 80`).*
 
-# 3. Cổng Windows File Sharing (SMB)
-New-NetFirewallRule -DisplayName "PhuXuan_SMB_Share" -Direction Inbound -LocalPort 445 -Protocol TCP -Action Allow
+**Script `setup-lan-server.ps1` sẽ tự động xử lý linh hoạt:**
+- ✅ **Yêu cầu tự nhập thư mục ảnh**: Script sẽ yêu cầu bạn nhập trực tiếp đường dẫn thư mục ảnh (`FolderPath`) trên máy chủ (Ví dụ: `D:\Captures`, `E:\Captures`), hoàn toàn không đoán trước hay hardcode.
+- ✅ **Phát hiện xung đột cổng thông minh**: Nếu cổng mặc định (80) đang bị dịch vụ khác (như IIS/W3SVC) chiếm dụng, script sẽ cảnh báo chi tiết tên tiến trình và cho phép bạn **chọn nhập cổng khác ngay lập tức** (Ví dụ: 8080, 5000...) hoặc thử lại.
+- ✅ **Tự động mở Windows Firewall**: Tự động mở đúng cổng mạng vừa chọn (80 hoặc cổng mới bạn đã đổi).
+- ✅ **Thiết lập Biến Môi Trường cấp hệ thống (Machine)**: Nạp tự động vào `builder.Configuration`.
+- ✅ **Đăng ký Windows Service `PhuXuanParkingApi`**: Tự cấu hình tham số `--urls http://0.0.0.0:<Port>` và `--CapturesSettings:FolderPath "<FolderPath>"`, tự phục hồi sau 10 giây nếu gặp sự cố.
+- ✅ **Khởi động dịch vụ và kiểm tra trạng thái HTTP**: Xác nhận kết nối và in ra đường link truy cập mạng LAN cho ban quản lý.
+
+---
+
+### Bước 4.3: (Tùy Chọn) Quản Lý Qua NSSM (Non-Sucking Service Manager)
+
+Nếu kỹ thuật viên muốn dùng công cụ giao diện GUI hoặc bọc qua NSSM:
+```cmd
+:: Cài đặt dịch vụ qua NSSM
+nssm install PhuXuanParkingApi "D:\PhuXuanServer\PhuXuanParkingSystem.Api.exe"
+nssm set PhuXuanParkingApi AppDirectory "D:\PhuXuanServer"
+nssm set PhuXuanParkingApi AppParameters "--urls http://0.0.0.0:80 --CapturesSettings:FolderPath D:\Captures"
+nssm set PhuXuanParkingApi Start SERVICE_AUTO_START
+nssm set PhuXuanParkingApi DependOnService MongoDB
+
+:: Khởi động dịch vụ
+nssm start PhuXuanParkingApi
 ```
 
 ---
 
-## 3. Cấu Hình Trên Các Máy Bốt Kiểm Soát (Lane Client PCs)
+## 5. Cấu Hình Trên Các Máy Bốt Kiểm Soát (WinForms Client PCs)
 
-Trên mỗi máy tính bốt bảo vệ chạy ứng dụng WinForms:
-1. Đặt IP tĩnh cho máy bốt: `192.168.1.21`, Subnet: `255.255.255.0`, Gateway: `192.168.1.1`.
-2. **Cấu hình qua Biến Môi Trường (Khuyên dùng - Không cần sửa file `App.config`)**:
-   Chỉ cần mở CMD (Admin) trên máy bốt và chạy các lệnh sau:
-   ```cmd
-   :: 1. Chuỗi kết nối CSDL MongoDB máy chủ:
-   setx MongoDb_ConnectionString "mongodb://phuxuan_app:SecretPassword2026!@192.168.1.10:27017/PhuXuanParkingSystemDb?authSource=admin&connectTimeoutMS=5000" /M
-
-   :: 2. Đường dẫn thư mục mạng UNC lưu ảnh tập trung trên máy chủ:
-   setx CaptureSavePath "\\192.168.1.10\Captures" /M
-
-   :: 3. (Tùy chọn) Mức ghi log:
-   setx LogLevel "Warning" /M
-   ```
-   *(Hoặc bằng PowerShell Admin)*:
+Trên mỗi máy bốt bảo vệ:
+1. Đặt IP tĩnh: `192.168.1.21`, Subnet: `255.255.255.0`, Gateway: `192.168.1.1`.
+2. Thiết lập Biến Môi Trường bằng PowerShell (Admin) hoặc file `App.config`:
    ```powershell
-   [Environment]::SetEnvironmentVariable("MongoDb_ConnectionString", "mongodb://phuxuan_app:SecretPassword2026!@192.168.1.10:27017/PhuXuanParkingSystemDb?authSource=admin&connectTimeoutMS=5000", "Machine")
-   [Environment]::SetEnvironmentVariable("CaptureSavePath", "\\192.168.1.10\Captures", "Machine")
+   [Environment]::SetEnvironmentVariable("MongoDb_ConnectionString", "mongodb://phuxuan_app:SecretPassword2026!@192.168.1.254:27017/PhuXuanParkingSystemDb?authSource=admin&connectTimeoutMS=5000", "Machine")
+   [Environment]::SetEnvironmentVariable("CaptureSavePath", "\\192.168.1.254\Captures", "Machine")
    ```
-
-3. **Hoặc cấu hình qua file `PhuXuanParkingSystem.exe.config`** *(Nếu không dùng Biến môi trường)*:
-   ```xml
-   <?xml version="1.0" encoding="utf-8" ?>
-   <configuration>
-       <appSettings>
-           <add key="LogLevel" value="Warning" />
-           <add key="CaptureSavePath" value="\\192.168.1.10\Captures" />
-           <add key="MongoDb_ConnectionString" value="mongodb://phuxuan_app:SecretPassword2026!@192.168.1.10:27017/PhuXuanParkingSystemDb?authSource=admin&amp;connectTimeoutMS=5000" />
-           <add key="MongoDb_DatabaseName" value="PhuXuanParkingSystemDb" />
-           <add key="Anpr_MaxImageWidth" value="1280" />
-       </appSettings>
-   </configuration>
-   ```
+3. Máy bốt tự động ghi ảnh trực tiếp vào máy chủ qua đường dẫn mạng `\\192.168.1.254\Captures\YYYY-MM-DD\...`.
+4. Nếu mạng LAN bị sự cố tạm thời, WinForms tự động ghi ảnh vào bộ nhớ đệm cục bộ (`OfflineCaptures/`) và đồng bộ ngầm khi mạng thông lại.
 
 ---
 
-## 4. Cơ Chế Chống Chịu Lỗi Mạng LAN (Offline Fallback & Auto-Sync)
+## 6. Quy Trình Nâng Cấp & Cập Nhật Hệ Thống (Maintenance & Updates)
 
-Để bốt kiểm soát không bao giờ bị nghẽn làn khi mạng LAN hoặc máy chủ khởi động lại:
-1. **Khi xe vào/ra chụp ảnh**:
-   - WinForms kiểm tra đường dẫn `\\192.168.1.10\Captures`.
-   - Nếu kết nối bình thường: Lưu trực tiếp vào máy chủ `\\192.168.1.10\Captures\YYYY-MM-DD\...`.
-   - Nếu mạng LAN bị ngắt (Timeout > 1 giây): Hệ thống tự động ghi ảnh vào `C:\Captures_Local_Temp\YYYY-MM-DD\...` tại máy bốt và cho phép mở barrier bình thường.
-2. **Tiến trình đồng bộ ngầm (Background Worker)**:
-   - Định kỳ 1-2 phút, WinForms kiểm tra nếu có ảnh trong `C:\Captures_Local_Temp` và mạng LAN đã thông lại thì tự động di chuyển ảnh về `\\192.168.1.10\Captures` và cập nhật lại đường dẫn trong CSDL.
+### Trường Hợp 1: Chỉ cập nhật giao diện Web Admin
+1. Trên máy dev: Chạy `npm run build` trong `PhuXuanParkingSystem.Web`.
+2. Copy toàn bộ nội dung trong `dist/` đè vào thư mục `D:\PhuXuanServer\wwwroot\` trên máy chủ.
+3. Người dùng trên trình duyệt chỉ cần ấn F5 hoặc Ctrl+F5 để nhận giao diện mới ngay lập tức (không cần dừng Web API).
 
----
+### Trường Hợp 2: Cập nhật toàn diện (Web API + Web Admin)
+1. Trên máy chủ, mở PowerShell (Admin):
+   ```powershell
+   Stop-Service PhuXuanParkingApi
+   ```
+2. Copy đè toàn bộ thư mục release mới vào `D:\PhuXuanServer`.
+3. Bật lại dịch vụ:
+   ```powershell
+   Start-Service PhuXuanParkingApi
+   ```
 
-## 5. Chính Sách Bảo Trì Dung Lượng Ổ Cứng Định Kỳ
-
-- **Dung lượng ước tính**: 1 lượt xe ~ 400KB - 500KB ảnh (ảnh nén JPEG chất lượng 80%).
-  - 1.000 lượt xe/ngày = ~500 MB/ngày = ~15 GB/tháng = ~180 GB/năm.
-  - Với ổ cứng HDD 1TB-2TB, máy chủ có thể lưu trữ lịch sử ảnh từ **3 đến 5 năm** liên tục.
-- **Tiến trình tự động dọn dẹp (Background Cleanup Service)**:
-  - Cấu hình trên API chạy định kỳ vào 02:00 sáng mỗi ngày, tự động quét và xóa các thư mục ảnh cũ hơn thời hạn quy định (mặc định 365 ngày).
-- **Sao lưu CSDL MongoDB (Backup Script)**:
-  - Tạo một file batch script `backup_mongo.bat` trên máy chủ, cấu hình Windows Task Scheduler chạy hàng tuần:
-    ```cmd
-    mongodump --uri="mongodb://phuxuan_app:SecretPassword2026!@127.0.0.1:27017/PhuXuanParkingSystemDb?authSource=admin" --out="D:\MongoBackups\%date:~-4,4%%date:~-10,2%%date:~-7,2%"
-    ```
+### Gỡ Bỏ Dịch Vụ (Khi Cần Di Dời Hoặc Cài Lại)
+```powershell
+.\scripts\uninstall-lan-server.ps1
+```
+*(Script sẽ dừng và xóa service sạch sẽ, dữ liệu CSDL MongoDB và ảnh chụp trong `D:\Captures` vẫn được bảo toàn nguyên vẹn).*

@@ -4,7 +4,7 @@
         <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8" />
     </startup>
     <appSettings>
-        <!-- Cấu hình MongoDB CSDL -->
+        <!-- Cấu hình MongoDB CSDL máy chủ LAN (Mặc định hoặc cấu hình qua mạng) -->
         <add key="MongoDb_ConnectionString" value="mongodb://192.168.1.254:27017" />
         <add key="MongoDb_DatabaseName" value="PhuXuanParkingSystemDb" />
 
@@ -18,7 +18,7 @@
         <add key="CaptureSavePath" value="\\192.168.1.254\Captures" />
 
         <!-- ================= TỐI ƯU NHẬN DIỆN BIỂN SỐ (ANPR PREPROCESSING) ================= -->
-        <!-- Chiều rộng ảnh tối đa khi đưa vào bộ nhận diện OCR (Pixel). Mặc định 960px (qHD) giúp tăng tốc độ OCR lên gấp 3-5 lần (~20-35ms) -->
+        <!-- Chiều rộng ảnh tối đa khi đưa vào bộ nhận diện OCR (Pixel). Mặc định 960px (qHD) -->
         <add key="Anpr_MaxImageWidth" value="960" />
 
         <!-- ================= CẤU HÌNH BẢN QUYỀN (RSA 3072-BIT KEYS) ================= -->

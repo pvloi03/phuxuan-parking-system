@@ -3,6 +3,22 @@ database_seed/
 publish/
 wwwroot/
 
+## Configuration & Environment Secrets
+appsettings.json
+appsettings.*.json
+!appsettings.example.json
+!appsettings.*.example.json
+PhuXuanParkingSystem/App.config
+!PhuXuanParkingSystem/App.config.example
+*.config.local
+.env
+.env.*
+!.env.example
+
+## Node & Web build
+node_modules/
+dist/
+
 
 ## Visual Studio & .NET Build Artifacts
 [Bb]in/

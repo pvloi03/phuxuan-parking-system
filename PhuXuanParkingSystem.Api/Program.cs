@@ -7,23 +7,48 @@ using PhuXuanParkingSystem.Api.Middlewares;
 using PhuXuanParkingSystem.Api.Services;
 using PhuXuanParkingSystem.Models.Data;
 using PhuXuanParkingSystem.Repositories;
+using Serilog;
+using Serilog.Events;
 using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Cấu hình CSDL MongoDB (Singleton MongoDbContext & Generic Repositories)
+// Cấu hình chạy ngầm Windows Service (Hỗ trợ graceful shutdown, tự động nhận diện SCM hoặc NSSM)
+builder.Host.UseWindowsService();
+
+// Cấu hình Serilog: Ghi log ra Console và File xoay vòng theo ngày trong logs/
+var logDir = Path.Combine(AppContext.BaseDirectory, "logs");
+if (!Directory.Exists(logDir))
+{
+    try { Directory.CreateDirectory(logDir); } catch { }
+}
+var logFilePath = Path.Combine(logDir, "api-.log");
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .WriteTo.Console()
+    .WriteTo.File(
+        logFilePath,
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        fileSizeLimitBytes: 10 * 1024 * 1024,
+        rollOnFileSizeLimit: true,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+// 1. Cấu hình CSDL MongoDB (Chỉ nạp duy nhất qua builder.Configuration - tự động thừa hưởng từ Biến Môi Trường và appsettings)
 var mongoConn = builder.Configuration.GetConnectionString("MongoDb")
     ?? builder.Configuration["MongoDb_ConnectionString"]
-    ?? Environment.GetEnvironmentVariable("MongoDb_ConnectionString", EnvironmentVariableTarget.Process)
-    ?? Environment.GetEnvironmentVariable("MongoDb_ConnectionString", EnvironmentVariableTarget.User)
-    ?? Environment.GetEnvironmentVariable("MongoDb_ConnectionString", EnvironmentVariableTarget.Machine)
-    ?? "mongodb://localhost:27017";
+    ?? "mongodb://127.0.0.1:27017";
 
 var dbName = builder.Configuration["DatabaseName"]
-    ?? Environment.GetEnvironmentVariable("MongoDb_DatabaseName", EnvironmentVariableTarget.Process)
-    ?? Environment.GetEnvironmentVariable("MongoDb_DatabaseName", EnvironmentVariableTarget.User)
-    ?? Environment.GetEnvironmentVariable("MongoDb_DatabaseName", EnvironmentVariableTarget.Machine)
+    ?? builder.Configuration["MongoDb_DatabaseName"]
     ?? "PhuXuanParkingSystemDb";
 
 builder.Services.AddSingleton(new MongoDbContext(mongoConn, dbName));
@@ -37,6 +62,9 @@ builder.Services.AddSingleton<IAuditLogQueue>(sp =>
     return new AuditLogQueue(capacity);
 });
 builder.Services.AddHostedService<AuditLogBackgroundWorker>();
+
+// 1.2. Cấu hình Background Worker tự động dọn dẹp ảnh Captures cũ
+builder.Services.AddHostedService<CapturesCleanupBackgroundWorker>();
 
 // 2. Cấu hình JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "PhuXuanParkingSystem_Super_Secret_Key_2026_For_JWT_Authentication_Secure!";
@@ -140,33 +168,25 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowReactApp");
 
-// 6. Cấu hình Static Files cho thư mục ảnh Captures (để Web hiển thị ảnh từ máy WinForms)
-var rawCaptures = builder.Configuration["CapturesFolder"]
-    ?? Environment.GetEnvironmentVariable("CaptureSavePath", EnvironmentVariableTarget.Process)
-    ?? Environment.GetEnvironmentVariable("CaptureSavePath", EnvironmentVariableTarget.User)
-    ?? Environment.GetEnvironmentVariable("CaptureSavePath", EnvironmentVariableTarget.Machine)
-    ?? "../PhuXuanParkingSystem/bin/x86/Debug/Captures";
+// 6. Cấu hình Static Files cho thư mục ảnh Captures (Nạp hoàn toàn động từ builder.Configuration, không hardcode)
+var capturesFolder = builder.Configuration["CapturesSettings:FolderPath"]
+    ?? builder.Configuration["CapturesFolder"]
+    ?? builder.Configuration["CaptureSavePath"];
 
-var capturesCandidates = new[]
+if (!string.IsNullOrWhiteSpace(capturesFolder))
 {
-    Path.IsPathRooted(rawCaptures) ? rawCaptures : Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, rawCaptures)),
-    Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "../PhuXuanParkingSystem/bin/x86/Debug/Captures")),
-    Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "Captures"))
-};
+    var resolvedCapturesPath = Path.IsPathRooted(capturesFolder)
+        ? capturesFolder
+        : Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, capturesFolder));
 
-var capturesPath = capturesCandidates.FirstOrDefault(Directory.Exists) ?? capturesCandidates[0];
-if (!Directory.Exists(capturesPath))
-{
-    try { Directory.CreateDirectory(capturesPath); } catch { }
-}
-
-if (Directory.Exists(capturesPath))
-{
-    app.UseStaticFiles(new StaticFileOptions
+    if (Directory.Exists(resolvedCapturesPath))
     {
-        FileProvider = new PhysicalFileProvider(capturesPath),
-        RequestPath = "/captures"
-    });
+        app.UseStaticFiles(new StaticFileOptions
+        {
+            FileProvider = new PhysicalFileProvider(resolvedCapturesPath),
+            RequestPath = "/captures"
+        });
+    }
 }
 
 // 7. Phục vụ Web Admin SPA tĩnh từ wwwroot (nếu có bản build)
@@ -179,14 +199,46 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ParkingRealtimeHub>("/hubs/parking");
 
-// SPA Fallback cho React Router khi truy cập route con hoặc F5
-var wwwrootIndex = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
-if (File.Exists(wwwrootIndex))
+// 8. SPA Fallback cho React Router khi truy cập route con hoặc F5
+// Chặn Fallback cho các tiền tố kỹ thuật: /api, /captures, /hubs trả về đúng 404 thay vì trả về HTML
+app.MapFallback(async context =>
 {
-    app.MapFallbackToFile("index.html");
-}
+    var path = context.Request.Path.Value ?? string.Empty;
+    if (path.StartsWith("/api", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/captures", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/hubs", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsync("{\"success\":false,\"message\":\"Endpoint hoặc tài nguyên không tồn tại.\"}");
+        return;
+    }
 
-app.Run();
+    var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+    if (File.Exists(indexPath))
+    {
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(indexPath);
+    }
+    else
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+    }
+});
+
+try
+{
+    Log.Information("Khởi động PhuXuanParkingSystem.Api thành công.");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "PhuXuanParkingSystem.Api dừng đột ngột do lỗi nghiêm trọng.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public partial class Program { }
 

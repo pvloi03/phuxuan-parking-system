@@ -631,5 +631,25 @@ namespace PhuXuanParkingSystem.Api.Tests
             hardDelLog.OldValues.Should().NotBeNullOrWhiteSpace();
             hardDelLog.OldValues.Should().Contain(plate);
         }
+
+        [Fact]
+        public async Task Test_18_Unknown_Api_Endpoint_Returns_404_Json_Not_Spa_Html()
+        {
+            var response = await _client.GetAsync("/api/this-endpoint-does-not-exist-12345");
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            var content = await response.Content.ReadAsStringAsync();
+            content.Should().Contain("không tồn tại");
+            response.Content.Headers.ContentType?.MediaType.Should().Be("application/json");
+        }
+
+        [Fact]
+        public async Task Test_19_Unknown_Captures_Endpoint_Returns_404_Not_Spa_Html()
+        {
+            var response = await _client.GetAsync("/captures/unknown-year/non-existent-plate-image.jpg");
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            var content = await response.Content.ReadAsStringAsync();
+            content.Should().NotContain("<!DOCTYPE html>");
+            content.Should().NotContain("<html");
+        }
     }
 }
