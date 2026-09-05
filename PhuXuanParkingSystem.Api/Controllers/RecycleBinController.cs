@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
@@ -83,15 +83,15 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var sessionFilter = Builders<ParkingSession>.Filter.Eq(x => x.IsDeleted, true);
             var userFilter = Builders<User>.Filter.Eq(x => x.IsDeleted, true);
 
-            var vehicleTask = _context.Vehicles.CountDocumentsAsync(isDeletedFilter);
-            var personTask = _context.Persons.CountDocumentsAsync(personFilter);
-            var contractorTask = _context.Contractors.CountDocumentsAsync(contractorFilter);
-            var departmentTask = _context.Departments.CountDocumentsAsync(departmentFilter);
-            var companyTask = _context.Companies.CountDocumentsAsync(companyFilter);
-            var deviceTask = _context.Devices.CountDocumentsAsync(deviceFilter);
-            var laneTask = _context.Lanes.CountDocumentsAsync(laneFilter);
-            var sessionTask = _context.ParkingSessions.CountDocumentsAsync(sessionFilter);
-            var userTask = _context.Users.CountDocumentsAsync(userFilter);
+            var vehicleTask = _context.GetCollection<Vehicle>().CountDocumentsAsync(isDeletedFilter);
+            var personTask = _context.GetCollection<Person>().CountDocumentsAsync(personFilter);
+            var contractorTask = _context.GetCollection<Contractor>().CountDocumentsAsync(contractorFilter);
+            var departmentTask = _context.GetCollection<Department>().CountDocumentsAsync(departmentFilter);
+            var companyTask = _context.GetCollection<Company>().CountDocumentsAsync(companyFilter);
+            var deviceTask = _context.GetCollection<Device>().CountDocumentsAsync(deviceFilter);
+            var laneTask = _context.GetCollection<Lane>().CountDocumentsAsync(laneFilter);
+            var sessionTask = _context.GetCollection<ParkingSession>().CountDocumentsAsync(sessionFilter);
+            var userTask = _context.GetCollection<User>().CountDocumentsAsync(userFilter);
 
             await Task.WhenAll(vehicleTask, personTask, contractorTask, departmentTask, companyTask, deviceTask, laneTask, sessionTask, userTask);
 
@@ -132,11 +132,11 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var s = search?.Trim().ToLowerInvariant();
 
             // Load lookup maps để kiểm tra quan hệ ràng buộc
-            var allCompanies = await _context.Companies.Find(FilterDefinition<Company>.Empty).ToListAsync();
-            var allDepts = await _context.Departments.Find(FilterDefinition<Department>.Empty).ToListAsync();
-            var allPeople = await _context.Persons.Find(FilterDefinition<Person>.Empty).ToListAsync();
-            var allContractors = await _context.Contractors.Find(FilterDefinition<Contractor>.Empty).ToListAsync();
-            var allLanes = await _context.Lanes.Find(FilterDefinition<Lane>.Empty).ToListAsync();
+            var allCompanies = await _context.GetCollection<Company>().Find(FilterDefinition<Company>.Empty).ToListAsync();
+            var allDepts = await _context.GetCollection<Department>().Find(FilterDefinition<Department>.Empty).ToListAsync();
+            var allPeople = await _context.GetCollection<Person>().Find(FilterDefinition<Person>.Empty).ToListAsync();
+            var allContractors = await _context.GetCollection<Contractor>().Find(FilterDefinition<Contractor>.Empty).ToListAsync();
+            var allLanes = await _context.GetCollection<Lane>().Find(FilterDefinition<Lane>.Empty).ToListAsync();
 
             var compMap = allCompanies.ToDictionary(x => x.Id, x => x);
             var deptMap = allDepts.ToDictionary(x => x.Id, x => x);
@@ -147,7 +147,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Vehicle", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Vehicle>.Filter.Eq(x => x.IsDeleted, true);
-                var vehicles = await _context.Vehicles.Find(filter).ToListAsync();
+                var vehicles = await _context.GetCollection<Vehicle>().Find(filter).ToListAsync();
 
                 foreach (var v in vehicles)
                 {
@@ -184,7 +184,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Person", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Person>.Filter.Eq(x => x.IsDeleted, true);
-                var people = await _context.Persons.Find(filter).ToListAsync();
+                var people = await _context.GetCollection<Person>().Find(filter).ToListAsync();
 
                 foreach (var p in people)
                 {
@@ -221,7 +221,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Contractor", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Contractor>.Filter.Eq(x => x.IsDeleted, true);
-                var contractors = await _context.Contractors.Find(filter).ToListAsync();
+                var contractors = await _context.GetCollection<Contractor>().Find(filter).ToListAsync();
 
                 foreach (var c in contractors)
                 {
@@ -243,7 +243,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Department", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Department>.Filter.Eq(x => x.IsDeleted, true);
-                var departments = await _context.Departments.Find(filter).ToListAsync();
+                var departments = await _context.GetCollection<Department>().Find(filter).ToListAsync();
 
                 foreach (var d in departments)
                 {
@@ -274,7 +274,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Company", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Company>.Filter.Eq(x => x.IsDeleted, true);
-                var companies = await _context.Companies.Find(filter).ToListAsync();
+                var companies = await _context.GetCollection<Company>().Find(filter).ToListAsync();
 
                 foreach (var comp in companies)
                 {
@@ -296,7 +296,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Device", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Device>.Filter.Eq(x => x.IsDeleted, true);
-                var devices = await _context.Devices.Find(filter).ToListAsync();
+                var devices = await _context.GetCollection<Device>().Find(filter).ToListAsync();
 
                 foreach (var dev in devices)
                 {
@@ -318,7 +318,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Lane", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<Lane>.Filter.Eq(x => x.IsDeleted, true);
-                var lanes = await _context.Lanes.Find(filter).ToListAsync();
+                var lanes = await _context.GetCollection<Lane>().Find(filter).ToListAsync();
 
                 foreach (var l in lanes)
                 {
@@ -340,7 +340,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("ParkingSession", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<ParkingSession>.Filter.Eq(x => x.IsDeleted, true);
-                var sessions = await _context.ParkingSessions.Find(filter).ToListAsync();
+                var sessions = await _context.GetCollection<ParkingSession>().Find(filter).ToListAsync();
 
                 foreach (var ps in sessions)
                 {
@@ -362,7 +362,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("User", StringComparison.OrdinalIgnoreCase))
             {
                 var filter = Builders<User>.Filter.Eq(x => x.IsDeleted, true);
-                var users = await _context.Users.Find(filter).ToListAsync();
+                var users = await _context.GetCollection<User>().Find(filter).ToListAsync();
 
                 foreach (var u in users)
                 {
@@ -563,31 +563,31 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Vehicle", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Vehicles, "Vehicle", v => v.PlateNumber);
+                await PurgeEntitiesAsync(_context.GetCollection<Vehicle>(), "Vehicle", v => v.PlateNumber);
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Person", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Persons, "Person", p => $"{p.FullName} ({p.Code})");
+                await PurgeEntitiesAsync(_context.GetCollection<Person>(), "Person", p => $"{p.FullName} ({p.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Contractor", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Contractors, "Contractor", c => $"{c.Name} ({c.Code})");
+                await PurgeEntitiesAsync(_context.GetCollection<Contractor>(), "Contractor", c => $"{c.Name} ({c.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Department", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Departments, "Department", d => $"{d.Name} ({d.Code})");
+                await PurgeEntitiesAsync(_context.GetCollection<Department>(), "Department", d => $"{d.Name} ({d.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Company", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Companies, "Company", comp => $"{comp.Name} ({comp.Code})");
+                await PurgeEntitiesAsync(_context.GetCollection<Company>(), "Company", comp => $"{comp.Name} ({comp.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Device", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Devices, "Device", dev => $"{dev.Name} ({dev.IpAddress})");
+                await PurgeEntitiesAsync(_context.GetCollection<Device>(), "Device", dev => $"{dev.Name} ({dev.IpAddress})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("Lane", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Lanes, "Lane", l => $"{l.Name} ({l.Code})");
+                await PurgeEntitiesAsync(_context.GetCollection<Lane>(), "Lane", l => $"{l.Name} ({l.Code})");
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("ParkingSession", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.ParkingSessions, "ParkingSession", ps => ps.PlateNumber);
+                await PurgeEntitiesAsync(_context.GetCollection<ParkingSession>(), "ParkingSession", ps => ps.PlateNumber);
 
             if (string.IsNullOrWhiteSpace(itemType) || itemType.Equals("User", StringComparison.OrdinalIgnoreCase))
-                await PurgeEntitiesAsync(_context.Users, "User", u => $"{u.FullName} ({u.Username})");
+                await PurgeEntitiesAsync(_context.GetCollection<User>(), "User", u => $"{u.FullName} ({u.Username})");
 
             return Ok(new { success = true, message = $"Đã dọn sạch thùng rác (xóa {totalDeleted} mục vĩnh viễn).", totalDeleted });
         }
@@ -600,39 +600,39 @@ namespace PhuXuanParkingSystem.Api.Controllers
             switch (itemType.ToLowerInvariant())
             {
                 case "vehicle":
-                    var v = await _context.Vehicles.Find(BuildIdFilter<Vehicle>(id)).FirstOrDefaultAsync();
+                    var v = await _context.GetCollection<Vehicle>().Find(BuildIdFilter<Vehicle>(id)).FirstOrDefaultAsync();
                     return (v, v?.PlateNumber ?? id);
 
                 case "person":
-                    var p = await _context.Persons.Find(BuildIdFilter<Person>(id)).FirstOrDefaultAsync();
+                    var p = await _context.GetCollection<Person>().Find(BuildIdFilter<Person>(id)).FirstOrDefaultAsync();
                     return (p, p != null ? $"{p.FullName} ({p.Code})" : id);
 
                 case "contractor":
-                    var c = await _context.Contractors.Find(BuildIdFilter<Contractor>(id)).FirstOrDefaultAsync();
+                    var c = await _context.GetCollection<Contractor>().Find(BuildIdFilter<Contractor>(id)).FirstOrDefaultAsync();
                     return (c, c != null ? $"{c.Name} ({c.Code})" : id);
 
                 case "department":
-                    var d = await _context.Departments.Find(BuildIdFilter<Department>(id)).FirstOrDefaultAsync();
+                    var d = await _context.GetCollection<Department>().Find(BuildIdFilter<Department>(id)).FirstOrDefaultAsync();
                     return (d, d != null ? $"{d.Name} ({d.Code})" : id);
 
                 case "company":
-                    var comp = await _context.Companies.Find(BuildIdFilter<Company>(id)).FirstOrDefaultAsync();
+                    var comp = await _context.GetCollection<Company>().Find(BuildIdFilter<Company>(id)).FirstOrDefaultAsync();
                     return (comp, comp != null ? $"{comp.Name} ({comp.Code})" : id);
 
                 case "device":
-                    var dev = await _context.Devices.Find(BuildIdFilter<Device>(id)).FirstOrDefaultAsync();
+                    var dev = await _context.GetCollection<Device>().Find(BuildIdFilter<Device>(id)).FirstOrDefaultAsync();
                     return (dev, dev != null ? $"{dev.Name} ({dev.IpAddress})" : id);
 
                 case "lane":
-                    var l = await _context.Lanes.Find(BuildIdFilter<Lane>(id)).FirstOrDefaultAsync();
+                    var l = await _context.GetCollection<Lane>().Find(BuildIdFilter<Lane>(id)).FirstOrDefaultAsync();
                     return (l, l != null ? $"{l.Name} ({l.Code})" : id);
 
                 case "parkingsession":
-                    var ps = await _context.ParkingSessions.Find(BuildIdFilter<ParkingSession>(id)).FirstOrDefaultAsync();
+                    var ps = await _context.GetCollection<ParkingSession>().Find(BuildIdFilter<ParkingSession>(id)).FirstOrDefaultAsync();
                     return (ps, ps?.PlateNumber ?? id);
 
                 case "user":
-                    var u = await _context.Users.Find(BuildIdFilter<User>(id)).FirstOrDefaultAsync();
+                    var u = await _context.GetCollection<User>().Find(BuildIdFilter<User>(id)).FirstOrDefaultAsync();
                     return (u, u != null ? $"{u.FullName} ({u.Username})" : id);
 
                 default:
@@ -666,47 +666,47 @@ namespace PhuXuanParkingSystem.Api.Controllers
             {
                 case "vehicle":
                     var vFilter = BuildIdFilter<Vehicle>(id);
-                    var vRes = await _context.Vehicles.UpdateOneAsync(vFilter, Builders<Vehicle>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var vRes = await _context.GetCollection<Vehicle>().UpdateOneAsync(vFilter, Builders<Vehicle>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return vRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy phương tiện");
 
                 case "person":
                     var pFilter = BuildIdFilter<Person>(id);
-                    var pRes = await _context.Persons.UpdateOneAsync(pFilter, Builders<Person>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var pRes = await _context.GetCollection<Person>().UpdateOneAsync(pFilter, Builders<Person>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return pRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy nhân sự");
 
                 case "contractor":
                     var cFilter = BuildIdFilter<Contractor>(id);
-                    var cRes = await _context.Contractors.UpdateOneAsync(cFilter, Builders<Contractor>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var cRes = await _context.GetCollection<Contractor>().UpdateOneAsync(cFilter, Builders<Contractor>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return cRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy đối tác");
 
                 case "department":
                     var dFilter = BuildIdFilter<Department>(id);
-                    var dRes = await _context.Departments.UpdateOneAsync(dFilter, Builders<Department>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var dRes = await _context.GetCollection<Department>().UpdateOneAsync(dFilter, Builders<Department>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return dRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy phòng ban");
 
                 case "company":
                     var compFilter = BuildIdFilter<Company>(id);
-                    var compRes = await _context.Companies.UpdateOneAsync(compFilter, Builders<Company>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var compRes = await _context.GetCollection<Company>().UpdateOneAsync(compFilter, Builders<Company>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return compRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy công ty");
 
                 case "device":
                     var devFilter = BuildIdFilter<Device>(id);
-                    var devRes = await _context.Devices.UpdateOneAsync(devFilter, Builders<Device>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var devRes = await _context.GetCollection<Device>().UpdateOneAsync(devFilter, Builders<Device>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return devRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy thiết bị");
 
                 case "lane":
                     var lFilter = BuildIdFilter<Lane>(id);
-                    var lRes = await _context.Lanes.UpdateOneAsync(lFilter, Builders<Lane>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var lRes = await _context.GetCollection<Lane>().UpdateOneAsync(lFilter, Builders<Lane>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return lRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy làn");
 
                 case "parkingsession":
                     var psFilter = BuildIdFilter<ParkingSession>(id);
-                    var psRes = await _context.ParkingSessions.UpdateOneAsync(psFilter, Builders<ParkingSession>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var psRes = await _context.GetCollection<ParkingSession>().UpdateOneAsync(psFilter, Builders<ParkingSession>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return psRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy lượt gửi xe");
 
                 case "user":
                     var uFilter = BuildIdFilter<User>(id);
-                    var uRes = await _context.Users.UpdateOneAsync(uFilter, Builders<User>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
+                    var uRes = await _context.GetCollection<User>().UpdateOneAsync(uFilter, Builders<User>.Update.Set(x => x.IsDeleted, false).Set(x => x.DeletedAt, null).Set(x => x.UpdatedAt, DateTime.Now));
                     return uRes.MatchedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy tài khoản người dùng");
 
                 default:
@@ -720,7 +720,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             {
                 case "company":
                     // Ràng buộc: Kiểm tra xem có phòng ban hoặc nhân sự đang hoạt động thuộc công ty này không
-                    var activeDeptsCount = await _context.Departments.CountDocumentsAsync(Builders<Department>.Filter.And(
+                    var activeDeptsCount = await _context.GetCollection<Department>().CountDocumentsAsync(Builders<Department>.Filter.And(
                         Builders<Department>.Filter.Eq(x => x.CompanyId, id),
                         Builders<Department>.Filter.Eq(x => x.IsDeleted, false)
                     ));
@@ -729,7 +729,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
                         return (false, $"Không thể xóa vĩnh viễn: Còn {activeDeptsCount} phòng ban đang hoạt động trực thuộc công ty này.");
                     }
 
-                    var activePeopleCount = await _context.Persons.CountDocumentsAsync(Builders<Person>.Filter.And(
+                    var activePeopleCount = await _context.GetCollection<Person>().CountDocumentsAsync(Builders<Person>.Filter.And(
                         Builders<Person>.Filter.Eq(x => x.CompanyId, id),
                         Builders<Person>.Filter.Eq(x => x.IsDeleted, false)
                     ));
@@ -738,12 +738,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
                         return (false, $"Không thể xóa vĩnh viễn: Còn {activePeopleCount} nhân sự đang hoạt động trực thuộc công ty này.");
                     }
 
-                    var compDel = await _context.Companies.DeleteOneAsync(BuildIdFilter<Company>(id));
+                    var compDel = await _context.GetCollection<Company>().DeleteOneAsync(BuildIdFilter<Company>(id));
                     return compDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy công ty");
 
                 case "department":
                     // Ràng buộc: Kiểm tra nhân sự trực thuộc
-                    var deptPeopleCount = await _context.Persons.CountDocumentsAsync(Builders<Person>.Filter.And(
+                    var deptPeopleCount = await _context.GetCollection<Person>().CountDocumentsAsync(Builders<Person>.Filter.And(
                         Builders<Person>.Filter.Eq(x => x.DepartmentId, id),
                         Builders<Person>.Filter.Eq(x => x.IsDeleted, false)
                     ));
@@ -752,12 +752,12 @@ namespace PhuXuanParkingSystem.Api.Controllers
                         return (false, $"Không thể xóa vĩnh viễn: Còn {deptPeopleCount} nhân sự đang hoạt động trực thuộc phòng ban này.");
                     }
 
-                    var deptDel = await _context.Departments.DeleteOneAsync(BuildIdFilter<Department>(id));
+                    var deptDel = await _context.GetCollection<Department>().DeleteOneAsync(BuildIdFilter<Department>(id));
                     return deptDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy phòng ban");
 
                 case "contractor":
                     // Ràng buộc: Kiểm tra nhân sự đối tác
-                    var contrPeopleCount = await _context.Persons.CountDocumentsAsync(Builders<Person>.Filter.And(
+                    var contrPeopleCount = await _context.GetCollection<Person>().CountDocumentsAsync(Builders<Person>.Filter.And(
                         Builders<Person>.Filter.Eq(x => x.ContractorId, id),
                         Builders<Person>.Filter.Eq(x => x.IsDeleted, false)
                     ));
@@ -766,26 +766,26 @@ namespace PhuXuanParkingSystem.Api.Controllers
                         return (false, $"Không thể xóa vĩnh viễn: Còn {contrPeopleCount} nhân sự nhà thầu đang hoạt động.");
                     }
 
-                    var cDel = await _context.Contractors.DeleteOneAsync(BuildIdFilter<Contractor>(id));
+                    var cDel = await _context.GetCollection<Contractor>().DeleteOneAsync(BuildIdFilter<Contractor>(id));
                     return cDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy đối tác");
 
                 case "person":
                     // Ràng buộc: Nếu có xe đang gắn chủ xe này, cập nhật OwnerPersonId = null
-                    await _context.Vehicles.UpdateManyAsync(
+                    await _context.GetCollection<Vehicle>().UpdateManyAsync(
                         Builders<Vehicle>.Filter.Eq(x => x.OwnerPersonId, id),
                         Builders<Vehicle>.Update.Set(x => x.OwnerPersonId, null)
                     );
 
-                    var pDel = await _context.Persons.DeleteOneAsync(BuildIdFilter<Person>(id));
+                    var pDel = await _context.GetCollection<Person>().DeleteOneAsync(BuildIdFilter<Person>(id));
                     return pDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy nhân sự");
 
                 case "vehicle":
-                    var vDel = await _context.Vehicles.DeleteOneAsync(BuildIdFilter<Vehicle>(id));
+                    var vDel = await _context.GetCollection<Vehicle>().DeleteOneAsync(BuildIdFilter<Vehicle>(id));
                     return vDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy phương tiện");
 
                 case "device":
                     // Ràng buộc: Kiểm tra xem có làn đang hoạt động gán thiết bị này không
-                    var laneAssigned = await _context.Lanes.Find(Builders<Lane>.Filter.And(
+                    var laneAssigned = await _context.GetCollection<Lane>().Find(Builders<Lane>.Filter.And(
                         Builders<Lane>.Filter.Eq(x => x.IsDeleted, false),
                         Builders<Lane>.Filter.Or(
                             Builders<Lane>.Filter.Eq(x => x.PlateCameraDeviceId, id),
@@ -799,19 +799,19 @@ namespace PhuXuanParkingSystem.Api.Controllers
                         return (false, $"Không thể xóa vĩnh viễn: Thiết bị đang được gán vào làn [{laneAssigned.Name}].");
                     }
 
-                    var devDel = await _context.Devices.DeleteOneAsync(BuildIdFilter<Device>(id));
+                    var devDel = await _context.GetCollection<Device>().DeleteOneAsync(BuildIdFilter<Device>(id));
                     return devDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy thiết bị");
 
                 case "lane":
-                    var lDel = await _context.Lanes.DeleteOneAsync(BuildIdFilter<Lane>(id));
+                    var lDel = await _context.GetCollection<Lane>().DeleteOneAsync(BuildIdFilter<Lane>(id));
                     return lDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy làn");
 
                 case "parkingsession":
-                    var psDel = await _context.ParkingSessions.DeleteOneAsync(BuildIdFilter<ParkingSession>(id));
+                    var psDel = await _context.GetCollection<ParkingSession>().DeleteOneAsync(BuildIdFilter<ParkingSession>(id));
                     return psDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy lượt gửi xe");
 
                 case "user":
-                    var uDel = await _context.Users.DeleteOneAsync(BuildIdFilter<User>(id));
+                    var uDel = await _context.GetCollection<User>().DeleteOneAsync(BuildIdFilter<User>(id));
                     return uDel.DeletedCount > 0 ? (true, "Thành công") : (false, "Không tìm thấy tài khoản người dùng");
 
                 default:

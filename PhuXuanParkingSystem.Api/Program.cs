@@ -13,8 +13,19 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Cấu hình CSDL MongoDB (Singleton MongoDbContext & Generic Repositories)
-var mongoConn = builder.Configuration.GetConnectionString("MongoDb") ?? "mongodb://localhost:27017";
-var dbName = builder.Configuration["DatabaseName"] ?? "PhuXuanParkingSystemDb";
+var mongoConn = builder.Configuration.GetConnectionString("MongoDb")
+    ?? builder.Configuration["MongoDb_ConnectionString"]
+    ?? Environment.GetEnvironmentVariable("MongoDb_ConnectionString", EnvironmentVariableTarget.Process)
+    ?? Environment.GetEnvironmentVariable("MongoDb_ConnectionString", EnvironmentVariableTarget.User)
+    ?? Environment.GetEnvironmentVariable("MongoDb_ConnectionString", EnvironmentVariableTarget.Machine)
+    ?? "mongodb://localhost:27017";
+
+var dbName = builder.Configuration["DatabaseName"]
+    ?? Environment.GetEnvironmentVariable("MongoDb_DatabaseName", EnvironmentVariableTarget.Process)
+    ?? Environment.GetEnvironmentVariable("MongoDb_DatabaseName", EnvironmentVariableTarget.User)
+    ?? Environment.GetEnvironmentVariable("MongoDb_DatabaseName", EnvironmentVariableTarget.Machine)
+    ?? "PhuXuanParkingSystemDb";
+
 builder.Services.AddSingleton(new MongoDbContext(mongoConn, dbName));
 builder.Services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
 builder.Services.AddScoped(typeof(MongoRepository<>));
@@ -130,24 +141,33 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowReactApp");
 
 // 6. Cấu hình Static Files cho thư mục ảnh Captures (để Web hiển thị ảnh từ máy WinForms)
+var rawCaptures = builder.Configuration["CapturesFolder"]
+    ?? Environment.GetEnvironmentVariable("CaptureSavePath", EnvironmentVariableTarget.Process)
+    ?? Environment.GetEnvironmentVariable("CaptureSavePath", EnvironmentVariableTarget.User)
+    ?? Environment.GetEnvironmentVariable("CaptureSavePath", EnvironmentVariableTarget.Machine)
+    ?? "../PhuXuanParkingSystem/bin/x86/Debug/Captures";
+
 var capturesCandidates = new[]
 {
+    Path.IsPathRooted(rawCaptures) ? rawCaptures : Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, rawCaptures)),
     Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "../PhuXuanParkingSystem/bin/x86/Debug/Captures")),
-    Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, builder.Configuration["CapturesFolder"] ?? "../PhuXuanParkingSystem/bin/Debug/Captures")),
     Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "Captures"))
 };
 
 var capturesPath = capturesCandidates.FirstOrDefault(Directory.Exists) ?? capturesCandidates[0];
 if (!Directory.Exists(capturesPath))
 {
-    Directory.CreateDirectory(capturesPath);
+    try { Directory.CreateDirectory(capturesPath); } catch { }
 }
 
-app.UseStaticFiles(new StaticFileOptions
+if (Directory.Exists(capturesPath))
 {
-    FileProvider = new PhysicalFileProvider(capturesPath),
-    RequestPath = "/captures"
-});
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(capturesPath),
+        RequestPath = "/captures"
+    });
+}
 
 // 7. Phục vụ Web Admin SPA tĩnh từ wwwroot (nếu có bản build)
 app.UseDefaultFiles();

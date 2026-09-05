@@ -36,7 +36,7 @@ PhuXuanParkingSystem/
 ├── PhuXuanParkingSystem.Api/           # ASP.NET Core: REST API + JWT auth
 ├── PhuXuanParkingSystem.Web/            # React + Redux Toolkit + TanStack Query
 ├── PhuXuanParkingSystem/              # WinForms .NET 4.8 x86: Live Monitor
-├── PhuXuanParkingSystem.LicenseTool/  # WinForms .NET 8: License key generator
+├── HPLicenseTool/                  # WinForms .NET 8: License key generator
 └── tests/                             # xUnit + FluentAssertions
 ```
 
@@ -159,7 +159,7 @@ dotnet run --project PhuXuanParkingSystem/PhuXuanParkingSystem.csproj
 dotnet run --project PhuXuanParkingSystem.Api/PhuXuanParkingSystem.Api.csproj
 
 # Run License Tool
-dotnet run --project PhuXuanParkingSystem.LicenseTool/PhuXuanParkingSystem.LicenseTool.csproj
+dotnet run --project HPLicenseTool/HPLicenseTool.csproj
 ```
 
 ---

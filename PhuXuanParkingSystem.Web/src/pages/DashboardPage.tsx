@@ -88,10 +88,10 @@ export function DashboardPage() {
   const chartData = metrics?.trafficChart?.length
     ? metrics.trafficChart
     : (metrics?.hourlyTraffic || []).map((h) => ({
-        label: h.hourLabel,
-        inCount: h.inCount,
-        outCount: h.outCount,
-      }))
+      label: h.hourLabel,
+      inCount: h.inCount,
+      outCount: h.outCount,
+    }))
 
   return (
     <div className="space-y-6">
@@ -99,7 +99,7 @@ export function DashboardPage() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Tổng Quan Bãi Xe
+            Tổng Quan Hệ Thống
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Dữ liệu thống kê giám sát lưu lượng và công suất ({metrics?.periodLabel ?? 'Thời gian thực'})
@@ -113,44 +113,40 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => setPeriod('today')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                period === 'today'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'today'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
             >
               Hôm nay
             </button>
             <button
               type="button"
               onClick={() => setPeriod('month')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                period === 'month'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'month'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
             >
               Tháng này
             </button>
             <button
               type="button"
               onClick={() => setPeriod('year')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                period === 'year'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'year'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
             >
               Năm này
             </button>
             <button
               type="button"
               onClick={() => setPeriod('custom')}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-                period === 'custom'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${period === 'custom'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
             >
               <CalendarRange className="h-3.5 w-3.5" />
               Tùy chọn

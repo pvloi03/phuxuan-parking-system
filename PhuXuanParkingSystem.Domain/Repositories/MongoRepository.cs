@@ -11,65 +11,32 @@ using System.Threading.Tasks;
 
 namespace PhuXuanParkingSystem.Repositories
 {
-    /// <summary>
-    /// Lớp cơ sở triển khai IRepository&lt;T&gt; cho MongoDB Driver
-    /// Tự động lấy tên Collection qua thư viện Humanizer (Pluralize),
-    /// xử lý bộ lọc Xóa mềm (Soft Delete) và quản lý dấu thời gian (Timestamps).
-    /// </summary>
-    /// <typeparam name="T">Thực thể kế thừa BaseEntity</typeparam>
     public class MongoRepository<T> : IRepository<T> where T : BaseEntity
     {
         protected readonly IMongoCollection<T> _collection;
         protected readonly MongoDbContext _context;
 
-        /// <summary>
-        /// Khởi tạo MongoRepository với MongoDbContext, tự động suy luận tên Collection qua Humanizer (Pluralize)
-        /// </summary>
+        // Khởi tạo MongoRepository với MongoDbContext, tên Collection luôn được lấy tự động qua Humanizer (Pluralize)
         public MongoRepository(MongoDbContext context)
-            : this(context, typeof(T).Name.Pluralize())
-        {
-        }
-
-        /// <summary>
-        /// Khởi tạo MongoRepository với tên Collection tùy chỉnh
-        /// </summary>
-        public MongoRepository(MongoDbContext context, string collectionName)
         {
             _context = context ?? MongoDbContext.Instance;
-            string colName = string.IsNullOrWhiteSpace(collectionName)
-                ? typeof(T).Name.Pluralize()
-                : collectionName;
-            _collection = _context.Database.GetCollection<T>(colName);
+            _collection = _context.GetCollection<T>();
         }
 
-        /// <summary>
-        /// Constructor mặc định sử dụng MongoDbContext.Instance
-        /// </summary>
+        // Constructor mặc định sử dụng MongoDbContext.Instance
         public MongoRepository()
-            : this(MongoDbContext.Instance)
-        {
-        }
-
-        public MongoRepository(IMongoCollection<T> collection, MongoDbContext? context = null)
-        {
-            _collection = collection ?? throw new ArgumentNullException(nameof(collection));
-            _context = context ?? MongoDbContext.Instance;
-        }
+            : this(MongoDbContext.Instance) { }
 
         public IMongoCollection<T> Collection => _collection;
 
-        /// <summary>
-        /// Tạo bộ lọc tự động kết hợp điều kiện chưa bị xóa mềm (IsDeleted == false)
-        /// </summary>
+        // Tạo bộ lọc tự động kết hợp điều kiện chưa bị xóa mềm (IsDeleted == false)
         protected FilterDefinition<T> CombineSoftDeleteFilter(FilterDefinition<T>? filter = null)
         {
             var notDeleted = Builders<T>.Filter.Eq(x => x.IsDeleted, false);
             return filter != null ? Builders<T>.Filter.And(notDeleted, filter) : notDeleted;
         }
 
-        /// <summary>
-        /// Tạo bộ lọc ID tương thích cả ObjectId và string
-        /// </summary>
+        // Tạo bộ lọc ID tương thích cả ObjectId và string
         protected FilterDefinition<T> BuildIdFilter(string id)
         {
             if (MongoDB.Bson.ObjectId.TryParse(id, out var objectId))

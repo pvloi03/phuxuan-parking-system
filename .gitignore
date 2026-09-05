@@ -1,6 +1,8 @@
 *.claude
 database_seed/
-.scratch/
+publish/
+wwwroot/
+
 
 ## Visual Studio & .NET Build Artifacts
 [Bb]in/
