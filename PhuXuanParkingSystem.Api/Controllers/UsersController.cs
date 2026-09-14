@@ -37,7 +37,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             public string FullName { get; set; } = string.Empty;
             public string? Email { get; set; }
             public string? PhoneNumber { get; set; }
-            public UserRole Role { get; set; } = UserRole.Operator;
+            public UserRole Role { get; set; } = UserRole.Viewer;
             public bool IsActive { get; set; } = true;
         }
 
@@ -46,7 +46,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             public string FullName { get; set; } = string.Empty;
             public string? Email { get; set; }
             public string? PhoneNumber { get; set; }
-            public UserRole Role { get; set; } = UserRole.Operator;
+            public UserRole Role { get; set; } = UserRole.Viewer;
             public bool IsActive { get; set; } = true;
         }
 
@@ -82,9 +82,11 @@ namespace PhuXuanParkingSystem.Api.Controllers
             {
                 UserRole.Admin => "Quản Trị Viên",
                 UserRole.Manager => "Quản Lý",
+                UserRole.Viewer => "Người Xem",
+#pragma warning disable CS0618
                 UserRole.Operator => "Nhân Viên Vận Hành",
                 UserRole.Security => "Bảo Vệ Trực Làn",
-                UserRole.Viewer => "Người Xem",
+#pragma warning restore CS0618
                 _ => role.ToString()
             };
         }
@@ -208,6 +210,11 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 }
             }
 
+            if (request.Role != UserRole.Admin && request.Role != UserRole.Manager && request.Role != UserRole.Viewer)
+            {
+                return BadRequest(ApiResponse.Fail("Vai trò phân quyền không hợp lệ. Chỉ chấp nhận: Quản Trị Viên (Admin), Quản Lý (Manager) hoặc Người Xem (Viewer)."));
+            }
+
             var user = new User
             {
                 Username = cleanUsername,
@@ -245,6 +252,11 @@ namespace PhuXuanParkingSystem.Api.Controllers
             if (user.Id == currentUserId && request.Role != UserRole.Admin)
             {
                 return BadRequest(ApiResponse.Fail("Bạn không thể tự giáng cấp vai trò Quản Trị Viên của chính mình."));
+            }
+
+            if (request.Role != UserRole.Admin && request.Role != UserRole.Manager && request.Role != UserRole.Viewer)
+            {
+                return BadRequest(ApiResponse.Fail("Vai trò phân quyền không hợp lệ. Chỉ chấp nhận: Quản Trị Viên (Admin), Quản Lý (Manager) hoặc Người Xem (Viewer)."));
             }
 
             if (!string.IsNullOrWhiteSpace(request.Email))

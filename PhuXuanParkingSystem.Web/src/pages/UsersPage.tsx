@@ -112,7 +112,7 @@ export const UsersPage: React.FC = () => {
     fullName: '',
     email: '',
     phoneNumber: '',
-    role: 'Operator',
+    role: 'Viewer',
     isActive: true,
   })
 
@@ -171,7 +171,7 @@ export const UsersPage: React.FC = () => {
 
   // Stat calculations
   const adminCount = users.filter((u) => u.role === 'Admin').length
-  const operatorCount = users.filter((u) => u.role === 'Operator' || u.role === 'Security').length
+  const managerCount = users.filter((u) => u.role === 'Manager').length
   const activeCount = users.filter((u) => u.isActive).length
 
   // Handlers
@@ -184,7 +184,7 @@ export const UsersPage: React.FC = () => {
       fullName: '',
       email: '',
       phoneNumber: '',
-      role: 'Operator',
+      role: 'Viewer',
       isActive: true,
     })
     setIsAddEditOpen(true)
@@ -449,12 +449,12 @@ export const UsersPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Vận Hành & Trực Làn
+              Quản Lý (Manager)
             </p>
-            <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">{operatorCount}</p>
+            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">{managerCount}</p>
           </div>
-          <div className="w-12 h-12 bg-cyan-50 dark:bg-cyan-900/30 rounded-xl flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-            <Shield className="w-6 h-6" />
+          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <UserCheck className="w-6 h-6" />
           </div>
         </div>
 
@@ -499,8 +499,6 @@ export const UsersPage: React.FC = () => {
             <option value="">Tất cả vai trò</option>
             <option value="Admin">👑 Quản Trị Viên (Admin)</option>
             <option value="Manager">👔 Quản Lý (Manager)</option>
-            <option value="Operator">🛡️ Vận Hành Làn (Operator)</option>
-            <option value="Security">👮 Bảo Vệ (Security)</option>
             <option value="Viewer">👁️ Người Xem (Viewer)</option>
           </select>
 
@@ -871,8 +869,6 @@ export const UsersPage: React.FC = () => {
                   >
                     <option value="Admin">👑 Quản Trị Viên (Admin)</option>
                     <option value="Manager">👔 Quản Lý (Manager)</option>
-                    <option value="Operator">🛡️ Vận Hành Làn (Operator)</option>
-                    <option value="Security">👮 Bảo Vệ Trực Cổng (Security)</option>
                     <option value="Viewer">👁️ Người Xem (Viewer)</option>
                   </select>
                 </div>
