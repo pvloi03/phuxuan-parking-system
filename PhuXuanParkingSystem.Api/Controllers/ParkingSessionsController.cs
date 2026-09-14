@@ -46,14 +46,10 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.Status, status.Value);
             }
 
-            if (fromDate.HasValue)
+            var timeFilter = BuildTimeFilter(fromDate, toDate, status);
+            if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
             {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Gte(s => s.InTime, fromDate.Value);
-            }
-
-            if (toDate.HasValue)
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Lte(s => s.InTime, toDate.Value);
+                filter &= timeFilter;
             }
 
             if (!string.IsNullOrWhiteSpace(laneName))
@@ -65,7 +61,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
             var totalCount = (int)await _sessionRepo.CountAsync(filter);
             var skip = (pageNumber - 1) * pageSize;
 
-            var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.InTime);
+            var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.CreatedAt);
             var items = await _sessionRepo.FindAsync(filter, sort, skip, pageSize);
 
             var result = new PagedResult<ParkingSession>
@@ -112,17 +108,13 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.Status, status.Value);
             }
 
-            if (fromDate.HasValue)
+            var timeFilter = BuildTimeFilter(fromDate, toDate, status);
+            if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
             {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Gte(s => s.InTime, fromDate.Value);
+                filter &= timeFilter;
             }
 
-            if (toDate.HasValue)
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Lte(s => s.InTime, toDate.Value);
-            }
-
-            var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.InTime);
+            var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.CreatedAt);
             var sessions = await _sessionRepo.FindAsync(filter, sort, 0, 5000);
 
             using var package = new ExcelPackage();
@@ -288,6 +280,63 @@ namespace PhuXuanParkingSystem.Api.Controllers
             }
 
             return Ok(ApiResponse.Ok($"Đã xóa thành công {count} bản ghi phiên đỗ xe."));
+        }
+
+        private static MongoDB.Driver.FilterDefinition<ParkingSession> BuildTimeFilter(
+            DateTime? fromDate,
+            DateTime? toDate,
+            ParkingSessionStatus? status)
+        {
+            var fb = MongoDB.Driver.Builders<ParkingSession>.Filter;
+            if (!fromDate.HasValue && !toDate.HasValue)
+            {
+                return fb.Empty;
+            }
+
+            if (status == ParkingSessionStatus.UnmatchedOut)
+            {
+                var outFilter = fb.Empty;
+                if (fromDate.HasValue)
+                {
+                    outFilter &= fb.Gte(s => s.OutTime, fromDate.Value);
+                }
+                if (toDate.HasValue)
+                {
+                    outFilter &= fb.Lte(s => s.OutTime, toDate.Value);
+                }
+                return outFilter;
+            }
+
+            if (status == ParkingSessionStatus.Active)
+            {
+                var inFilter = fb.Empty;
+                if (fromDate.HasValue)
+                {
+                    inFilter &= fb.Gte(s => s.InTime, fromDate.Value);
+                }
+                if (toDate.HasValue)
+                {
+                    inFilter &= fb.Lte(s => s.InTime, toDate.Value);
+                }
+                return inFilter;
+            }
+
+            var inConditions = fb.Empty;
+            var outConditions = fb.Empty;
+
+            if (fromDate.HasValue)
+            {
+                inConditions &= fb.Gte(s => s.InTime, fromDate.Value);
+                outConditions &= fb.Gte(s => s.OutTime, fromDate.Value);
+            }
+
+            if (toDate.HasValue)
+            {
+                inConditions &= fb.Lte(s => s.InTime, toDate.Value);
+                outConditions &= fb.Lte(s => s.OutTime, toDate.Value);
+            }
+
+            return inConditions | outConditions;
         }
     }
 }

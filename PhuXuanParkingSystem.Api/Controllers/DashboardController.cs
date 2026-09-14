@@ -75,7 +75,7 @@ namespace PhuXuanParkingSystem.Api.Controllers
 
             int periodIn = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= start && s.InTime < end);
             int periodOut = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= start && s.OutTime < end && s.Status == ParkingSessionStatus.Completed);
-            int periodUnmatchedOut = periodSessions.Count(s => s.Status == ParkingSessionStatus.UnmatchedOut && s.InTime >= start && s.InTime < end);
+            int periodUnmatchedOut = periodSessions.Count(s => s.Status == ParkingSessionStatus.UnmatchedOut && s.OutTime.HasValue && s.OutTime >= start && s.OutTime < end);
 
             // 3. Tạo dữ liệu biểu đồ lưu lượng
             var trafficChart = new List<TrafficDataPointDto>();
