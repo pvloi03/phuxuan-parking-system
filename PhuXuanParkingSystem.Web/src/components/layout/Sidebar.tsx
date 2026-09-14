@@ -87,8 +87,6 @@ export function Sidebar() {
   const getRoleLabel = (role: any): string => {
     if (role === 'Admin' || role === 1 || role === '1') return 'Admin'
     if (role === 'Manager' || role === 2 || role === '2') return 'Manager'
-    if (role === 'Operator' || role === 3 || role === '3') return 'Operator'
-    if (role === 'Security' || role === 4 || role === '4') return 'Security'
     return 'Viewer'
   }
 

@@ -8,7 +8,7 @@ export interface ApiResponse<T = any> {
 
 export type VehicleType = 'Car' | 'Motorcycle' | 'Truck' | 'Bicycle' | 'Other'
 export type ParkingSessionStatus = 'Active' | 'Completed' | 'UnmatchedOut'
-export type UserRole = 'Admin' | 'Manager' | 'Operator' | 'Security' | 'Viewer'
+export type UserRole = 'Admin' | 'Manager' | 'Viewer'
 export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'VIP' | 'Other'
 
 export type DeviceType = 'PlateCamera' | 'OverviewCamera' | 'Controller'
@@ -291,9 +291,9 @@ export interface UserPagedResult {
 export const getUserRoleLabel = (role?: UserRole | number | string) => {
   if (role === 'Admin' || role === 1 || role === '1') return 'Quản Trị Viên'
   if (role === 'Manager' || role === 2 || role === '2') return 'Quản Lý'
-  if (role === 'Operator' || role === 3 || role === '3') return 'Nhân Viên Vận Hành'
-  if (role === 'Security' || role === 4 || role === '4') return 'Bảo Vệ Trực Làn'
-  if (role === 'Viewer' || role === 5 || role === '5') return 'Người Xem'
+  if (role === 'Viewer' || role === 3 || role === '3' || role === 5 || role === '5') return 'Người Xem'
+  if (role === 'Operator') return 'Nhân Viên Vận Hành (Cũ)'
+  if (role === 'Security') return 'Bảo Vệ Trực Làn (Cũ)'
   return String(role ?? 'Khác')
 }
 
