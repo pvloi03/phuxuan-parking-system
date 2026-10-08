@@ -1,4 +1,5 @@
 using PhuXuanParkingSystem.Models.Enums;
+using PhuXuanParkingSystem.Models.ValueObjects;
 using PhuXuanParkingSystem.Services.Anpr;
 using PhuXuanParkingSystem.Services.Devices.Controller;
 using PhuXuanParkingSystem.Services.Logging;
@@ -197,7 +198,7 @@ namespace PhuXuanParkingSystem.Forms
                     }
 
                     // 3. Cập nhật thông tin nhận diện
-                    txtInPlate.Text = res.PlateNumber;
+                    txtInPlate.Text = PlateNumber.IsUnrecognized(res.PlateNumber) ? PlateNumber.UnrecognizedDisplay : res.PlateNumber;
                     lblInTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
                     lblInOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
                     lblInDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
@@ -231,11 +232,13 @@ namespace PhuXuanParkingSystem.Forms
 
                 if (res.IsAlreadyInLot)
                 {
-                    SetFooterStatus($"⚠️ [CẢNH BÁO LÀN VÀO] Xe [{res.PlateNumber}] ĐANG Ở TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})!", isError: true);
+                    string plateDisp = PlateNumber.IsUnrecognized(res.PlateNumber) ? PlateNumber.UnrecognizedDisplay : res.PlateNumber;
+                    SetFooterStatus($"⚠️ [CẢNH BÁO LÀN VÀO] Xe [{plateDisp}] ĐANG Ở TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})!", isError: true);
                 }
                 else
                 {
-                    SetFooterStatus($"📸 LÀN VÀO ({triggerSource}): Biển [{res.PlateNumber}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
+                    string plateDisp = PlateNumber.IsUnrecognized(res.PlateNumber) ? PlateNumber.UnrecognizedDisplay : res.PlateNumber;
+                    SetFooterStatus($"📸 LÀN VÀO ({triggerSource}): Biển [{plateDisp}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
                 }
             }
             catch (Exception ex)
@@ -285,7 +288,7 @@ namespace PhuXuanParkingSystem.Forms
                     }
 
                     // 3. Cập nhật thông tin nhận diện
-                    txtOutPlate.Text = res.PlateNumber;
+                    txtOutPlate.Text = PlateNumber.IsUnrecognized(res.PlateNumber) ? PlateNumber.UnrecognizedDisplay : res.PlateNumber;
                     lblOutTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
                     lblOutOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
                     lblOutDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
@@ -323,7 +326,8 @@ namespace PhuXuanParkingSystem.Forms
                 if (InvokeRequired) BeginInvoke(new Action(UpdateOutUi));
                 else UpdateOutUi();
 
-                SetFooterStatus($"📸 LÀN RA ({triggerSource}): Biển [{res.PlateNumber}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
+                string outPlateDisp = PlateNumber.IsUnrecognized(res.PlateNumber) ? PlateNumber.UnrecognizedDisplay : res.PlateNumber;
+                SetFooterStatus($"📸 LÀN RA ({triggerSource}): Biển [{outPlateDisp}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
             }
             catch (Exception ex)
             {

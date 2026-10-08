@@ -101,7 +101,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
 
             // 3. Nhận diện biển số (ANPR)
-            string detectedPlate = "Không đọc được";
+            string detectedPlate = PlateNumber.Unrecognized;
             Bitmap? croppedBmp = null;
             if (plateOk)
             {
@@ -125,7 +125,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
-            if (detectedPlate != "Không đọc được" && IsCrossLaneCollision(detectedPlate, "IN"))
+            if (!PlateNumber.IsUnrecognized(detectedPlate) && IsCrossLaneCollision(detectedPlate, "IN"))
             {
                 AppLogger.Warning($"[CROSS-LANE IN] Bỏ qua lượt vào cho biển số {detectedPlate} do vừa được xử lý tại Làn Ra cách đây < {CROSS_LANE_INTERVAL_SECONDS}s.", "ParkingLaneService");
                 result.IsCrossLaneIgnored = true;
@@ -141,7 +141,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
 
             // 5. Kiểm tra xe đang có phiên Active trong bãi (Anti-Passback / Chống xe vào trùng lặp)
-            if (detectedPlate != "Không đọc được")
+            if (!PlateNumber.IsUnrecognized(detectedPlate))
             {
                 var clean = PlateNumber.Clean(detectedPlate);
                 ParkingSession? existingActive = null;
@@ -230,7 +230,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.Success = true;
 
             // 8. Ghi nhận bộ nhớ đệm chống chụp chéo
-            if (detectedPlate != "Không đọc được")
+            if (!PlateNumber.IsUnrecognized(detectedPlate))
             {
                 _lastProcessedPlates[detectedPlate] = (DateTime.Now, "IN");
             }
@@ -284,7 +284,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
 
             // 3. Nhận diện biển số (ANPR)
-            string detectedPlate = "Không đọc được";
+            string detectedPlate = PlateNumber.Unrecognized;
             Bitmap? croppedBmp = null;
             if (plateOk)
             {
@@ -308,7 +308,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
-            if (detectedPlate != "Không đọc được" && IsCrossLaneCollision(detectedPlate, "OUT"))
+            if (!PlateNumber.IsUnrecognized(detectedPlate) && IsCrossLaneCollision(detectedPlate, "OUT"))
             {
                 AppLogger.Warning($"[CROSS-LANE OUT] Bỏ qua lượt ra cho biển số {detectedPlate} do vừa được Check-in tại Làn Vào cách đây < {CROSS_LANE_INTERVAL_SECONDS}s.", "ParkingLaneService");
                 result.IsCrossLaneIgnored = true;
@@ -336,7 +336,7 @@ namespace PhuXuanParkingSystem.Services.Parking
 
             // 6. Tìm kiếm phiên Active trong bãi khớp 100% biển số (Kiểm tra cả Mongo lẫn LiteDB)
             ParkingSession? activeSession = null;
-            if (detectedPlate != "Không đọc được")
+            if (!PlateNumber.IsUnrecognized(detectedPlate))
             {
                 var clean = PlateNumber.Clean(detectedPlate);
                 if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
@@ -414,7 +414,7 @@ namespace PhuXuanParkingSystem.Services.Parking
             }
 
             // 7. Ghi nhận bộ nhớ đệm chống chụp chéo
-            if (detectedPlate != "Không đọc được")
+            if (!PlateNumber.IsUnrecognized(detectedPlate))
             {
                 _lastProcessedPlates[detectedPlate] = (DateTime.Now, "OUT");
             }
@@ -544,7 +544,7 @@ namespace PhuXuanParkingSystem.Services.Parking
         private async Task<(string? personName, string? deptName, string? compName, string? personId, VehicleType vehicleType, PersonType personType, bool isRegistered)>
             LookupVehicleAndPersonAsync(string plateNumber)
         {
-            if (string.IsNullOrWhiteSpace(plateNumber) || plateNumber == "Không đọc được")
+            if (string.IsNullOrWhiteSpace(plateNumber) || PlateNumber.IsUnrecognized(plateNumber))
             {
                 return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
             }

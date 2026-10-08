@@ -397,7 +397,7 @@ export function HistoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Lịch Sử Xe Ra Vào
+            Lịch Sử Xe Vào Ra
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Tra cứu, xem lại hình ảnh và quản lý dữ liệu xe vào/ra trên toàn hệ thống
@@ -493,11 +493,10 @@ export function HistoryPage() {
               variant="outline"
               size="sm"
               onClick={() => setDatePreset('today')}
-              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                fromDate && fromDate === toDate && fromDate === new Date().toISOString().slice(0, 10)
-                  ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
-                  : 'text-slate-600 dark:text-slate-300'
-              }`}
+              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${fromDate && fromDate === toDate && fromDate === new Date().toISOString().slice(0, 10)
+                ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                : 'text-slate-600 dark:text-slate-300'
+                }`}
             >
               Hôm nay
             </Button>
@@ -533,11 +532,10 @@ export function HistoryPage() {
               variant="outline"
               size="sm"
               onClick={() => setDatePreset('all')}
-              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                !fromDate && !toDate
-                  ? 'bg-slate-200 dark:bg-slate-700 font-bold'
-                  : 'text-slate-600 dark:text-slate-300'
-              }`}
+              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${!fromDate && !toDate
+                ? 'bg-slate-200 dark:bg-slate-700 font-bold'
+                : 'text-slate-600 dark:text-slate-300'
+                }`}
             >
               Tất cả thời gian
             </Button>
@@ -597,9 +595,8 @@ export function HistoryPage() {
                   return (
                     <tr
                       key={session.id}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
-                        isSelected ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
-                      }`}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                        }`}
                     >
                       <td className="p-3.5 pl-4 text-center">
                         <input
@@ -615,7 +612,7 @@ export function HistoryPage() {
                       <td className="p-3.5">
                         {session.personName ? (
                           <span
-                            className="max-w-[120px] sm:max-w-[150px] truncate block font-medium text-slate-800 dark:text-slate-200 cursor-help"
+                            className="max-w-30 sm:max-w-37.5 truncate block font-medium text-slate-800 dark:text-slate-200 cursor-help"
                             title={session.personName}
                           >
                             {session.personName}
@@ -757,11 +754,10 @@ export function HistoryPage() {
                   key={`page-${pageIndex}`}
                   type="button"
                   onClick={() => setPage(pageIndex)}
-                  className={`h-7 min-w-[28px] px-1.5 rounded-md font-mono text-xs font-semibold transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                  }`}
+                  className={`h-7 min-w-7 px-1.5 rounded-md font-mono text-xs font-semibold transition-all cursor-pointer ${isActive
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    }`}
                 >
                   {pageIndex}
                 </button>
@@ -831,11 +827,10 @@ export function HistoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('all')}
-                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'all'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
+                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
               >
                 <Layers className="h-3.5 w-3.5" />
                 Tổng Quan (Ảnh & Thông Tin)
@@ -843,11 +838,10 @@ export function HistoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('slider')}
-                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'slider'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
+                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'slider'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
               >
                 <Eye className="h-3.5 w-3.5" />
                 Slide Ảnh ({slides.length})
@@ -855,11 +849,10 @@ export function HistoryPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('details')}
-                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'details'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
+                className={`text-xs px-3 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${activeTab === 'details'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
               >
                 <FileText className="h-3.5 w-3.5" />
                 Bảng Thông Số Chi Tiết
@@ -873,7 +866,7 @@ export function HistoryPage() {
               {(activeTab === 'all' || activeTab === 'slider') && slides.length > 0 && (
                 <div className="space-y-3">
                   {/* Main Hero Slide Stage - Compact 280px */}
-                  <div className="relative w-full h-[240px] sm:h-[280px] bg-slate-100 dark:bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-800 group shadow-inner">
+                  <div className="relative w-full h-60 sm:h-70 bg-slate-100 dark:bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-800 group shadow-inner">
                     {slides[activeSlide]?.hasImg ? (
                       <img
                         key={slides[activeSlide].id}
@@ -933,9 +926,8 @@ export function HistoryPage() {
                           key={idx}
                           type="button"
                           onClick={() => setActiveSlide(idx)}
-                          className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                            activeSlide === idx ? 'w-4 bg-blue-600 dark:bg-blue-500' : 'w-1.5 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'
-                          }`}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${activeSlide === idx ? 'w-4 bg-blue-600 dark:bg-blue-500' : 'w-1.5 bg-slate-300 dark:bg-slate-600 hover:bg-slate-400'
+                            }`}
                           title={`Đến ảnh ${idx + 1}`}
                         />
                       ))}
@@ -949,11 +941,10 @@ export function HistoryPage() {
                         key={slide.id}
                         type="button"
                         onClick={() => setActiveSlide(idx)}
-                        className={`relative rounded-lg overflow-hidden border p-1 transition-all cursor-pointer text-left bg-slate-50 dark:bg-slate-950/60 ${
-                          activeSlide === idx
-                            ? 'border-blue-600 dark:border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/50 dark:bg-slate-800/80 shadow-md'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 opacity-70 hover:opacity-100'
-                        }`}
+                        className={`relative rounded-lg overflow-hidden border p-1 transition-all cursor-pointer text-left bg-slate-50 dark:bg-slate-950/60 ${activeSlide === idx
+                          ? 'border-blue-600 dark:border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/50 dark:bg-slate-800/80 shadow-md'
+                          : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 opacity-70 hover:opacity-100'
+                          }`}
                       >
                         <div className="h-11 sm:h-12 w-full rounded bg-slate-200/60 dark:bg-slate-950 overflow-hidden flex items-center justify-center">
                           {slide.hasImg ? (
@@ -1021,9 +1012,9 @@ export function HistoryPage() {
                           <span className="font-semibold text-blue-600 dark:text-blue-400">
                             {selectedSession.personType
                               ? (selectedSession.personType === 'Employee' ? 'Cán bộ / Nhân viên' :
-                                 selectedSession.personType === 'Contractor' ? 'Đối tác / Nhà thầu' :
-                                 selectedSession.personType === 'Visitor' ? 'Khách thăm' :
-                                 selectedSession.personType === 'VIP' ? 'Khách VIP' : 'Khách vãng lai')
+                                selectedSession.personType === 'Contractor' ? 'Đối tác / Nhà thầu' :
+                                  selectedSession.personType === 'Visitor' ? 'Khách thăm' :
+                                    selectedSession.personType === 'VIP' ? 'Khách VIP' : 'Khách vãng lai')
                               : (selectedSession.personName ? 'Xe đăng ký' : 'Khách vãng lai')}
                           </span>
                         </div>

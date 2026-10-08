@@ -48,7 +48,7 @@ type MenuItem = { type: 'single'; item: NavSingleItem } | { type: 'group'; group
 
 const menuConfig: MenuItem[] = [
   { type: 'single', item: { title: 'Dashboard', href: '/', icon: LayoutDashboard } },
-  { type: 'single', item: { title: 'Lịch Sử Xe Ra Vào', href: '/history', icon: History } },
+  { type: 'single', item: { title: 'Lịch Sử Xe Vào Ra', href: '/history', icon: History } },
   {
     type: 'group',
     group: {
@@ -114,7 +114,7 @@ export function Sidebar() {
         'flex flex-col h-screen sticky top-0 z-30 bg-white dark:bg-[#0c1220]',
         'border-r border-slate-200 dark:border-[#1e2d3d]',
         'transition-all duration-300 ease-in-out',
-        isCollapsed ? 'w-[68px]' : 'w-60'
+        isCollapsed ? 'w-17' : 'w-60'
       )}
     >
       {/* ── Brand Header ── */}
@@ -271,7 +271,7 @@ export function Sidebar() {
       {/* ── User Section ── */}
       <div className="border-t border-slate-100 dark:border-[#1e2d3d] p-3 shrink-0">
         <div className={cn('flex items-center gap-2.5', isCollapsed && 'flex-col')}>
-          <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-600 to-indigo-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+          <div className="h-7 w-7 rounded-full bg-linear-to-br from-blue-600 to-indigo-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
             {avatarLetter}
           </div>
           {!isCollapsed && (

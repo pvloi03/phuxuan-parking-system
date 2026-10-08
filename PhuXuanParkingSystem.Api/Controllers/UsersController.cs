@@ -83,10 +83,6 @@ namespace PhuXuanParkingSystem.Api.Controllers
                 UserRole.Admin => "Quản Trị Viên",
                 UserRole.Manager => "Quản Lý",
                 UserRole.Viewer => "Người Xem",
-#pragma warning disable CS0618
-                UserRole.Operator => "Nhân Viên Vận Hành",
-                UserRole.Security => "Bảo Vệ Trực Làn",
-#pragma warning restore CS0618
                 _ => role.ToString()
             };
         }

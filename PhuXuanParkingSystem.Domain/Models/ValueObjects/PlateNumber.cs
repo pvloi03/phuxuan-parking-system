@@ -25,16 +25,45 @@ namespace PhuXuanParkingSystem.Models.ValueObjects
 
         public string FormattedValue => FormatDisplay(Value);
 
+        /// <summary>
+        /// Giá trị lưu trong Database khi không nhận diện được biển số
+        /// </summary>
+        public const string Unrecognized = "LOI_NHAN_DIEN";
+
+        /// <summary>
+        /// Chuỗi hiển thị trên giao diện WinForms khi nhận diện lỗi
+        /// </summary>
+        public const string UnrecognizedDisplay = "Lỗi Nhận Diện";
+
+        /// <summary>
+        /// Kiểm tra xem chuỗi có phải là trạng thái không nhận diện được biển số hay không
+        /// </summary>
+        public static bool IsUnrecognized(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return false;
+            var trimmed = input!.Trim();
+            return string.Equals(trimmed, Unrecognized, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmed, "Không đọc được", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmed, UnrecognizedDisplay, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmed, "Lỗi nhận diện", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(trimmed, "KHNGCC", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static string Clean(string? input)
         {
             if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            if (IsUnrecognized(input)) return Unrecognized;
             return Regex.Replace(input!.Trim().ToUpperInvariant(), @"[^A-Z0-9]", "");
         }
 
         public static string FormatDisplay(string? input)
         {
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            if (IsUnrecognized(input)) return UnrecognizedDisplay;
+
             string clean = Clean(input);
             if (string.IsNullOrEmpty(clean)) return string.Empty;
+            if (clean == Unrecognized) return UnrecognizedDisplay;
 
             // 1. Biển 5 số có ký hiệu đặc biệt (LD, NN, NG, QT, DA) e.g. 88LD00122 -> 88LD-001.22
             var matchSpecial5 = Regex.Match(clean, @"^([0-9]{2})(LD|NN|NG|QT|DA)([0-9]{3})([0-9]{2})$");
