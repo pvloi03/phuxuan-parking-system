@@ -606,7 +606,7 @@ namespace HPLicenseTool
             lblTitle.Name = "lblTitle";
             lblTitle.Size = new Size(518, 31);
             lblTitle.TabIndex = 0;
-            lblTitle.Text = "PHÚ XUÂN PARKING — LICENSE GENERATOR";
+            lblTitle.Text = "HPPARKING — LICENSE GENERATOR";
             // 
             // MainForm
             // 
@@ -621,7 +621,7 @@ namespace HPLicenseTool
             MinimumSize = new Size(1205, 963);
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Phú Xuân Parking — Công Cụ Tạo & Quản Lý License Key (Vendor Tool)";
+            Text = "HPParking — Công Cụ Tạo & Quản Lý License Key (Vendor Tool)";
             tabControlMain.ResumeLayout(false);
             tabGenerate.ResumeLayout(false);
             grpOutput.ResumeLayout(false);
