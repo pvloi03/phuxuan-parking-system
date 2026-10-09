@@ -178,8 +178,13 @@ namespace HPParkingSystem.Forms
             {
                 // Phím tắt chụp thủ công Cột 1 (F1) - theo Direction của Làn 1
                 var cfg = _deviceConfigService?.CurrentConfig;
-                var lane1 = cfg?.Lane1 ?? cfg?.InLane;
-                var dir1 = lane1?.Direction ?? LaneDirection.In;
+                var lane1 = cfg?.Lane1;
+                if (lane1 == null)
+                {
+                    SetFooterStatus("Cột 1 chưa được gán làn xe.");
+                    return;
+                }
+                var dir1 = lane1.Direction;
                 _ = Task.Run(async () => await HandleLaneSlotAsync(1, dir1, "MANUAL"));
                 e.Handled = true;
             }
@@ -187,8 +192,13 @@ namespace HPParkingSystem.Forms
             {
                 // Phím tắt chụp thủ công Cột 2 (F2) - theo Direction của Làn 2
                 var cfg = _deviceConfigService?.CurrentConfig;
-                var lane2 = cfg?.Lane2 ?? cfg?.OutLane;
-                var dir2 = lane2?.Direction ?? LaneDirection.Out;
+                var lane2 = cfg?.Lane2;
+                if (lane2 == null)
+                {
+                    SetFooterStatus("Cột 2 chưa được gán làn xe.");
+                    return;
+                }
+                var dir2 = lane2.Direction;
                 _ = Task.Run(async () => await HandleLaneSlotAsync(2, dir2, "MANUAL"));
                 e.Handled = true;
             }

@@ -41,8 +41,13 @@ namespace HPParkingSystem.Forms
             if (e.AuxPort == 1)
             {
                 // CỘT 1 (Aux 1) - Hướng do Lane1.Direction quyết định
-                var lane1 = cfg?.Lane1 ?? cfg?.InLane;
-                var dir1 = lane1?.Direction ?? LaneDirection.In;
+                var lane1 = cfg?.Lane1;
+                if (lane1 == null)
+                {
+                    AppLogger.Debug("[RADAR CỘT 1] Bỏ qua tín hiệu (Cột 1 chưa được gán làn xe).");
+                    return;
+                }
+                var dir1 = lane1.Direction;
                 string dirLabel = dir1 == LaneDirection.In ? "xe vào" : "xe ra";
 
                 if (e.IsActive)
@@ -95,8 +100,13 @@ namespace HPParkingSystem.Forms
             else if (e.AuxPort == 2)
             {
                 // CỘT 2 (Aux 2) - Hướng do Lane2.Direction quyết định
-                var lane2 = cfg?.Lane2 ?? cfg?.OutLane;
-                var dir2 = lane2?.Direction ?? LaneDirection.Out;
+                var lane2 = cfg?.Lane2;
+                if (lane2 == null)
+                {
+                    AppLogger.Debug("[RADAR CỘT 2] Bỏ qua tín hiệu (Cột 2 chưa được gán làn xe).");
+                    return;
+                }
+                var dir2 = lane2.Direction;
                 string dirLabel = dir2 == LaneDirection.In ? "xe vào" : "xe ra";
 
                 if (e.IsActive)
@@ -171,17 +181,19 @@ namespace HPParkingSystem.Forms
         public async Task HandleLaneSlotAsync(int slot, LaneDirection direction, string triggerSource)
         {
             var cfg = _deviceConfigService?.CurrentConfig;
-            var lane = slot == 1 ? (cfg?.Lane1 ?? cfg?.InLane) : (cfg?.Lane2 ?? cfg?.OutLane);
-            string laneName = lane?.Name ?? (direction == LaneDirection.In ? $"Làn Vào {slot}" : $"Làn Ra {slot}");
+            var lane = slot == 1 ? cfg?.Lane1 : cfg?.Lane2;
+            if (lane == null)
+            {
+                AppLogger.Warning($"[CỘT {slot}] Chưa được gán làn xe. Bỏ qua xử lý.", "LaneControl");
+                SetFooterStatus($"Cột {slot} chưa được gán làn xe.");
+                return;
+            }
+            string laneName = lane.Name;
 
             ICameraService plateCam = slot == 1 ? _inPlateCam : _outPlateCam;
             ICameraService overviewCam = slot == 1 ? _inOverviewCam : _outOverviewCam;
-            string? plateDevId = slot == 1
-                ? (lane?.PlateCamera?.Id ?? cfg?.Lane1PlateCamera?.Id ?? cfg?.InPlateCamera?.Id)
-                : (lane?.PlateCamera?.Id ?? cfg?.Lane2PlateCamera?.Id ?? cfg?.OutPlateCamera?.Id);
-            string? ovwDevId = slot == 1
-                ? (lane?.OverviewCamera?.Id ?? cfg?.Lane1OverviewCamera?.Id ?? cfg?.InOverviewCamera?.Id)
-                : (lane?.OverviewCamera?.Id ?? cfg?.Lane2OverviewCamera?.Id ?? cfg?.OutOverviewCamera?.Id);
+            string? plateDevId = lane.PlateCamera?.Id ?? (slot == 1 ? cfg?.Lane1PlateCamera?.Id : cfg?.Lane2PlateCamera?.Id);
+            string? ovwDevId = lane.OverviewCamera?.Id ?? (slot == 1 ? cfg?.Lane1OverviewCamera?.Id : cfg?.Lane2OverviewCamera?.Id);
 
             string dirLabel = direction == LaneDirection.In ? "LÀN VÀO" : "LÀN RA";
             AppLogger.Information($"[{dirLabel} - CỘT {slot}] Bắt đầu kích hoạt chụp ảnh ({laneName}) từ nguồn: {triggerSource}...", "LaneControl");
@@ -250,17 +262,21 @@ namespace HPParkingSystem.Forms
         public async Task HandleInLaneTriggerAsync(string triggerSource)
         {
             var cfg = _deviceConfigService?.CurrentConfig;
-            var lane1 = cfg?.Lane1 ?? cfg?.InLane;
-            var dir1 = lane1?.Direction ?? LaneDirection.In;
-            await HandleLaneSlotAsync(1, dir1, triggerSource);
+            var lane1 = cfg?.Lane1;
+            if (lane1 != null)
+            {
+                await HandleLaneSlotAsync(1, lane1.Direction, triggerSource);
+            }
         }
 
         public async Task HandleOutLaneTriggerAsync(string triggerSource)
         {
             var cfg = _deviceConfigService?.CurrentConfig;
-            var lane2 = cfg?.Lane2 ?? cfg?.OutLane;
-            var dir2 = lane2?.Direction ?? LaneDirection.Out;
-            await HandleLaneSlotAsync(2, dir2, triggerSource);
+            var lane2 = cfg?.Lane2;
+            if (lane2 != null)
+            {
+                await HandleLaneSlotAsync(2, lane2.Direction, triggerSource);
+            }
         }
 
         private void UpdateSlot1Ui(LaneProcessResult res, LaneDirection direction)

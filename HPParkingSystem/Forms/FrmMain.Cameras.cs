@@ -124,10 +124,10 @@ namespace HPParkingSystem.Forms
                     }
                 }
 
-                var slot1Plate = result.Lane1PlateCamera ?? result.InPlateCamera;
-                var slot1Ovw = result.Lane1OverviewCamera ?? result.InOverviewCamera;
-                var slot2Plate = result.Lane2PlateCamera ?? result.OutPlateCamera;
-                var slot2Ovw = result.Lane2OverviewCamera ?? result.OutOverviewCamera;
+                var slot1Plate = result.Lane1PlateCamera;
+                var slot1Ovw = result.Lane1OverviewCamera;
+                var slot2Plate = result.Lane2PlateCamera;
+                var slot2Ovw = result.Lane2OverviewCamera;
 
                 BindSlot(CameraSlot.InPlate, slot1Plate, _inPlateCam);
                 BindSlot(CameraSlot.InOverview, slot1Ovw, _inOverviewCam);
@@ -135,7 +135,7 @@ namespace HPParkingSystem.Forms
                 BindSlot(CameraSlot.OutOverview, slot2Ovw, _outOverviewCam);
 
                 // Cập nhật tiêu đề hiển thị động theo cấu hình 2 làn
-                UpdateLaneTitles(result.Lane1 ?? result.InLane, result.Lane2 ?? result.OutLane);
+                UpdateLaneTitles(result.Lane1, result.Lane2);
 
                 if (result.Controller != null && result.Controller.IsActive && !string.IsNullOrEmpty(result.ControllerIp))
                 {
@@ -311,23 +311,23 @@ namespace HPParkingSystem.Forms
 
             var changedSlots = new List<CameraSlot>();
 
-            var oldSlot1Plate = oldConfig.Lane1PlateCamera ?? oldConfig.InPlateCamera;
-            var newSlot1Plate = newConfig.Lane1PlateCamera ?? newConfig.InPlateCamera;
+            var oldSlot1Plate = oldConfig.Lane1PlateCamera;
+            var newSlot1Plate = newConfig.Lane1PlateCamera;
             if (!IsSameDevice(oldSlot1Plate, newSlot1Plate))
                 changedSlots.Add(CameraSlot.InPlate);
 
-            var oldSlot1Ovw = oldConfig.Lane1OverviewCamera ?? oldConfig.InOverviewCamera;
-            var newSlot1Ovw = newConfig.Lane1OverviewCamera ?? newConfig.InOverviewCamera;
+            var oldSlot1Ovw = oldConfig.Lane1OverviewCamera;
+            var newSlot1Ovw = newConfig.Lane1OverviewCamera;
             if (!IsSameDevice(oldSlot1Ovw, newSlot1Ovw))
                 changedSlots.Add(CameraSlot.InOverview);
 
-            var oldSlot2Plate = oldConfig.Lane2PlateCamera ?? oldConfig.OutPlateCamera;
-            var newSlot2Plate = newConfig.Lane2PlateCamera ?? newConfig.OutPlateCamera;
+            var oldSlot2Plate = oldConfig.Lane2PlateCamera;
+            var newSlot2Plate = newConfig.Lane2PlateCamera;
             if (!IsSameDevice(oldSlot2Plate, newSlot2Plate))
                 changedSlots.Add(CameraSlot.OutPlate);
 
-            var oldSlot2Ovw = oldConfig.Lane2OverviewCamera ?? oldConfig.OutOverviewCamera;
-            var newSlot2Ovw = newConfig.Lane2OverviewCamera ?? newConfig.OutOverviewCamera;
+            var oldSlot2Ovw = oldConfig.Lane2OverviewCamera;
+            var newSlot2Ovw = newConfig.Lane2OverviewCamera;
             if (!IsSameDevice(oldSlot2Ovw, newSlot2Ovw))
                 changedSlots.Add(CameraSlot.OutOverview);
 
@@ -397,10 +397,10 @@ namespace HPParkingSystem.Forms
                 }
             }
 
-            var newSlot1PlateDev = newConfig.Lane1PlateCamera ?? newConfig.InPlateCamera;
-            var newSlot1OvwDev = newConfig.Lane1OverviewCamera ?? newConfig.InOverviewCamera;
-            var newSlot2PlateDev = newConfig.Lane2PlateCamera ?? newConfig.OutPlateCamera;
-            var newSlot2OvwDev = newConfig.Lane2OverviewCamera ?? newConfig.OutOverviewCamera;
+            var newSlot1PlateDev = newConfig.Lane1PlateCamera;
+            var newSlot1OvwDev = newConfig.Lane1OverviewCamera;
+            var newSlot2PlateDev = newConfig.Lane2PlateCamera;
+            var newSlot2OvwDev = newConfig.Lane2OverviewCamera;
 
             BindSlot(CameraSlot.InPlate, newSlot1PlateDev, _inPlateCam);
             BindSlot(CameraSlot.InOverview, newSlot1OvwDev, _inOverviewCam);
@@ -408,7 +408,7 @@ namespace HPParkingSystem.Forms
             BindSlot(CameraSlot.OutOverview, newSlot2OvwDev, _outOverviewCam);
 
             // Cập nhật lại tiêu đề 2 làn khi cấu hình thay đổi
-            UpdateLaneTitles(newConfig.Lane1 ?? newConfig.InLane, newConfig.Lane2 ?? newConfig.OutLane);
+            UpdateLaneTitles(newConfig.Lane1, newConfig.Lane2);
 
             if (newConfig.Controller != null && newConfig.Controller.IsActive && !string.IsNullOrEmpty(newConfig.ControllerIp))
             {

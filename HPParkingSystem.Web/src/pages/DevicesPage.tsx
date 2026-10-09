@@ -624,7 +624,7 @@ export function DevicesPage() {
                       </td>
                       <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300 font-medium">
                         <div className="flex items-center gap-1.5">
-                          <Network className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+                          <Network className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                           <span>{device.ipAddress}</span>
                         </div>
                       </td>
@@ -717,7 +717,7 @@ export function DevicesPage() {
                       variant={pageNumber === p ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setPageNumber(p)}
-                      className={`h-7 min-w-[28px] px-2 text-xs cursor-pointer ${pageNumber === p ? 'bg-blue-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400'}`}
+                      className={`h-7 min-w-7 px-2 text-xs cursor-pointer ${pageNumber === p ? 'bg-blue-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400'}`}
                     >{p}</Button>
                   </div>
                 )
@@ -736,11 +736,10 @@ export function DevicesPage() {
           <DialogHeader className="p-5 pb-3 border-b border-slate-200 dark:border-slate-800 pr-8">
             <DialogTitle className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm sm:text-base">
               <div className="flex items-center gap-2.5">
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
-                  selectedDevice && String(selectedDevice.type).toLowerCase().includes('camera')
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedDevice && String(selectedDevice.type).toLowerCase().includes('camera')
                     ? 'bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300'
                     : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                }`}>
+                  }`}>
                   {selectedDevice && String(selectedDevice.type).toLowerCase().includes('camera')
                     ? <Camera className="h-4.5 w-4.5" />
                     : <Cpu className="h-4.5 w-4.5" />}

@@ -1085,7 +1085,7 @@ export function HistoryPage() {
                         <div className="flex items-center justify-between">
                           <span className="text-slate-400 text-[11px]">Làn kiểm soát vào:</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">
-                            {selectedSession.inLaneName || 'Làn Vào Số 1'}
+                            {selectedSession.inLaneName || ''}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-[11px]">

@@ -71,8 +71,46 @@ namespace HPParkingSystem.Services.Devices.Config
                 }
 
                 // 3. Áp dụng vào result theo TriggerAuxPort (1 = Cột Trái / Slot 1, 2 = Cột Phải / Slot 2)
-                var lane1 = lanes?.FirstOrDefault(l => l.TriggerAuxPort == 1) ?? lanes?.FirstOrDefault();
-                var lane2 = lanes?.FirstOrDefault(l => l.TriggerAuxPort == 2) ?? lanes?.FirstOrDefault(l => l != lane1);
+                var activeLanes = (lanes ?? Enumerable.Empty<Lane>()).Where(l => !l.IsDeleted && l.IsActive).ToList();
+                Lane? lane1 = null;
+                Lane? lane2 = null;
+
+                if (activeLanes.Count == 1)
+                {
+                    // Hệ thống chỉ có 1 làn duy nhất: Không bao giờ nhân đôi sang cả 2 cột!
+                    var single = activeLanes[0];
+                    if (single.TriggerAuxPort == 2)
+                    {
+                        lane2 = single;
+                        lane1 = null;
+                    }
+                    else
+                    {
+                        lane1 = single;
+                        lane2 = null;
+                    }
+                }
+                else if (activeLanes.Count > 1)
+                {
+                    // Hệ thống có từ 2 làn trở lên:
+                    lane1 = activeLanes.FirstOrDefault(l => l.TriggerAuxPort == 1);
+                    lane2 = activeLanes.FirstOrDefault(l => l.TriggerAuxPort == 2 && l != lane1);
+
+                    // Nếu các làn chưa cấu hình rõ TriggerAuxPort (hoặc cả 2 đều port 1 / port 2):
+                    if (lane1 == null && lane2 == null)
+                    {
+                        lane1 = activeLanes[0];
+                        lane2 = activeLanes[1];
+                    }
+                    else if (lane1 == null)
+                    {
+                        lane1 = activeLanes.FirstOrDefault(l => l != lane2);
+                    }
+                    else if (lane2 == null)
+                    {
+                        lane2 = activeLanes.FirstOrDefault(l => l != lane1);
+                    }
+                }
 
                 if (lane1 != null)
                 {
@@ -117,10 +155,10 @@ namespace HPParkingSystem.Services.Devices.Config
                 // Ánh xạ tương thích ngược theo Direction
                 result.InLane = lane1?.Direction == LaneDirection.In ? lane1 : (lane2?.Direction == LaneDirection.In ? lane2 : null);
                 result.OutLane = lane2?.Direction == LaneDirection.Out ? lane2 : (lane1?.Direction == LaneDirection.Out ? lane1 : null);
-                result.InPlateCamera = result.InLane?.PlateCamera ?? result.Lane1PlateCamera;
-                result.InOverviewCamera = result.InLane?.OverviewCamera ?? result.Lane1OverviewCamera;
-                result.OutPlateCamera = result.OutLane?.PlateCamera ?? result.Lane2PlateCamera;
-                result.OutOverviewCamera = result.OutLane?.OverviewCamera ?? result.Lane2OverviewCamera;
+                result.InPlateCamera = result.InLane?.PlateCamera;
+                result.InOverviewCamera = result.InLane?.OverviewCamera;
+                result.OutPlateCamera = result.OutLane?.PlateCamera;
+                result.OutOverviewCamera = result.OutLane?.OverviewCamera;
 
                 // 4. Kiểm tra thiếu cấu hình
                 CheckMissingConfigs(result, lane1, lane2);
@@ -308,6 +346,8 @@ namespace HPParkingSystem.Services.Devices.Config
         {
             var parts = new List<string>
             {
+                config.Lane1?.Id ?? "null",
+                config.Lane2?.Id ?? "null",
                 FormatDeviceHash(config.Lane1PlateCamera),
                 FormatDeviceHash(config.Lane1OverviewCamera),
                 FormatDeviceHash(config.Lane2PlateCamera),
