@@ -100,9 +100,9 @@ namespace HPParkingSystem.Forms
                 // Sử dụng DeviceConfigService - đã có Cache + Hash để detect thay đổi
                 var result = await _deviceConfigService.LoadConfigAsync();
 
-                if (!result.Success || (result.InPlateCamera == null && result.OutPlateCamera == null))
+                if (!result.Success)
                 {
-                    AppLogger.Warning("[Hardware Sync] Nạp cấu hình thất bại hoặc không có thiết bị.");
+                    AppLogger.Warning("[Hardware Sync] Nạp cấu hình từ CSDL thất bại.");
                     return;
                 }
 
@@ -139,9 +139,14 @@ namespace HPParkingSystem.Forms
 
                 if (result.Controller != null && result.Controller.IsActive && !string.IsNullOrEmpty(result.ControllerIp))
                 {
-                    _controllerIp = result.ControllerIp ?? _controllerIp;
-                    _controllerPort = result.ControllerPort > 0 ? result.ControllerPort : _controllerPort;
+                    _controllerIp = result.ControllerIp!;
+                    _controllerPort = result.ControllerPort > 0 ? result.ControllerPort : 4370;
                     _activeDevices[result.Controller.Id] = result.Controller;
+                }
+                else
+                {
+                    _controllerIp = string.Empty;
+                    _controllerPort = 0;
                 }
 
                 // Log chi tiết cấu hình
@@ -407,9 +412,14 @@ namespace HPParkingSystem.Forms
 
             if (newConfig.Controller != null && newConfig.Controller.IsActive && !string.IsNullOrEmpty(newConfig.ControllerIp))
             {
-                _controllerIp = newConfig.ControllerIp ?? _controllerIp;
-                _controllerPort = newConfig.ControllerPort > 0 ? newConfig.ControllerPort : _controllerPort;
+                _controllerIp = newConfig.ControllerIp!;
+                _controllerPort = newConfig.ControllerPort > 0 ? newConfig.ControllerPort : 4370;
                 _activeDevices[newConfig.Controller.Id] = newConfig.Controller;
+            }
+            else
+            {
+                _controllerIp = string.Empty;
+                _controllerPort = 0;
             }
 
             // Đồng bộ Adapters
@@ -464,7 +474,7 @@ namespace HPParkingSystem.Forms
 
             if (controllerChanged && !string.IsNullOrEmpty(_controllerIp))
             {
-                tasks.Add(_controller.ConnectAsync(_controllerIp, _controllerPort));
+                tasks.Add(_controller.ConnectAsync(_controllerIp!, _controllerPort));
             }
 
             if (tasks.Count > 0)

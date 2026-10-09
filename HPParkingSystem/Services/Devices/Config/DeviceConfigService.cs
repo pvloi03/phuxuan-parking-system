@@ -41,9 +41,9 @@ namespace HPParkingSystem.Services.Devices.Config
 
             try
             {
-                // 1. Query Lanes và Devices song song để tăng tốc (chỉ lấy các bản ghi đang Active)
+                // 1. Query Lanes và Devices song song để tăng tốc (Lấy các bản ghi chưa bị xóa)
                 var lanesTask = _laneRepo.FindAsync(l => !l.IsDeleted && l.IsActive, cancellationToken);
-                var devicesTask = _deviceRepo.FindAsync(d => !d.IsDeleted && d.IsActive, cancellationToken);
+                var devicesTask = _deviceRepo.FindAsync(d => !d.IsDeleted, cancellationToken);
 
                 await Task.WhenAll(lanesTask, devicesTask);
 
@@ -55,8 +55,8 @@ namespace HPParkingSystem.Services.Devices.Config
 
                 if (devices == null || devices.Count == 0)
                 {
-                    result.Warnings.Add("Không tìm thấy thiết bị nào đang hoạt động trong CSDL MongoDB");
-                    AppLogger.Warning("[DeviceConfig] Không tìm thấy thiết bị nào đang hoạt động");
+                    result.Warnings.Add("Không tìm thấy thiết bị nào trong CSDL MongoDB");
+                    AppLogger.Warning("[DeviceConfig] Không tìm thấy thiết bị nào");
                     return result;
                 }
 
@@ -97,6 +97,20 @@ namespace HPParkingSystem.Services.Devices.Config
                         result.Controller = lane2.Controller;
                         result.ControllerIp = lane2.Controller.IpAddress;
                         result.ControllerPort = lane2.Controller.Port > 0 ? lane2.Controller.Port : 4370;
+                    }
+                }
+
+                // Fallback nếu cả 2 làn chưa gán Controller trực tiếp: tìm Controller đầu tiên trong danh mục Devices
+                if (result.Controller == null)
+                {
+                    var fallbackController = devices.FirstOrDefault(d => d.Type == DeviceType.Controller && d.IsActive)
+                                           ?? devices.FirstOrDefault(d => d.Type == DeviceType.Controller);
+                    if (fallbackController != null)
+                    {
+                        result.Controller = fallbackController;
+                        result.ControllerIp = fallbackController.IpAddress;
+                        result.ControllerPort = fallbackController.Port > 0 ? fallbackController.Port : 4370;
+                        AppLogger.Information($"[DeviceConfig] Sử dụng Controller mặc định từ danh mục Devices: {fallbackController.Name} ({fallbackController.IpAddress}:{result.ControllerPort})");
                     }
                 }
 
@@ -235,10 +249,21 @@ namespace HPParkingSystem.Services.Devices.Config
                     result.Warnings.Add($"Làn 1 ({lane1.Name}) chưa gán Camera Biển Số");
                     AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 1 ({lane1.Name}) chưa gán Camera Biển Số");
                 }
+                else if (!lane1.PlateCamera.IsActive)
+                {
+                    result.Warnings.Add($"Làn 1 ({lane1.Name}): Camera Biển Số ({lane1.PlateCamera.Name}) đang ngừng hoạt động (Inactive)");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 1 ({lane1.Name}): Camera Biển Số ({lane1.PlateCamera.Name}) đang Inactive");
+                }
+
                 if (lane1.OverviewCamera == null)
                 {
                     result.Warnings.Add($"Làn 1 ({lane1.Name}) chưa gán Camera Toàn Cảnh");
                     AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 1 ({lane1.Name}) chưa gán Camera Toàn Cảnh");
+                }
+                else if (!lane1.OverviewCamera.IsActive)
+                {
+                    result.Warnings.Add($"Làn 1 ({lane1.Name}): Camera Toàn Cảnh ({lane1.OverviewCamera.Name}) đang ngừng hoạt động (Inactive)");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 1 ({lane1.Name}): Camera Toàn Cảnh ({lane1.OverviewCamera.Name}) đang Inactive");
                 }
             }
 
@@ -254,10 +279,21 @@ namespace HPParkingSystem.Services.Devices.Config
                     result.Warnings.Add($"Làn 2 ({lane2.Name}) chưa gán Camera Biển Số");
                     AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 2 ({lane2.Name}) chưa gán Camera Biển Số");
                 }
+                else if (!lane2.PlateCamera.IsActive)
+                {
+                    result.Warnings.Add($"Làn 2 ({lane2.Name}): Camera Biển Số ({lane2.PlateCamera.Name}) đang ngừng hoạt động (Inactive)");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 2 ({lane2.Name}): Camera Biển Số ({lane2.PlateCamera.Name}) đang Inactive");
+                }
+
                 if (lane2.OverviewCamera == null)
                 {
                     result.Warnings.Add($"Làn 2 ({lane2.Name}) chưa gán Camera Toàn Cảnh");
                     AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 2 ({lane2.Name}) chưa gán Camera Toàn Cảnh");
+                }
+                else if (!lane2.OverviewCamera.IsActive)
+                {
+                    result.Warnings.Add($"Làn 2 ({lane2.Name}): Camera Toàn Cảnh ({lane2.OverviewCamera.Name}) đang ngừng hoạt động (Inactive)");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 2 ({lane2.Name}): Camera Toàn Cảnh ({lane2.OverviewCamera.Name}) đang Inactive");
                 }
             }
 

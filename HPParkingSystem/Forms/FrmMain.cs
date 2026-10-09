@@ -49,8 +49,8 @@ namespace HPParkingSystem.Forms
         };
 
         private string _captureDir = "";
-        private string _controllerIp = "192.168.1.202";
-        private int _controllerPort = 4370;
+        private string _controllerIp = "";
+        private int _controllerPort = 0;
         private readonly object _lockDebounce = new();
 
         public FrmMain()
