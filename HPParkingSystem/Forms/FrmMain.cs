@@ -453,21 +453,6 @@ namespace HPParkingSystem.Forms
         /// </summary>
         private void UpdateHeaderStatusFromAllStates()
         {
-            bool inPlateOk = _slotStates[CameraSlot.InPlate] == DeviceStatus.Connected || _slotStates[CameraSlot.InPlate] == DeviceStatus.Streaming;
-            bool inOvwOk = _slotStates[CameraSlot.InOverview] == DeviceStatus.Connected || _slotStates[CameraSlot.InOverview] == DeviceStatus.Streaming;
-            bool outPlateOk = _slotStates[CameraSlot.OutPlate] == DeviceStatus.Connected || _slotStates[CameraSlot.OutPlate] == DeviceStatus.Streaming;
-            bool outOvwOk = _slotStates[CameraSlot.OutOverview] == DeviceStatus.Connected || _slotStates[CameraSlot.OutOverview] == DeviceStatus.Streaming;
-            bool ctrlOk = _controller.IsConnected;
-
-            bool inLaneOk = (string.IsNullOrEmpty(_inPlateCam.Config.Ip) || inPlateOk) && (string.IsNullOrEmpty(_inOverviewCam.Config.Ip) || inOvwOk);
-            bool outLaneOk = (string.IsNullOrEmpty(_outPlateCam.Config.Ip) || outPlateOk) && (string.IsNullOrEmpty(_outOverviewCam.Config.Ip) || outOvwOk);
-
-            string inStatus = inLaneOk ? "Làn Vào: Sẵn sàng" : "Làn Vào: Chưa sẵn sàng";
-            string outStatus = outLaneOk ? "Làn Ra: Sẵn sàng" : "Làn Ra: Chưa sẵn sàng";
-            string ctrlStatus = string.IsNullOrEmpty(_controllerIp) ? "Access Controller: Chưa cấu hình" : (ctrlOk ? "Access Controller: Đã kết nối" : "Access Controller: Mất tín hiệu");
-
-            SetHeaderStatus($"{inStatus}  |  {outStatus}  |  {ctrlStatus}");
-
             // Tự động kiểm tra trạng thái tất cả thiết bị từ _activeDevices
             var disconnected = new List<string>();
             foreach (var kvp in _activeDevices)
@@ -583,7 +568,11 @@ namespace HPParkingSystem.Forms
                 return;
             }
 
-            lblSystemStatus.Text = message;
+            // Dòng trạng thái Header đã được ẩn; chuyển tiếp thông báo hữu ích xuống Footer
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                SetFooterStatus(message);
+            }
         }
 
         private void SetFooterStatus(string message, bool isError = false)

@@ -154,8 +154,9 @@ namespace HPParkingSystem.Forms
             this.lblSystemStatus.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
             this.lblSystemStatus.Size = new System.Drawing.Size(752, 48);
             this.lblSystemStatus.TabIndex = 1;
-            this.lblSystemStatus.Text = "Đang khởi tạo hệ thống...";
+            this.lblSystemStatus.Text = "";
             this.lblSystemStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblSystemStatus.Visible = false;
             // 
             // lblAppTitle
             // 
