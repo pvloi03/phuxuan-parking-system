@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Models.ValueObjects;
@@ -158,5 +158,40 @@ namespace HPParkingSystem.Models.Entities
                 Status = ParkingSessionStatus.UnmatchedOut
             };
         }
+
+        /// <summary>
+        /// Tạo phiên xe ra hoàn tất bình thường trực tiếp (hệ thống không có làn vào hoặc hoạt động chế độ chỉ ra)
+        /// </summary>
+        public static ParkingSession CreateDirectOut(
+            string outLaneName,
+            string plateNumber,
+            ImageStoragePath outOverviewImagePath,
+            ImageStoragePath outPlateImagePath,
+            string? personName = null,
+            VehicleType vehicleType = VehicleType.Car,
+            string? note = null,
+            string? personId = null,
+            string? companyName = null,
+            string? departmentName = null,
+            PersonType? personType = null)
+        {
+            return new ParkingSession
+            {
+                OutLaneName = outLaneName,
+                PlateNumber = HPParkingSystem.Models.ValueObjects.PlateNumber.Clean(plateNumber),
+                OutOverviewImagePath = outOverviewImagePath ?? ImageStoragePath.Empty,
+                OutPlateImagePath = outPlateImagePath ?? ImageStoragePath.Empty,
+                PersonId = personId,
+                PersonName = personName,
+                CompanyName = companyName,
+                DepartmentName = departmentName,
+                PersonType = personType,
+                VehicleType = vehicleType,
+                Note = note,
+                OutTime = DateTime.Now,
+                Status = ParkingSessionStatus.Completed
+            };
+        }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Repositories;
 using HPParkingSystem.Services.Logging;
@@ -70,50 +70,62 @@ namespace HPParkingSystem.Services.Devices.Config
                     LogDeviceMapping(lane.Code, lane.Direction, lane.PlateCamera, lane.OverviewCamera, lane.Controller);
                 }
 
-                // 3. Áp dụng vào result theo Direction
-                var inLane = lanes?.FirstOrDefault(l => l.Direction == LaneDirection.In);
-                if (inLane != null)
-                {
-                    result.InLane = inLane;
-                    result.InPlateCamera = inLane.PlateCamera;
-                    result.InOverviewCamera = inLane.OverviewCamera;
-                    result.Controller = inLane.Controller;
-                    result.ControllerIp = inLane.Controller?.IpAddress;
-                    result.ControllerPort = inLane.Controller?.Port ?? 4370;
-                }
+                // 3. Áp dụng vào result theo TriggerAuxPort (1 = Cột Trái / Slot 1, 2 = Cột Phải / Slot 2)
+                var lane1 = lanes?.FirstOrDefault(l => l.TriggerAuxPort == 1) ?? lanes?.FirstOrDefault();
+                var lane2 = lanes?.FirstOrDefault(l => l.TriggerAuxPort == 2) ?? lanes?.FirstOrDefault(l => l != lane1);
 
-                var outLane = lanes?.FirstOrDefault(l => l.Direction == LaneDirection.Out);
-                if (outLane != null)
+                if (lane1 != null)
                 {
-                    result.OutLane = outLane;
-                    result.OutPlateCamera = outLane.PlateCamera;
-                    result.OutOverviewCamera = outLane.OverviewCamera;
-
-                    // Controller: ưu tiên InLane, fallback OutLane
-                    if (result.Controller == null && outLane.Controller != null)
+                    result.Lane1 = lane1;
+                    result.Lane1PlateCamera = lane1.PlateCamera;
+                    result.Lane1OverviewCamera = lane1.OverviewCamera;
+                    if (result.Controller == null && lane1.Controller != null)
                     {
-                        result.Controller = outLane.Controller;
-                        result.ControllerIp = outLane.Controller.IpAddress;
-                        result.ControllerPort = outLane.Controller.Port;
+                        result.Controller = lane1.Controller;
+                        result.ControllerIp = lane1.Controller.IpAddress;
+                        result.ControllerPort = lane1.Controller.Port > 0 ? lane1.Controller.Port : 4370;
                     }
                 }
 
+                if (lane2 != null)
+                {
+                    result.Lane2 = lane2;
+                    result.Lane2PlateCamera = lane2.PlateCamera;
+                    result.Lane2OverviewCamera = lane2.OverviewCamera;
+                    if (result.Controller == null && lane2.Controller != null)
+                    {
+                        result.Controller = lane2.Controller;
+                        result.ControllerIp = lane2.Controller.IpAddress;
+                        result.ControllerPort = lane2.Controller.Port > 0 ? lane2.Controller.Port : 4370;
+                    }
+                }
+
+                // Ánh xạ tương thích ngược theo Direction
+                result.InLane = lane1?.Direction == LaneDirection.In ? lane1 : (lane2?.Direction == LaneDirection.In ? lane2 : null);
+                result.OutLane = lane2?.Direction == LaneDirection.Out ? lane2 : (lane1?.Direction == LaneDirection.Out ? lane1 : null);
+                result.InPlateCamera = result.InLane?.PlateCamera ?? result.Lane1PlateCamera;
+                result.InOverviewCamera = result.InLane?.OverviewCamera ?? result.Lane1OverviewCamera;
+                result.OutPlateCamera = result.OutLane?.PlateCamera ?? result.Lane2PlateCamera;
+                result.OutOverviewCamera = result.OutLane?.OverviewCamera ?? result.Lane2OverviewCamera;
+
                 // 4. Kiểm tra thiếu cấu hình
-                CheckMissingConfigs(result, inLane, outLane);
+                CheckMissingConfigs(result, lane1, lane2);
 
                 // 5. Tính hash để detect thay đổi
                 result.Success = true;
                 _lastConfigHash = ComputeConfigHash(result);
 
                 AppLogger.Information(
-                    $"[DeviceConfig] Nạp thành công - InPlate: {result.InPlateCamera?.IpAddress ?? "N/A"}, " +
-                    $"InOvw: {result.InOverviewCamera?.IpAddress ?? "N/A"}, " +
-                    $"OutPlate: {result.OutPlateCamera?.IpAddress ?? "N/A"}, " +
-                    $"OutOvw: {result.OutOverviewCamera?.IpAddress ?? "N/A"}, " +
+                    $"[DeviceConfig] Nạp thành công - " +
+                    $"Làn 1 ({result.Lane1?.Name ?? "N/A"}, Aux={result.Lane1?.TriggerAuxPort}, Dir={result.Lane1?.Direction}): " +
+                    $"Plate={result.Lane1PlateCamera?.IpAddress ?? "N/A"}, Ovw={result.Lane1OverviewCamera?.IpAddress ?? "N/A"} | " +
+                    $"Làn 2 ({result.Lane2?.Name ?? "N/A"}, Aux={result.Lane2?.TriggerAuxPort}, Dir={result.Lane2?.Direction}): " +
+                    $"Plate={result.Lane2PlateCamera?.IpAddress ?? "N/A"}, Ovw={result.Lane2OverviewCamera?.IpAddress ?? "N/A"} | " +
                     $"Ctrl: {result.ControllerIp ?? "N/A"}:{result.ControllerPort}");
 
                 _currentConfig = result;
                 return result;
+
             }
             catch (Exception ex)
             {
@@ -202,30 +214,51 @@ namespace HPParkingSystem.Services.Devices.Config
             AppLogger.Information($"[DeviceConfig] Làn {laneCode} ({dir}): Plate={plateStatus}, Ovw={overviewStatus}, Ctrl={ctrlStatus}");
         }
 
-        private void CheckMissingConfigs(DeviceConfigResult result, Lane? inLane, Lane? outLane)
+        private void CheckMissingConfigs(DeviceConfigResult result, Lane? lane1, Lane? lane2)
         {
-            if (inLane == null)
+            if (lane1 == null && lane2 == null)
             {
-                result.Warnings.Add("Không tìm thấy Làn Vào (Direction=In, IsActive=true)");
-                AppLogger.Warning("[DeviceConfig] ⚠️ Không tìm thấy Làn Vào");
+                result.Warnings.Add("Không tìm thấy làn xe nào đang hoạt động (IsActive=true)");
+                AppLogger.Warning("[DeviceConfig] ⚠️ Không tìm thấy làn xe nào đang hoạt động");
+                return;
             }
 
-            if (outLane == null)
+            if (lane1 == null)
             {
-                result.Warnings.Add("Không tìm thấy Làn Ra (Direction=Out, IsActive=true)");
-                AppLogger.Warning("[DeviceConfig] ⚠️ Không tìm thấy Làn Ra");
+                result.Warnings.Add("Chưa cấu hình Làn 1 (TriggerAuxPort = 1)");
+                AppLogger.Warning("[DeviceConfig] ⚠️ Chưa cấu hình Làn 1 (TriggerAuxPort = 1)");
+            }
+            else
+            {
+                if (lane1.PlateCamera == null)
+                {
+                    result.Warnings.Add($"Làn 1 ({lane1.Name}) chưa gán Camera Biển Số");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 1 ({lane1.Name}) chưa gán Camera Biển Số");
+                }
+                if (lane1.OverviewCamera == null)
+                {
+                    result.Warnings.Add($"Làn 1 ({lane1.Name}) chưa gán Camera Toàn Cảnh");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 1 ({lane1.Name}) chưa gán Camera Toàn Cảnh");
+                }
             }
 
-            if (inLane?.PlateCamera == null)
+            if (lane2 == null)
             {
-                result.Warnings.Add("Làn Vào chưa gán Camera Biển Số");
-                AppLogger.Warning("[DeviceConfig] ⚠️ Làn Vào chưa gán Camera Biển Số");
+                result.Warnings.Add("Chưa cấu hình Làn 2 (TriggerAuxPort = 2)");
+                AppLogger.Warning("[DeviceConfig] ⚠️ Chưa cấu hình Làn 2 (TriggerAuxPort = 2)");
             }
-
-            if (inLane?.OverviewCamera == null)
+            else
             {
-                result.Warnings.Add("Làn Vào chưa gán Camera Toàn Cảnh");
-                AppLogger.Warning("[DeviceConfig] ⚠️ Làn Vào chưa gán Camera Toàn Cảnh");
+                if (lane2.PlateCamera == null)
+                {
+                    result.Warnings.Add($"Làn 2 ({lane2.Name}) chưa gán Camera Biển Số");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 2 ({lane2.Name}) chưa gán Camera Biển Số");
+                }
+                if (lane2.OverviewCamera == null)
+                {
+                    result.Warnings.Add($"Làn 2 ({lane2.Name}) chưa gán Camera Toàn Cảnh");
+                    AppLogger.Warning($"[DeviceConfig] ⚠️ Làn 2 ({lane2.Name}) chưa gán Camera Toàn Cảnh");
+                }
             }
 
             if (result.Controller == null)
@@ -239,10 +272,10 @@ namespace HPParkingSystem.Services.Devices.Config
         {
             var parts = new List<string>
             {
-                FormatDeviceHash(config.InPlateCamera),
-                FormatDeviceHash(config.InOverviewCamera),
-                FormatDeviceHash(config.OutPlateCamera),
-                FormatDeviceHash(config.OutOverviewCamera),
+                FormatDeviceHash(config.Lane1PlateCamera),
+                FormatDeviceHash(config.Lane1OverviewCamera),
+                FormatDeviceHash(config.Lane2PlateCamera),
+                FormatDeviceHash(config.Lane2OverviewCamera),
                 FormatDeviceHash(config.Controller),
                 config.ControllerIp ?? "",
                 config.ControllerPort.ToString()
@@ -258,10 +291,10 @@ namespace HPParkingSystem.Services.Devices.Config
         {
             var changes = new List<string>();
 
-            CheckDeviceDiff(changes, "Camera Biển Số Vào", oldConfig.InPlateCamera, newConfig.InPlateCamera);
-            CheckDeviceDiff(changes, "Camera Toàn Cảnh Vào", oldConfig.InOverviewCamera, newConfig.InOverviewCamera);
-            CheckDeviceDiff(changes, "Camera Biển Số Ra", oldConfig.OutPlateCamera, newConfig.OutPlateCamera);
-            CheckDeviceDiff(changes, "Camera Toàn Cảnh Ra", oldConfig.OutOverviewCamera, newConfig.OutOverviewCamera);
+            CheckDeviceDiff(changes, "Camera Biển Số Làn 1", oldConfig.Lane1PlateCamera, newConfig.Lane1PlateCamera);
+            CheckDeviceDiff(changes, "Camera Toàn Cảnh Làn 1", oldConfig.Lane1OverviewCamera, newConfig.Lane1OverviewCamera);
+            CheckDeviceDiff(changes, "Camera Biển Số Làn 2", oldConfig.Lane2PlateCamera, newConfig.Lane2PlateCamera);
+            CheckDeviceDiff(changes, "Camera Toàn Cảnh Làn 2", oldConfig.Lane2OverviewCamera, newConfig.Lane2OverviewCamera);
             CheckDeviceDiff(changes, "Controller", oldConfig.Controller, newConfig.Controller);
 
             if (oldConfig.ControllerIp != newConfig.ControllerIp || oldConfig.ControllerPort != newConfig.ControllerPort)

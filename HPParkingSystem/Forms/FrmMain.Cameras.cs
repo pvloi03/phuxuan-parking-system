@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Services.Devices;
 using HPParkingSystem.Services.Devices.Camera;
@@ -124,10 +124,18 @@ namespace HPParkingSystem.Forms
                     }
                 }
 
-                BindSlot(CameraSlot.InPlate, result.InPlateCamera, _inPlateCam);
-                BindSlot(CameraSlot.InOverview, result.InOverviewCamera, _inOverviewCam);
-                BindSlot(CameraSlot.OutPlate, result.OutPlateCamera, _outPlateCam);
-                BindSlot(CameraSlot.OutOverview, result.OutOverviewCamera, _outOverviewCam);
+                var slot1Plate = result.Lane1PlateCamera ?? result.InPlateCamera;
+                var slot1Ovw = result.Lane1OverviewCamera ?? result.InOverviewCamera;
+                var slot2Plate = result.Lane2PlateCamera ?? result.OutPlateCamera;
+                var slot2Ovw = result.Lane2OverviewCamera ?? result.OutOverviewCamera;
+
+                BindSlot(CameraSlot.InPlate, slot1Plate, _inPlateCam);
+                BindSlot(CameraSlot.InOverview, slot1Ovw, _inOverviewCam);
+                BindSlot(CameraSlot.OutPlate, slot2Plate, _outPlateCam);
+                BindSlot(CameraSlot.OutOverview, slot2Ovw, _outOverviewCam);
+
+                // Cập nhật tiêu đề hiển thị động theo cấu hình 2 làn
+                UpdateLaneTitles(result.Lane1 ?? result.InLane, result.Lane2 ?? result.OutLane);
 
                 if (result.Controller != null && result.Controller.IsActive && !string.IsNullOrEmpty(result.ControllerIp))
                 {
@@ -298,13 +306,24 @@ namespace HPParkingSystem.Forms
 
             var changedSlots = new List<CameraSlot>();
 
-            if (!IsSameDevice(oldConfig.InPlateCamera, newConfig.InPlateCamera))
+            var oldSlot1Plate = oldConfig.Lane1PlateCamera ?? oldConfig.InPlateCamera;
+            var newSlot1Plate = newConfig.Lane1PlateCamera ?? newConfig.InPlateCamera;
+            if (!IsSameDevice(oldSlot1Plate, newSlot1Plate))
                 changedSlots.Add(CameraSlot.InPlate);
-            if (!IsSameDevice(oldConfig.InOverviewCamera, newConfig.InOverviewCamera))
+
+            var oldSlot1Ovw = oldConfig.Lane1OverviewCamera ?? oldConfig.InOverviewCamera;
+            var newSlot1Ovw = newConfig.Lane1OverviewCamera ?? newConfig.InOverviewCamera;
+            if (!IsSameDevice(oldSlot1Ovw, newSlot1Ovw))
                 changedSlots.Add(CameraSlot.InOverview);
-            if (!IsSameDevice(oldConfig.OutPlateCamera, newConfig.OutPlateCamera))
+
+            var oldSlot2Plate = oldConfig.Lane2PlateCamera ?? oldConfig.OutPlateCamera;
+            var newSlot2Plate = newConfig.Lane2PlateCamera ?? newConfig.OutPlateCamera;
+            if (!IsSameDevice(oldSlot2Plate, newSlot2Plate))
                 changedSlots.Add(CameraSlot.OutPlate);
-            if (!IsSameDevice(oldConfig.OutOverviewCamera, newConfig.OutOverviewCamera))
+
+            var oldSlot2Ovw = oldConfig.Lane2OverviewCamera ?? oldConfig.OutOverviewCamera;
+            var newSlot2Ovw = newConfig.Lane2OverviewCamera ?? newConfig.OutOverviewCamera;
+            if (!IsSameDevice(oldSlot2Ovw, newSlot2Ovw))
                 changedSlots.Add(CameraSlot.OutOverview);
 
             bool controllerChanged = !IsSameDevice(oldConfig.Controller, newConfig.Controller)
@@ -373,10 +392,18 @@ namespace HPParkingSystem.Forms
                 }
             }
 
-            BindSlot(CameraSlot.InPlate, newConfig.InPlateCamera, _inPlateCam);
-            BindSlot(CameraSlot.InOverview, newConfig.InOverviewCamera, _inOverviewCam);
-            BindSlot(CameraSlot.OutPlate, newConfig.OutPlateCamera, _outPlateCam);
-            BindSlot(CameraSlot.OutOverview, newConfig.OutOverviewCamera, _outOverviewCam);
+            var newSlot1PlateDev = newConfig.Lane1PlateCamera ?? newConfig.InPlateCamera;
+            var newSlot1OvwDev = newConfig.Lane1OverviewCamera ?? newConfig.InOverviewCamera;
+            var newSlot2PlateDev = newConfig.Lane2PlateCamera ?? newConfig.OutPlateCamera;
+            var newSlot2OvwDev = newConfig.Lane2OverviewCamera ?? newConfig.OutOverviewCamera;
+
+            BindSlot(CameraSlot.InPlate, newSlot1PlateDev, _inPlateCam);
+            BindSlot(CameraSlot.InOverview, newSlot1OvwDev, _inOverviewCam);
+            BindSlot(CameraSlot.OutPlate, newSlot2PlateDev, _outPlateCam);
+            BindSlot(CameraSlot.OutOverview, newSlot2OvwDev, _outOverviewCam);
+
+            // Cập nhật lại tiêu đề 2 làn khi cấu hình thay đổi
+            UpdateLaneTitles(newConfig.Lane1 ?? newConfig.InLane, newConfig.Lane2 ?? newConfig.OutLane);
 
             if (newConfig.Controller != null && newConfig.Controller.IsActive && !string.IsNullOrEmpty(newConfig.ControllerIp))
             {
@@ -605,6 +632,44 @@ namespace HPParkingSystem.Forms
             _brushErrorText.Dispose();
             _brushSubText.Dispose();
             _brushStreamingText.Dispose();
+        }
+
+        /// <summary>
+        /// Cập nhật tiêu đề hiển thị động theo hướng và tên của từng làn
+        /// </summary>
+        public void UpdateLaneTitles(Lane? lane1, Lane? lane2)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => UpdateLaneTitles(lane1, lane2)));
+                return;
+            }
+
+            // Cột 1 (Slot 1 - Trái - TriggerAuxPort = 1)
+            if (lane1 != null)
+            {
+                string dirText = lane1.Direction == LaneDirection.In ? "LÀN VÀO" : "LÀN RA";
+                grpInLane.Text = $"{dirText} 1 ({lane1.Name.ToUpper()}) - [F1]";
+                grpInInfo.Text = $"THÔNG TIN XE {(lane1.Direction == LaneDirection.In ? "VÀO" : "RA")} - {lane1.Name}";
+            }
+            else
+            {
+                grpInLane.Text = "CỘT 1 (CHƯA GÁN LÀN) - [F1]";
+                grpInInfo.Text = "THÔNG TIN CỘT 1";
+            }
+
+            // Cột 2 (Slot 2 - Phải - TriggerAuxPort = 2)
+            if (lane2 != null)
+            {
+                string dirText = lane2.Direction == LaneDirection.In ? "LÀN VÀO" : "LÀN RA";
+                grpOutLane.Text = $"{dirText} 2 ({lane2.Name.ToUpper()}) - [F2]";
+                grpOutInfo.Text = $"THÔNG TIN XE {(lane2.Direction == LaneDirection.In ? "VÀO" : "RA")} - {lane2.Name}";
+            }
+            else
+            {
+                grpOutLane.Text = "CỘT 2 (CHƯA GÁN LÀN) - [F2]";
+                grpOutInfo.Text = "THÔNG TIN CỘT 2";
+            }
         }
     }
 }

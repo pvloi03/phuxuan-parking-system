@@ -338,7 +338,6 @@ export function LanesPage() {
             onChange={(e) => {
               const dir = e.target.value as 'In' | 'Out'
               setFormDirection(dir)
-              setFormAuxPort(dir === 'In' ? 1 : 2)
             }}
             className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
           >
@@ -432,17 +431,17 @@ export function LanesPage() {
 
           <div className="space-y-1">
             <label className="font-medium text-slate-600 dark:text-slate-400 text-[11px]">
-              ⚡ Cổng Tín Hiệu Aux In (Sensor Trigger)
+              ⚡ Cổng Cảm Biến & Vị Trí Màn Hình (Aux In)
             </label>
             <select
               value={formAuxPort}
               onChange={(e) => setFormAuxPort(Number(e.target.value))}
               className="w-full h-9 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
             >
-              <option value={1}>Cổng Aux In 1 (Mặc định Làn Vào)</option>
-              <option value={2}>Cổng Aux In 2 (Mặc định Làn Ra)</option>
-              <option value={3}>Cổng Aux In 3</option>
-              <option value={4}>Cổng Aux In 4</option>
+              <option value={1}>Cổng Aux 1 (Vị trí Cột 1 / Màn hình Trái - [F1])</option>
+              <option value={2}>Cổng Aux 2 (Vị trí Cột 2 / Màn hình Phải - [F2])</option>
+              <option value={3}>Cổng Aux 3</option>
+              <option value={4}>Cổng Aux 4</option>
             </select>
           </div>
         </div>
@@ -940,9 +939,9 @@ export function LanesPage() {
                       )}
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Cổng tín hiệu cảm biến (Aux In):</span>
+                      <span className="text-slate-400 block text-[11px]">Cổng cảm biến & Vị trí hiển thị:</span>
                       <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
-                        Cổng Aux In #{selectedLane.triggerAuxPort || 1}
+                        Cổng Aux #{selectedLane.triggerAuxPort || 1} (Cột {selectedLane.triggerAuxPort || 1})
                       </span>
                     </div>
                     <div>

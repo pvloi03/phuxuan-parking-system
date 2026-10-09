@@ -1,4 +1,4 @@
-﻿using MongoDB.Driver;
+using MongoDB.Driver;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
@@ -125,12 +125,12 @@ namespace HPParkingSystem.Services.Parking
             result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
-            if (!PlateNumber.IsUnrecognized(detectedPlate) && IsCrossLaneCollision(detectedPlate, "IN"))
+            if (!PlateNumber.IsUnrecognized(detectedPlate) && IsCrossLaneCollision(detectedPlate, inLaneName))
             {
-                AppLogger.Warning($"[CROSS-LANE IN] Bỏ qua lượt vào cho biển số {detectedPlate} do vừa được xử lý tại Làn Ra cách đây < {CROSS_LANE_INTERVAL_SECONDS}s.", "ParkingLaneService");
+                AppLogger.Warning($"[CROSS-LANE IN] Bỏ qua lượt vào cho biển số {detectedPlate} do vừa được xử lý tại làn khác cách đây < {CROSS_LANE_INTERVAL_SECONDS}s.", "ParkingLaneService");
                 result.IsCrossLaneIgnored = true;
                 result.Success = false;
-                result.ErrorMessage = $"Bỏ qua góc nhìn chéo từ Làn Ra cho xe {detectedPlate}.";
+                result.ErrorMessage = $"Bỏ qua góc nhìn chéo từ làn khác cho xe {detectedPlate}.";
 
                 // Xóa file ảnh snapshot trên đĩa để không lưu file rác khi không tạo phiên
                 DeleteFileSafe(filePlate);
@@ -181,7 +181,7 @@ namespace HPParkingSystem.Services.Parking
                     result.OverviewImagePath = null;
 
                     // Ghi nhận bộ đệm chống chụp chéo
-                    _lastProcessedPlates[clean] = (DateTime.Now, "IN");
+                    _lastProcessedPlates[clean] = (DateTime.Now, inLaneName);
                     return result;
                 }
             }
@@ -232,7 +232,7 @@ namespace HPParkingSystem.Services.Parking
             // 8. Ghi nhận bộ nhớ đệm chống chụp chéo
             if (!PlateNumber.IsUnrecognized(detectedPlate))
             {
-                _lastProcessedPlates[detectedPlate] = (DateTime.Now, "IN");
+                _lastProcessedPlates[detectedPlate] = (DateTime.Now, inLaneName);
             }
 
             AppLogger.Information($"[LÀN VÀO] Tạo phiên thành công. ID: {session.Id}, Làn: {inLaneName}, Biển số: {detectedPlate}, Chủ xe: {personName ?? "Khách lạ"}, Đối tượng: {personType}, Trạng thái Cam: Plate={plateOk}, Overview={ovwOk}", "ParkingLaneService");
@@ -308,12 +308,12 @@ namespace HPParkingSystem.Services.Parking
             result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
 
             // 4. Kiểm tra Chống chụp chéo 2 làn cạnh nhau (Cross-Lane Deduplication)
-            if (!PlateNumber.IsUnrecognized(detectedPlate) && IsCrossLaneCollision(detectedPlate, "OUT"))
+            if (!PlateNumber.IsUnrecognized(detectedPlate) && IsCrossLaneCollision(detectedPlate, outLaneName))
             {
-                AppLogger.Warning($"[CROSS-LANE OUT] Bỏ qua lượt ra cho biển số {detectedPlate} do vừa được Check-in tại Làn Vào cách đây < {CROSS_LANE_INTERVAL_SECONDS}s.", "ParkingLaneService");
+                AppLogger.Warning($"[CROSS-LANE OUT] Bỏ qua lượt ra cho biển số {detectedPlate} do vừa được xử lý tại làn khác cách đây < {CROSS_LANE_INTERVAL_SECONDS}s.", "ParkingLaneService");
                 result.IsCrossLaneIgnored = true;
                 result.Success = false;
-                result.ErrorMessage = $"Bỏ qua góc nhìn chéo từ Làn Vào cho xe {detectedPlate}.";
+                result.ErrorMessage = $"Bỏ qua góc nhìn chéo từ làn khác cho xe {detectedPlate}.";
 
                 // Xóa file ảnh tạm vì không tạo phiên
                 DeleteFileSafe(filePlate);
@@ -384,15 +384,15 @@ namespace HPParkingSystem.Services.Parking
             }
             else
             {
-                // Không tìm thấy phiên vào khớp -> Tạo phiên UnmatchedOut
-                var unmatchedSession = ParkingSession.CreateUnmatchedOut(
+                // Không tìm thấy phiên vào khớp -> Tạo phiên xe ra bình thường (Completed)
+                var directOutSession = ParkingSession.CreateDirectOut(
                     outLaneName: outLaneName,
                     plateNumber: detectedPlate,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
                     outPlateImagePath: plateOk ? filePlate : ImageStoragePath.Empty, // Lưu ảnh gốc từ camera
                     personName: personName,
                     vehicleType: vehicleType,
-                    note: string.IsNullOrWhiteSpace(note) ? "Xe ra không có lượt vào khớp" : $"{note}; Xe ra không có lượt vào khớp",
+                    note: note,
                     personId: personId,
                     companyName: compName,
                     departmentName: deptName,
@@ -401,22 +401,22 @@ namespace HPParkingSystem.Services.Parking
 
                 if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
                 {
-                    await hybridRepo.CheckInAsync(unmatchedSession).ConfigureAwait(false);
+                    await hybridRepo.CheckInAsync(directOutSession).ConfigureAwait(false);
                 }
                 else
                 {
-                    await _sessionRepo.AddAsync(unmatchedSession);
+                    await _sessionRepo.AddAsync(directOutSession);
                 }
 
-                result.Session = unmatchedSession;
+                result.Session = directOutSession;
                 result.Success = true;
-                AppLogger.Warning($"[LÀN RA] Tạo phiên UNMATCHED-OUT cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {unmatchedSession.Id}.", "ParkingLaneService");
+                AppLogger.Information($"[LÀN RA] Ghi nhận phiên xe ra bình thường cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {directOutSession.Id}.", "ParkingLaneService");
             }
 
             // 7. Ghi nhận bộ nhớ đệm chống chụp chéo
             if (!PlateNumber.IsUnrecognized(detectedPlate))
             {
-                _lastProcessedPlates[detectedPlate] = (DateTime.Now, "OUT");
+                _lastProcessedPlates[detectedPlate] = (DateTime.Now, outLaneName);
             }
 
             return result;

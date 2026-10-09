@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using HPParkingSystem.Licensing;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
@@ -176,14 +176,20 @@ namespace HPParkingSystem.Forms
         {
             if (e.KeyCode == Keys.F1)
             {
-                // Phím tắt chụp thủ công Làn Vào (F1)
-                _ = Task.Run(async () => await HandleInLaneTriggerAsync("MANUAL"));
+                // Phím tắt chụp thủ công Cột 1 (F1) - theo Direction của Làn 1
+                var cfg = _deviceConfigService?.CurrentConfig;
+                var lane1 = cfg?.Lane1 ?? cfg?.InLane;
+                var dir1 = lane1?.Direction ?? LaneDirection.In;
+                _ = Task.Run(async () => await HandleLaneSlotAsync(1, dir1, "MANUAL"));
                 e.Handled = true;
             }
             else if (e.KeyCode == Keys.F2)
             {
-                // Phím tắt chụp thủ công Làn Ra (F2)
-                _ = Task.Run(async () => await HandleOutLaneTriggerAsync("MANUAL"));
+                // Phím tắt chụp thủ công Cột 2 (F2) - theo Direction của Làn 2
+                var cfg = _deviceConfigService?.CurrentConfig;
+                var lane2 = cfg?.Lane2 ?? cfg?.OutLane;
+                var dir2 = lane2?.Direction ?? LaneDirection.Out;
+                _ = Task.Run(async () => await HandleLaneSlotAsync(2, dir2, "MANUAL"));
                 e.Handled = true;
             }
         }

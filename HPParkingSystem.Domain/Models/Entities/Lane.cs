@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Common;
+using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -31,7 +31,7 @@ namespace HPParkingSystem.Models.Entities
         // --- CẤU HÌNH BỘ ĐIỀU KHIỂN & CẢM BIẾN RADAR ---
         [BsonRepresentation(BsonType.ObjectId)]
         public string? ControllerDeviceId { get; set; }               // [LƯU DB] ID Bộ điều khiển Barrier
-        public int TriggerAuxPort { get; set; } = 1;                  // [LƯU DB] Cổng tín hiệu Aux In nhận tín hiệu cảm biến / Radar (1 = Làn Vào, 2 = Làn Ra)
+        public int TriggerAuxPort { get; set; } = 1;                  // [LƯU DB] Cổng tín hiệu cảm biến trên bộ điều khiển, đồng thời quy định vị trí hiển thị (1 = Cột Trái / Slot 1 / F1, 2 = Cột Phải / Slot 2 / F2). Chiều xe (Vào / Ra) do Direction quyết định.
 
         // =========================================================================
         // --- 2. CÁC ĐỐI TƯỢNG KHÔNG LƯU DATABASE (NAVIGATION RUNTIME OBJECTS) ---

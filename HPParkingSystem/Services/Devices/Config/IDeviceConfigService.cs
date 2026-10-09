@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -12,6 +12,16 @@ namespace HPParkingSystem.Services.Devices.Config
     public class DeviceConfigResult
     {
         public bool Success { get; set; }
+
+        // Cấu hình theo Vị trí Slot hiển thị / Cổng tín hiệu Aux (1 = Cột Trái / F1, 2 = Cột Phải / F2)
+        public Lane? Lane1 { get; set; }
+        public Lane? Lane2 { get; set; }
+        public Device? Lane1PlateCamera { get; set; }
+        public Device? Lane1OverviewCamera { get; set; }
+        public Device? Lane2PlateCamera { get; set; }
+        public Device? Lane2OverviewCamera { get; set; }
+
+        // Fallback / Alias theo chiều xe (đảm bảo tương thích ngược)
         public Lane? InLane { get; set; }
         public Lane? OutLane { get; set; }
         public Device? InPlateCamera { get; set; }
@@ -24,6 +34,7 @@ namespace HPParkingSystem.Services.Devices.Config
         public List<string> Warnings { get; set; } = new();
         public TimeSpan LoadTime { get; set; }
     }
+
 
     /// <summary>
     /// Thay đổi cấu hình được phát hiện
