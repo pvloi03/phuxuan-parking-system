@@ -85,30 +85,6 @@ namespace HPParkingSystem.Forms
                         _deviceRepo,
                         _laneRepo,
                         ServerHealthTracker.Instance);
-
-                // Lắng nghe sự kiện đồng bộ ngoại tuyến & trạng thái máy chủ
-                var syncWorker = Program.ServiceProvider.GetService<Services.Background.OfflineSyncBackgroundWorker>();
-                if (syncWorker != null)
-                {
-                    syncWorker.SyncStatusChanged += (s, args) =>
-                    {
-                        void UpdateUi()
-                        {
-                            lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {args.StatusMessage}";
-                            if (args.IsServerOnline)
-                            {
-                                lblFooterStatus.ForeColor = args.PendingRecordCount > 0 ? Color.DodgerBlue : Color.FromArgb(40, 167, 69);
-                            }
-                            else
-                            {
-                                lblFooterStatus.ForeColor = Color.DarkOrange;
-                            }
-                        }
-
-                        if (InvokeRequired) BeginInvoke(new Action(UpdateUi));
-                        else UpdateUi();
-                    };
-                }
             }
             else
             {
@@ -207,31 +183,6 @@ namespace HPParkingSystem.Forms
         private void FrmMain_Load(object sender, EventArgs e)
         {
             lblFooterMachineCode.Text = $"Mã Máy: {HardwareFingerprint.GetMachineCode()}";
-
-            // Hiệu ứng Hover, Click và đổi màu/con trỏ chuột cho thanh Footer Status
-            lblFooterStatus.DoubleClickEnabled = true;
-            lblFooterStatus.MouseEnter += (s, ev) =>
-            {
-                statusStrip.Cursor = Cursors.Hand;
-                lblFooterStatus.Font = new Font(lblFooterStatus.Font, FontStyle.Bold | FontStyle.Underline);
-                lblFooterStatus.BackColor = Color.FromArgb(220, 230, 245);
-            };
-            lblFooterStatus.MouseLeave += (s, ev) =>
-            {
-                statusStrip.Cursor = Cursors.Default;
-                lblFooterStatus.Font = new Font(lblFooterStatus.Font, FontStyle.Bold);
-                lblFooterStatus.BackColor = Color.Transparent;
-            };
-            lblFooterStatus.MouseDown += (s, ev) =>
-            {
-                lblFooterStatus.BackColor = Color.FromArgb(195, 215, 240);
-            };
-            lblFooterStatus.MouseUp += (s, ev) =>
-            {
-                lblFooterStatus.BackColor = Color.FromArgb(220, 230, 245);
-            };
-            lblFooterStatus.Click += (s, ev) => OpenDeviceMonitor();
-            lblFooterStatus.DoubleClick += (s, ev) => OpenDeviceMonitor();
 
             // Hiệu ứng Hover, Click và đổi màu/con trỏ chuột cho thanh Header System Status
             Color headerOriginalColor = lblSystemStatus.ForeColor;
@@ -577,14 +528,7 @@ namespace HPParkingSystem.Forms
 
         private void SetFooterStatus(string message, bool isError = false)
         {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => SetFooterStatus(message, isError)));
-                return;
-            }
-
-            lblFooterStatus.Text = $"[{DateTime.Now:HH:mm:ss}] {message}";
-            lblFooterStatus.ForeColor = isError ? Color.FromArgb(220, 53, 69) : Color.FromArgb(40, 167, 69);
+            // lblFooterStatus đã bị loại bỏ khỏi giao diện
         }
 
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)

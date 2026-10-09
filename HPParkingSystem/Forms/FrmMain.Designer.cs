@@ -76,7 +76,6 @@ namespace HPParkingSystem.Forms
             this.lblOutStatusTag = new System.Windows.Forms.Label();
             this.lblOutStatusVal = new System.Windows.Forms.Label();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
-            this.lblFooterStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterLicenseSpring = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterMachineCode = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterLicense = new System.Windows.Forms.ToolStripStatusLabel();
@@ -726,7 +725,6 @@ namespace HPParkingSystem.Forms
             this.statusStrip.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.lblFooterStatus,
             this.lblFooterLicenseSpring,
             this.lblFooterMachineCode,
             this.lblFooterLicense});
@@ -735,14 +733,6 @@ namespace HPParkingSystem.Forms
             this.statusStrip.Size = new System.Drawing.Size(1400, 32);
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
-            // 
-            // lblFooterStatus
-            // 
-            this.lblFooterStatus.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblFooterStatus.ForeColor = System.Drawing.Color.Green;
-            this.lblFooterStatus.Name = "lblFooterStatus";
-            this.lblFooterStatus.Size = new System.Drawing.Size(168, 25);
-            this.lblFooterStatus.Text = "Sẵn sàng làm việc.";
             // 
             // lblFooterLicenseSpring
             // 
@@ -874,7 +864,6 @@ namespace HPParkingSystem.Forms
         private System.Windows.Forms.Label lblOutStatusTag;
         private System.Windows.Forms.Label lblOutStatusVal;
         private System.Windows.Forms.StatusStrip statusStrip;
-        private System.Windows.Forms.ToolStripStatusLabel lblFooterStatus;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterLicenseSpring;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterMachineCode;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterLicense;
