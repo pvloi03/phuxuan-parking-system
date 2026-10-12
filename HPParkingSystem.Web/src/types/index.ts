@@ -370,3 +370,34 @@ export interface AuditLog {
   errorMessage?: string
   createdAt: string
 }
+
+// --- CROSS-IMPORT TYPES ---
+export interface VehiclePersonCrossImportItem {
+  plateNumber?: string
+  vehicleType?: VehicleType
+  weight?: number
+  vehicleIsActive?: boolean
+  personCode?: string
+  fullName?: string
+  personType?: PersonType
+  phoneNumber?: string
+  email?: string
+  departmentName?: string
+  departmentId?: string
+  companyName?: string
+  companyId?: string
+  contractorName?: string
+  contractorId?: string
+  personIsActive?: boolean
+}
+
+export interface CrossImportResult {
+  totalRows: number
+  peopleCreated: number
+  peopleUpdated: number
+  vehiclesCreated: number
+  vehiclesUpdated: number
+  linksCreated: number
+  errors: string[]
+  summaryMessage: string
+}

@@ -212,5 +212,56 @@ namespace HPParkingSystem.Api.Tests.Controllers
             act.Should().Throw<ArgumentOutOfRangeException>()
                .WithMessage("*Khối lượng xe không thể nhỏ hơn 0*");
         }
+
+        [Fact]
+        public async Task CrossImport_WithEmptyList_ShouldReturnBadRequest()
+        {
+            // Arrange
+            var crossImportServiceMock = new Mock<ICrossImportService>();
+
+            // Act
+            var result = await _controller.CrossImport(new List<VehiclePersonCrossImportItemDto>(), crossImportServiceMock.Object);
+
+            // Assert
+            result.Should().BeOfType<BadRequestObjectResult>();
+            var badRequest = (BadRequestObjectResult)result;
+            var response = badRequest.Value as ApiResponse;
+            response!.Success.Should().BeFalse();
+            response.Message.Should().Contain("không được rỗng");
+        }
+
+        [Fact]
+        public async Task CrossImport_WithValidItems_ShouldDelegateToServiceAndReturnOk()
+        {
+            // Arrange
+            var crossImportServiceMock = new Mock<ICrossImportService>();
+            var expectedResult = new CrossImportResultDto
+            {
+                TotalRows = 1,
+                VehiclesCreated = 1,
+                PeopleCreated = 1,
+                LinksCreated = 1
+            };
+
+            crossImportServiceMock
+                .Setup(s => s.ImportAsync(It.IsAny<List<VehiclePersonCrossImportItemDto>>(), It.IsAny<ClaimsPrincipal>(), It.IsAny<HttpContext>()))
+                .ReturnsAsync(expectedResult);
+
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto { PlateNumber = "29C-12345", PersonCode = "NS01" }
+            };
+
+            // Act
+            var result = await _controller.CrossImport(items, crossImportServiceMock.Object);
+
+            // Assert
+            result.Should().BeOfType<OkObjectResult>();
+            var okResult = (OkObjectResult)result;
+            var response = okResult.Value as ApiResponse<CrossImportResultDto>;
+            response.Should().NotBeNull();
+            response!.Success.Should().BeTrue();
+            response.Data.Should().BeEquivalentTo(expectedResult);
+        }
     }
 }

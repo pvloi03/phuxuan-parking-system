@@ -24,7 +24,7 @@ import {
   Tag,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
-import type { PagedResult, Vehicle, VehicleType, Person } from '@/types'
+import type { PagedResult, Vehicle, VehicleType, Person, ApiResponse, CrossImportResult, VehiclePersonCrossImportItem } from '@/types'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/excelHelper'
+import { exportToExcel, parseExcelFile, downloadCrossImportTemplate, parseCrossImportExcel } from '@/lib/excelHelper'
 
 export function cleanPlateNumber(plate?: string): string {
   if (!plate) return ''
@@ -225,12 +225,18 @@ export function VehiclesPage() {
   })
 
   const batchImportMutation = useMutation({
-    mutationFn: async (vehicles: Partial<Vehicle>[]) => {
-      await apiClient.post('/vehicles/batch', vehicles)
+    mutationFn: async (items: VehiclePersonCrossImportItem[]) => {
+      const res = await apiClient.post<ApiResponse<CrossImportResult>>('/vehicles/cross-import', items)
+      return res.data.data
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
-      notify.success(`Nhập thành công ${variables?.length || 0} phương tiện từ file Excel!`)
+      queryClient.invalidateQueries({ queryKey: ['people-all-lookup'] })
+      queryClient.invalidateQueries({ queryKey: ['people-list'] })
+      notify.success(data?.summaryMessage || 'Nhập dữ liệu từ file Excel thành công!')
+      if (data?.errors && data.errors.length > 0) {
+        notify.warning(`Có ${data.errors.length} cảnh báo: ${data.errors.slice(0, 3).join('; ')}`)
+      }
     },
     onError: (err: any) => {
       notify.error('Nhập file Excel thất bại', err)
@@ -302,21 +308,7 @@ export function VehiclesPage() {
   }
 
   const handleDownloadTemplate = () => {
-    const template = [
-      {
-        'Biển Số Xe': '30A12345',
-        'Loại Xe (Car/Motorcycle/Truck)': 'Truck',
-        'Khối Lượng (Tấn)': '10.5',
-        'Mã Nhân Sự Chủ Xe (Nếu có)': 'NS001',
-      },
-      {
-        'Biển Số Xe': '29B99988',
-        'Loại Xe (Car/Motorcycle/Truck)': 'Motorcycle',
-        'Khối Lượng (Tấn)': '',
-        'Mã Nhân Sự Chủ Xe (Nếu có)': 'NS002',
-      },
-    ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Phuong_Tien.xlsx', 'MauNhapPhuongTien')
+    downloadCrossImportTemplate('Mau_Nhap_PhuongTien_NhanSu.xlsx')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,41 +322,14 @@ export function VehiclesPage() {
         return
       }
 
-      // Map mã nhân sự sang PersonId
-      const codeToIdMap = new Map<string, string>()
-      peopleList.forEach((p) => {
-        if (p.code) codeToIdMap.set(p.code.toLowerCase().trim(), p.id)
-      })
-
-      const formattedData: Partial<Vehicle>[] = rawData.map((row) => {
-        const rawType = String(row['Loại Xe (Car/Motorcycle/Truck)'] || row['Loại Xe'] || row['type'] || '').toLowerCase()
-        let vehicleType: VehicleType = 'Car'
-        if (rawType.includes('motor') || rawType.includes('máy')) vehicleType = 'Motorcycle'
-        else if (rawType.includes('truck') || rawType.includes('tải')) vehicleType = 'Truck'
-
-        const rawWeight = row['Khối Lượng (Tấn)'] || row['Khối Lượng'] || row['weight']
-        const weightVal = rawWeight !== undefined && rawWeight !== null && String(rawWeight).trim() !== ''
-          ? parseFloat(String(rawWeight))
-          : undefined
-
-        const ownerCode = String(row['Mã Nhân Sự Chủ Xe (Nếu có)'] || row['Mã Nhân Sự'] || row['ownerCode'] || '').toLowerCase().trim()
-        const ownerPersonId = ownerCode ? (codeToIdMap.get(ownerCode) || null) : null
-
-        return {
-          plateNumber: String(row['Biển Số Xe'] || row['plateNumber'] || '').trim(),
-          type: vehicleType,
-          weight: isNaN(weightVal as number) ? undefined : weightVal,
-          ownerPersonId: ownerPersonId || undefined,
-          isActive: true,
-        }
-      }).filter((v) => v.plateNumber)
+      const formattedData = parseCrossImportExcel(rawData)
 
       if (!formattedData.length) {
-        notify.warning('Không tìm thấy bản ghi hợp lệ (Cần có cột Biển Số Xe).')
+        notify.warning('Không tìm thấy bản ghi hợp lệ (Cần có Biển số xe hoặc Mã nhân sự / Họ tên).')
         return
       }
 
-      batchImportMutation.mutate(formattedData as Vehicle[])
+      batchImportMutation.mutate(formattedData)
     } catch (err: any) {
       notify.error('Lỗi đọc file Excel', err)
     } finally {

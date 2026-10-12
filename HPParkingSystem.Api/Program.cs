@@ -66,6 +66,9 @@ builder.Services.AddHostedService<AuditLogBackgroundWorker>();
 // 1.2. Cấu hình Background Worker tự động dọn dẹp ảnh Captures cũ
 builder.Services.AddHostedService<CapturesCleanupBackgroundWorker>();
 
+// 1.3. Cấu hình Service xử lý Nhập chéo Nhân sự & Phương tiện từ Excel
+builder.Services.AddScoped<ICrossImportService, CrossImportService>();
+
 // 2. Cấu hình JWT Authentication
 var jwtSecret = builder.Configuration["JwtSettings:SecretKey"] ?? "HPParkingSystem_Super_Secret_Key_2026_For_JWT_Authentication_Secure!";
 var jwtIssuer = builder.Configuration["JwtSettings:Issuer"] ?? "HPParkingSystem.Api";

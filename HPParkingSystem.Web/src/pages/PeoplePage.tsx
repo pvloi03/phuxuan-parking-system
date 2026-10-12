@@ -26,7 +26,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
-import type { PagedResult, Person, PersonType, Department, Company, Contractor } from '@/types'
+import type { PagedResult, Person, PersonType, Department, Company, Contractor, ApiResponse, CrossImportResult, VehiclePersonCrossImportItem } from '@/types'
 import { getPersonTypeLabel } from '@/types'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
@@ -35,7 +35,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { exportToExcel, parseExcelFile, downloadExcelTemplate } from '@/lib/excelHelper'
+import { exportToExcel, parseExcelFile, downloadCrossImportTemplate, parseCrossImportExcel } from '@/lib/excelHelper'
 
 export function PeoplePage() {
   const queryClient = useQueryClient()
@@ -220,12 +220,18 @@ export function PeoplePage() {
   })
 
   const batchImportMutation = useMutation({
-    mutationFn: async (people: Partial<Person>[]) => {
-      await apiClient.post('/people/batch', people)
+    mutationFn: async (items: VehiclePersonCrossImportItem[]) => {
+      const res = await apiClient.post<ApiResponse<CrossImportResult>>('/people/cross-import', items)
+      return res.data.data
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['people-list'] })
-      notify.success(`Nhập thành công ${variables?.length || 0} nhân sự từ file Excel!`)
+      queryClient.invalidateQueries({ queryKey: ['people-all-lookup'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
+      notify.success(data?.summaryMessage || 'Nhập dữ liệu từ file Excel thành công!')
+      if (data?.errors && data.errors.length > 0) {
+        notify.warning(`Có ${data.errors.length} cảnh báo: ${data.errors.slice(0, 3).join('; ')}`)
+      }
     },
     onError: (err: any) => {
       notify.error('Nhập file Excel thất bại', err)
@@ -311,23 +317,7 @@ export function PeoplePage() {
   }
 
   const handleDownloadTemplate = () => {
-    const template = [
-      {
-        'Mã Định Danh': 'NS001',
-        'Họ Và Tên': 'Nguyễn Văn A',
-        'Phân Loại (Employee/Contractor/Visitor/VIP)': 'Employee',
-        'Số Điện Thoại': '0901234567',
-        'Email': 'nhansu.a@example.com',
-      },
-      {
-        'Mã Định Danh': 'NS002',
-        'Họ Và Tên': 'Trần Thị B',
-        'Phân Loại (Employee/Contractor/Visitor/VIP)': 'Contractor',
-        'Số Điện Thoại': '0912345678',
-        'Email': 'nhansu.b@example.com',
-      },
-    ]
-    downloadExcelTemplate(template, 'Mau_Nhap_Nhan_Su.xlsx', 'MauNhapNhanSu')
+    downloadCrossImportTemplate('Mau_Nhap_NhanSu_PhuongTien.xlsx')
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,31 +331,14 @@ export function PeoplePage() {
         return
       }
 
-      const formattedData: Partial<Person>[] = rawData
-        .map((row) => {
-          const rawType = String(row['Phân Loại (Employee/Contractor/Visitor/VIP)'] || row['Phân Loại'] || row['type'] || 'Employee').trim()
-          let personType: PersonType = 'Employee'
-          if (rawType.toLowerCase().includes('contractor') || rawType.toLowerCase().includes('thầu')) personType = 'Contractor'
-          else if (rawType.toLowerCase().includes('visitor') || rawType.toLowerCase().includes('khách')) personType = 'Visitor'
-          else if (rawType.toLowerCase().includes('vip')) personType = 'VIP'
-
-          return {
-            code: String(row['Mã Định Danh'] || row['code'] || '').trim().toUpperCase(),
-            fullName: String(row['Họ Và Tên'] || row['fullName'] || '').trim(),
-            type: personType,
-            phoneNumber: String(row['Số Điện Thoại'] || row['phoneNumber'] || '').trim() || undefined,
-            email: String(row['Email'] || row['email'] || '').trim() || undefined,
-            isActive: true,
-          }
-        })
-        .filter((p) => p.fullName && p.code)
+      const formattedData = parseCrossImportExcel(rawData)
 
       if (!formattedData.length) {
-        notify.warning('Không tìm thấy bản ghi nhân sự hợp lệ trong file Excel.')
+        notify.warning('Không tìm thấy bản ghi hợp lệ trong file Excel (Cần có Mã nhân sự / Họ tên hoặc Biển số xe).')
         return
       }
 
-      batchImportMutation.mutate(formattedData as Person[])
+      batchImportMutation.mutate(formattedData)
     } catch (err: any) {
       notify.error('Lỗi đọc file Excel', err)
     } finally {

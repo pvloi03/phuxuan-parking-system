@@ -218,5 +218,19 @@ namespace HPParkingSystem.Api.Controllers
 
             return Ok(ApiResponse.Ok($"Đã nhập thành công {addedCount}/{vehicles.Count} phương tiện mới."));
         }
+
+        [HttpPost("cross-import")]
+        public async Task<IActionResult> CrossImport(
+            [FromBody] List<VehiclePersonCrossImportItemDto> items,
+            [FromServices] ICrossImportService crossImportService)
+        {
+            if (items == null || items.Count == 0)
+            {
+                return BadRequest(ApiResponse.Fail("Danh sách dữ liệu nhập không được rỗng."));
+            }
+
+            var result = await crossImportService.ImportAsync(items, User, HttpContext);
+            return Ok(ApiResponse<CrossImportResultDto>.Ok(result, result.SummaryMessage));
+        }
     }
 }
