@@ -21,15 +21,22 @@ namespace HPParkingSystem.Models.Entities
         [BsonRepresentation(BsonType.ObjectId)]
         public string? OwnerPersonId { get; set; }                                       // [LƯU DB] Khóa ngoại liên kết chủ xe (Person)
         public bool IsActive { get; set; } = true;                                       // [LƯU DB] Trạng thái hoạt động
-        public double? Weight { get; set; }                                              // [LƯU DB] Khối lượng phương tiện (đơn vị: tấn)
+        private double? _weight;
+        public double? Weight
+        {
+            get => _weight;
+            set
+            {
+                if (value.HasValue && value.Value < 0)
+                    throw new System.ArgumentOutOfRangeException(nameof(value), "Khối lượng xe không thể nhỏ hơn 0.");
+                _weight = value;
+            }
+        }
 
         public Vehicle() { }
 
         public Vehicle(string plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null, double? weight = null)
         {
-            if (weight.HasValue && weight.Value < 0)
-                throw new System.ArgumentOutOfRangeException(nameof(weight), "Khối lượng xe không thể nhỏ hơn 0.");
-
             PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber);
             Type = type;
             OwnerPersonId = ownerPersonId;

@@ -88,6 +88,11 @@ namespace HPParkingSystem.Api.Controllers
                 return BadRequest(ApiResponse.Fail($"Biển số '{cleanPlate}' đã tồn tại trong hệ thống."));
             }
 
+            if (vehicle.Weight.HasValue && vehicle.Weight.Value < 0)
+            {
+                return BadRequest(ApiResponse.Fail("Khối lượng xe không thể nhỏ hơn 0."));
+            }
+
             // Chuẩn hóa OwnerPersonId (nếu rỗng thì thành null)
             if (string.IsNullOrWhiteSpace(vehicle.OwnerPersonId))
             {
@@ -123,6 +128,11 @@ namespace HPParkingSystem.Api.Controllers
             if (duplicate != null)
             {
                 return BadRequest(ApiResponse.Fail($"Biển số '{cleanPlate}' đã thuộc về một phương tiện khác."));
+            }
+
+            if (vehicle.Weight.HasValue && vehicle.Weight.Value < 0)
+            {
+                return BadRequest(ApiResponse.Fail("Khối lượng xe không thể nhỏ hơn 0."));
             }
 
             // Snapshot trạng thái cũ trước khi cập nhật
