@@ -530,6 +530,7 @@ export function HistoryPage() {
               <option value="Car">Ô tô</option>
               <option value="Motorcycle">Xe máy</option>
               <option value="Truck">Xe tải</option>
+              <option value="Other">Khác</option>
             </select>
           </div>
 
