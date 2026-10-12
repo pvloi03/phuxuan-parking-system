@@ -231,7 +231,7 @@ namespace HPParkingSystem.Services.Background
                 int pendingImages = _liteDb.GetImageSyncTasks().Count(t => !t.IsSynced);
                 bool isOnline = _healthTracker.IsServerOnline;
                 bool hasIncident = _healthTracker.HasIncident || !isOnline;
-                string incidentDetails = _healthTracker.GetIncidentSummary(pendingRecords, pendingImages);
+                string incidentDetails = hasIncident ? _healthTracker.GetIncidentSummary(pendingRecords, pendingImages) : string.Empty;
 
                 string msg;
                 if (!isOnline)
@@ -240,15 +240,11 @@ namespace HPParkingSystem.Services.Background
                         ? $"🟠 Sự cố máy chủ (Ngoại tuyến: {pendingRecords} xe chờ đồng bộ)"
                         : "🟠 Sự cố máy chủ (Mất kết nối MongoDB)";
                 }
-                else if (_isSyncing)
-                {
-                    msg = $"🔵 Đang đồng bộ... (còn {pendingRecords} lượt xe, {pendingImages} ảnh)";
-                }
                 else if (_healthTracker.HasIncident)
                 {
                     msg = "🟠 Sự cố máy chủ";
                 }
-                else if (pendingRecords > 0 || pendingImages > 0)
+                else if (_isSyncing || pendingRecords > 0 || pendingImages > 0)
                 {
                     msg = $"🔵 Đang đồng bộ... (còn {pendingRecords} lượt xe, {pendingImages} ảnh)";
                 }

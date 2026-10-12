@@ -61,6 +61,11 @@ namespace HPParkingSystem.Services.Offline
         void MarkImageShareStatus(bool isOk, string? error = null);
 
         /// <summary>
+        /// Cập nhật trạng thái và ghi nhận lỗi thao tác MongoDB (truy vấn hoặc ghi dữ liệu)
+        /// </summary>
+        void MarkMongoStatus(bool isOk, string? error = null);
+
+        /// <summary>
         /// Tạo bản tóm tắt chi tiết sự cố phục vụ hiển thị hộp thoại chẩn đoán
         /// </summary>
         string GetIncidentSummary(int pendingRecords, int pendingImages);

@@ -199,11 +199,17 @@ namespace HPParkingSystem.Forms
             lblFooterServerStatus.ForeColor = Color.FromArgb(100, 116, 139);
             lblFooterServerStatus.MouseEnter += (s, ev) =>
             {
-                lblFooterServerStatus.Owner?.Cursor = Cursors.Hand;
+                if (lblFooterServerStatus.Owner != null)
+                {
+                    lblFooterServerStatus.Owner.Cursor = _hasServerIncident ? Cursors.Hand : Cursors.Default;
+                }
             };
             lblFooterServerStatus.MouseLeave += (s, ev) =>
             {
-                lblFooterServerStatus.Owner?.Cursor = Cursors.Default;
+                if (lblFooterServerStatus.Owner != null)
+                {
+                    lblFooterServerStatus.Owner.Cursor = Cursors.Default;
+                }
             };
             lblFooterServerStatus.Click += LblFooterServerStatus_Click;
 
@@ -527,33 +533,44 @@ namespace HPParkingSystem.Forms
             {
                 lblFooterServerStatus.ForeColor = Color.DarkOrange;
             }
-            else if (e.PendingRecordCount > 0 || e.PendingImageCount > 0)
-            {
-                lblFooterServerStatus.ForeColor = Color.DodgerBlue;
-            }
             else
             {
-                lblFooterServerStatus.ForeColor = Color.FromArgb(16, 185, 129);
+                if (lblFooterServerStatus.Owner != null && lblFooterServerStatus.Owner.Cursor == Cursors.Hand)
+                {
+                    lblFooterServerStatus.Owner.Cursor = Cursors.Default;
+                }
+
+                if (e.PendingRecordCount > 0 || e.PendingImageCount > 0)
+                {
+                    lblFooterServerStatus.ForeColor = Color.DodgerBlue;
+                }
+                else
+                {
+                    lblFooterServerStatus.ForeColor = Color.FromArgb(16, 185, 129);
+                }
             }
         }
 
         private void LblFooterServerStatus_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(_currentIncidentDetails))
+            if (_hasServerIncident)
             {
                 MessageBox.Show(
-                    "Máy chủ và hệ thống lưu trữ đang hoạt động trực tuyến bình thường.",
-                    "Trạng thái máy chủ",
+                    string.IsNullOrWhiteSpace(_currentIncidentDetails)
+                        ? "Đang xảy ra sự cố kết nối tới máy chủ CSDL hoặc thư mục lưu trữ ảnh."
+                        : _currentIncidentDetails,
+                    "Chi Tiết Sự Cố Máy Chủ",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+            else
+            {
+                MessageBox.Show(
+                    "Máy chủ và thư mục lưu trữ hoạt động bình thường.",
+                    "Trạng Thái Máy Chủ",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
-                return;
             }
-
-            MessageBox.Show(
-                _currentIncidentDetails,
-                _hasServerIncident ? "Chi tiết sự cố máy chủ & Trạng thái lưu trữ" : "Trạng thái máy chủ & Hệ thống lưu trữ",
-                MessageBoxButtons.OK,
-                _hasServerIncident ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }
     }
 }

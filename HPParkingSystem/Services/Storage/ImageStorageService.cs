@@ -1,4 +1,5 @@
 using HPParkingSystem.Models.Data;
+using HPParkingSystem.Services.Logging;
 using HPParkingSystem.Services.Offline;
 using System;
 using System.Configuration;
@@ -57,7 +58,7 @@ namespace HPParkingSystem.Services.Storage
                     string targetFile = Path.Combine(targetDir, fileName);
                     using (var fs = new FileStream(targetFile, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true))
                     {
-                        await fs.WriteAsync(imageBytes).ConfigureAwait(false);
+                        await fs.WriteAsync(imageBytes, 0, imageBytes.Length).ConfigureAwait(false);
                     }
 
                     ServerHealthTracker.Instance.MarkImageShareStatus(true);
@@ -70,7 +71,8 @@ namespace HPParkingSystem.Services.Storage
                 }
                 catch (Exception ex)
                 {
-                    // Lỗi I/O mạng hoặc mất quyền truy cập -> Chuyển sang fallback cục bộ
+                    // Lỗi I/O mạng hoặc mất quyền truy cập -> Ghi log và chuyển sang fallback cục bộ
+                    AppLogger.Error(ex, $"[ImageStorage] Lỗi I/O ghi ảnh vào thư mục máy chủ ({_primaryPath}): {ex.Message}", "ImageStorage");
                     ServerHealthTracker.Instance.MarkImageShareStatus(false, $"Lỗi ghi ảnh vào thư mục máy chủ ({_primaryPath}): {ex.Message}");
                 }
             }
@@ -84,7 +86,7 @@ namespace HPParkingSystem.Services.Storage
                 string localTargetFile = Path.Combine(localTargetDir, fileName);
                 using (var fs = new FileStream(localTargetFile, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, useAsync: true))
                 {
-                    await fs.WriteAsync(imageBytes).ConfigureAwait(false);
+                    await fs.WriteAsync(imageBytes, 0, imageBytes.Length).ConfigureAwait(false);
                 }
 
                 // Đưa vào hàng đợi đồng bộ ảnh
@@ -106,6 +108,7 @@ namespace HPParkingSystem.Services.Storage
             }
             catch (Exception ex)
             {
+                AppLogger.Error(ex, $"[ImageStorage] Không thể lưu file ảnh cả Primary lẫn Offline ({fileName}): {ex.Message}", "ImageStorage");
                 return new ImageSaveResult
                 {
                     Success = false,
@@ -127,13 +130,14 @@ namespace HPParkingSystem.Services.Storage
                 using (var fs = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096, useAsync: true))
                 {
                     bytes = new byte[fs.Length];
-                    await fs.ReadAsync(bytes.AsMemory(0, (int)fs.Length)).ConfigureAwait(false);
+                    await fs.ReadAsync(bytes, 0, (int)fs.Length).ConfigureAwait(false);
                 }
 
                 return await SaveImageBytesAsync(bytes, subFolder, fileName, isServerOnline).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
+                AppLogger.Error(ex, $"[ImageStorage] Lỗi đọc/lưu file ảnh nguồn ({sourceFilePath}): {ex.Message}", "ImageStorage");
                 return new ImageSaveResult { Success = false, ErrorMessage = ex.Message };
             }
         }
@@ -193,12 +197,15 @@ namespace HPParkingSystem.Services.Storage
                     task.SyncedAt = DateTime.Now;
                     taskCollection.Update(task);
                     syncedCount++;
+                    ServerHealthTracker.Instance.MarkImageShareStatus(true);
                 }
                 catch (Exception ex)
                 {
                     task.RetryCount++;
                     task.LastError = ex.Message;
                     taskCollection.Update(task);
+                    AppLogger.Error(ex, $"[ImageStorage] Lỗi I/O đồng bộ file ảnh lên máy chủ ({task.RemoteRelativePath}): {ex.Message}", "ImageStorage");
+                    ServerHealthTracker.Instance.MarkImageShareStatus(false, $"Lỗi đồng bộ file ảnh lên máy chủ ({task.RemoteRelativePath}): {ex.Message}");
                     // Dừng vòng lặp nếu share mạng server vẫn chưa ghi được
                     break;
                 }

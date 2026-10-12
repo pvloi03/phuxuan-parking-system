@@ -87,16 +87,16 @@ namespace HPParkingSystem.Services.Parking
 
             // 1. Chuẩn bị thư mục lưu trữ ảnh (tự động fallback sang OfflineCaptures nếu server mất mạng)
             string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-            var (filePlate, fileOverview, isLocalFallback, dateFolder, fileNamePlate, fileNameOvw) =
-                PrepareCapturePaths(captureDir, timeStamp, triggerSource, "in");
+            var captureContext = PrepareCapturePaths(captureDir, timeStamp, triggerSource, "in");
 
             // 2. Chụp ảnh song song với cơ chế chống chịu lỗi (Graceful Degradation & Retry cục bộ)
-            var (plateOk, ovwOk, actualPlatePath, actualOvwPath) = await CaptureSnapshotsAsync(
-                plateCam, overviewCam, filePlate, fileOverview, plateDeviceId, overviewDeviceId,
-                isLocalFallback, dateFolder, fileNamePlate, fileNameOvw);
+            var captureResult = await CaptureSnapshotsAsync(
+                plateCam, overviewCam, captureContext, plateDeviceId, overviewDeviceId);
 
-            filePlate = actualPlatePath;
-            fileOverview = actualOvwPath;
+            string filePlate = captureResult.PlateImagePath;
+            string fileOverview = captureResult.OverviewImagePath;
+            bool plateOk = captureResult.PlateCamSuccess;
+            bool ovwOk = captureResult.OverviewCamSuccess;
             result.PlateCamSuccess = plateOk;
             result.OverviewCamSuccess = ovwOk;
             result.PlateImagePath = plateOk ? filePlate : null;
@@ -224,7 +224,7 @@ namespace HPParkingSystem.Services.Parking
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
             // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
-            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
+            QueueOfflineImageSync(captureContext, plateOk, ovwOk, filePlate, fileOverview);
 
             var session = ParkingSession.CheckIn(
                 inLaneName: inLaneName,
@@ -293,16 +293,16 @@ namespace HPParkingSystem.Services.Parking
 
             // 1. Chuẩn bị thư mục lưu trữ ảnh (tự động fallback sang OfflineCaptures nếu server mất mạng)
             string timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
-            var (filePlate, fileOverview, isLocalFallback, dateFolder, fileNamePlate, fileNameOvw) =
-                PrepareCapturePaths(captureDir, timeStamp, triggerSource, "out");
+            var captureContext = PrepareCapturePaths(captureDir, timeStamp, triggerSource, "out");
 
             // 2. Chụp ảnh song song với cơ chế chống chịu lỗi (Graceful Degradation & Retry cục bộ)
-            var (plateOk, ovwOk, actualPlatePath, actualOvwPath) = await CaptureSnapshotsAsync(
-                plateCam, overviewCam, filePlate, fileOverview, plateDeviceId, overviewDeviceId,
-                isLocalFallback, dateFolder, fileNamePlate, fileNameOvw);
+            var captureResult = await CaptureSnapshotsAsync(
+                plateCam, overviewCam, captureContext, plateDeviceId, overviewDeviceId);
 
-            filePlate = actualPlatePath;
-            fileOverview = actualOvwPath;
+            string filePlate = captureResult.PlateImagePath;
+            string fileOverview = captureResult.OverviewImagePath;
+            bool plateOk = captureResult.PlateCamSuccess;
+            bool ovwOk = captureResult.OverviewCamSuccess;
             result.PlateCamSuccess = plateOk;
             result.OverviewCamSuccess = ovwOk;
             result.PlateImagePath = plateOk ? filePlate : null;
@@ -403,7 +403,7 @@ namespace HPParkingSystem.Services.Parking
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
             // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
-            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
+            QueueOfflineImageSync(captureContext, plateOk, ovwOk, filePlate, fileOverview);
 
             if (activeSession != null)
             {
@@ -490,105 +490,63 @@ namespace HPParkingSystem.Services.Parking
             }
         }
 
-        private async Task<(bool plateOk, bool ovwOk, string finalPlatePath, string finalOvwPath)> CaptureSnapshotsAsync(
+        private async Task<LaneCaptureResult> CaptureSnapshotsAsync(
             ICameraService? plateCam,
             ICameraService? overviewCam,
-            string filePlate,
-            string fileOverview,
-            string? plateDeviceId,
-            string? overviewDeviceId,
-            bool isLocalFallback,
-            string dateFolder,
-            string fileNamePlate,
-            string fileNameOvw)
+            CapturePathContext context,
+            string? plateDeviceId = null,
+            string? overviewDeviceId = null)
         {
-            string actualPlatePath = filePlate;
-            string actualOvwPath = fileOverview;
-
             var taskPlate = Task.Run(async () =>
             {
-                if (plateCam == null) return false;
+                if (plateCam == null) return (false, context.PlateFilePath);
                 try
                 {
-                    await plateCam.CaptureToFileAsync(actualPlatePath);
-                    if (File.Exists(actualPlatePath)) return true;
+                    await plateCam.CaptureToFileAsync(context.PlateFilePath);
+                    if (File.Exists(context.PlateFilePath)) return (true, context.PlateFilePath);
                 }
                 catch (Exception ex)
                 {
-                    AppLogger.Error(ex, $"Lỗi chụp camera biển số ({actualPlatePath}): {ex.Message}", "ParkingLaneService");
+                    AppLogger.Error(ex, $"Lỗi chụp camera biển số ({context.PlateFilePath}): {ex.Message}", "ParkingLaneService");
                 }
 
                 // Nếu ghi lên Server Share thất bại, tự động retry lưu vào thư mục cục bộ OfflineCaptures
-                if (!isLocalFallback)
+                if (!context.IsLocalFallback)
                 {
-                    try
-                    {
-                        string localDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures", dateFolder);
-                        if (!Directory.Exists(localDir)) Directory.CreateDirectory(localDir);
-                        string localPlate = Path.Combine(localDir, fileNamePlate);
-
-                        await plateCam.CaptureToFileAsync(localPlate);
-                        if (File.Exists(localPlate))
-                        {
-                            actualPlatePath = localPlate;
-                            _healthTracker?.MarkImageShareStatus(false, $"Lỗi ghi ảnh biển số lên máy chủ, đã chuyển lưu cục bộ: {fileNamePlate}");
-                            QueueSingleImageSync(localPlate, Path.Combine(dateFolder, fileNamePlate));
-                            return true;
-                        }
-                    }
-                    catch (Exception ex2)
-                    {
-                        AppLogger.Error(ex2, $"Lỗi khi retry lưu ảnh biển số cục bộ: {ex2.Message}", "ParkingLaneService");
-                    }
+                    var (fallbackOk, fallbackPath) = await TryLocalFallbackCaptureAsync(plateCam, "camera biển số", context.DateFolder, context.PlateFileName);
+                    if (fallbackOk) return (true, fallbackPath);
                 }
 
-                return false;
+                return (false, context.PlateFilePath);
             });
 
             var taskOverview = Task.Run(async () =>
             {
-                if (overviewCam == null) return false;
+                if (overviewCam == null) return (false, context.OverviewFilePath);
                 try
                 {
-                    await overviewCam.CaptureToFileAsync(actualOvwPath);
-                    if (File.Exists(actualOvwPath)) return true;
+                    await overviewCam.CaptureToFileAsync(context.OverviewFilePath);
+                    if (File.Exists(context.OverviewFilePath)) return (true, context.OverviewFilePath);
                 }
                 catch (Exception ex)
                 {
-                    AppLogger.Error(ex, $"Lỗi chụp camera toàn cảnh ({actualOvwPath}): {ex.Message}", "ParkingLaneService");
+                    AppLogger.Error(ex, $"Lỗi chụp camera toàn cảnh ({context.OverviewFilePath}): {ex.Message}", "ParkingLaneService");
                 }
 
                 // Nếu ghi lên Server Share thất bại, tự động retry lưu vào thư mục cục bộ OfflineCaptures
-                if (!isLocalFallback)
+                if (!context.IsLocalFallback)
                 {
-                    try
-                    {
-                        string localDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures", dateFolder);
-                        if (!Directory.Exists(localDir)) Directory.CreateDirectory(localDir);
-                        string localOvw = Path.Combine(localDir, fileNameOvw);
-
-                        await overviewCam.CaptureToFileAsync(localOvw);
-                        if (File.Exists(localOvw))
-                        {
-                            actualOvwPath = localOvw;
-                            _healthTracker?.MarkImageShareStatus(false, $"Lỗi ghi ảnh toàn cảnh lên máy chủ, đã chuyển lưu cục bộ: {fileNameOvw}");
-                            QueueSingleImageSync(localOvw, Path.Combine(dateFolder, fileNameOvw));
-                            return true;
-                        }
-                    }
-                    catch (Exception ex2)
-                    {
-                        AppLogger.Error(ex2, $"Lỗi khi retry lưu ảnh toàn cảnh cục bộ: {ex2.Message}", "ParkingLaneService");
-                    }
+                    var (fallbackOk, fallbackPath) = await TryLocalFallbackCaptureAsync(overviewCam, "camera toàn cảnh", context.DateFolder, context.OverviewFileName);
+                    if (fallbackOk) return (true, fallbackPath);
                 }
 
-                return false;
+                return (false, context.OverviewFilePath);
             });
 
             await Task.WhenAll(taskPlate, taskOverview);
 
-            bool plateOk = taskPlate.Result;
-            bool ovwOk = taskOverview.Result;
+            var (plateOk, actualPlatePath) = taskPlate.Result;
+            var (ovwOk, actualOvwPath) = taskOverview.Result;
 
             // Đồng bộ chủ động với Health Monitor nếu có cấu hình
             if (_healthService != null && _deviceRepo != null)
@@ -628,7 +586,7 @@ namespace HPParkingSystem.Services.Parking
                 });
             }
 
-            return (plateOk, ovwOk, actualPlatePath, actualOvwPath);
+            return new LaneCaptureResult(plateOk, ovwOk, actualPlatePath, actualOvwPath);
         }
 
         private bool IsCrossLaneCollision(string cleanPlate, string currentLane)
@@ -691,7 +649,7 @@ namespace HPParkingSystem.Services.Parking
             return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
         }
 
-        private (string plateFile, string ovwFile, bool isLocalFallback, string dateFolder, string fileNamePlate, string fileNameOvw) PrepareCapturePaths(
+        private CapturePathContext PrepareCapturePaths(
             string captureDir, string timeStamp, string triggerSource, string laneType)
         {
             string dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
@@ -708,20 +666,68 @@ namespace HPParkingSystem.Services.Parking
                     string primaryDateFolder = Path.Combine(primaryDir, dateFolder);
                     if (!Directory.Exists(primaryDateFolder)) Directory.CreateDirectory(primaryDateFolder);
                     _healthTracker?.MarkImageShareStatus(true);
-                    return (Path.Combine(primaryDateFolder, fileNamePlate), Path.Combine(primaryDateFolder, fileNameOvw), false, dateFolder, fileNamePlate, fileNameOvw);
+                    return new CapturePathContext(
+                        Path.Combine(primaryDateFolder, fileNamePlate),
+                        Path.Combine(primaryDateFolder, fileNameOvw),
+                        false,
+                        dateFolder,
+                        fileNamePlate,
+                        fileNameOvw);
                 }
                 catch (Exception ex)
                 {
                     // Lỗi I/O thư mục mạng máy chủ -> fallback
+                    AppLogger.Error(ex, $"[LÀN XE] Lỗi I/O khi kết nối/tạo thư mục ảnh máy chủ ({primaryDir}): {ex.Message}", "ParkingLaneService");
                     _healthTracker?.MarkImageShareStatus(false, $"Không thể kết nối/tạo thư mục ảnh máy chủ: {ex.Message}");
                 }
             }
 
             // Fallback lưu vào thư mục Offline cục bộ trên máy bốt
             string offlineDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures", dateFolder);
-            if (!Directory.Exists(offlineDir)) Directory.CreateDirectory(offlineDir);
+            try
+            {
+                if (!Directory.Exists(offlineDir)) Directory.CreateDirectory(offlineDir);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, $"[LÀN XE] Không thể tạo thư mục lưu ảnh ngoại tuyến cục bộ ({offlineDir}): {ex.Message}", "ParkingLaneService");
+            }
 
-            return (Path.Combine(offlineDir, fileNamePlate), Path.Combine(offlineDir, fileNameOvw), true, dateFolder, fileNamePlate, fileNameOvw);
+            return new CapturePathContext(
+                Path.Combine(offlineDir, fileNamePlate),
+                Path.Combine(offlineDir, fileNameOvw),
+                true,
+                dateFolder,
+                fileNamePlate,
+                fileNameOvw);
+        }
+
+        private async Task<(bool success, string fallbackPath)> TryLocalFallbackCaptureAsync(
+            ICameraService camera,
+            string camDescription,
+            string dateFolder,
+            string fileName)
+        {
+            try
+            {
+                string localDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures", dateFolder);
+                if (!Directory.Exists(localDir)) Directory.CreateDirectory(localDir);
+                string localFilePath = Path.Combine(localDir, fileName);
+
+                await camera.CaptureToFileAsync(localFilePath);
+                if (File.Exists(localFilePath))
+                {
+                    _healthTracker?.MarkImageShareStatus(false, $"Lỗi ghi ảnh {camDescription} lên máy chủ, đã chuyển lưu cục bộ: {fileName}");
+                    QueueSingleImageSync(localFilePath, Path.Combine(dateFolder, fileName));
+                    return (true, localFilePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, $"Lỗi khi retry lưu ảnh {camDescription} cục bộ ({fileName}): {ex.Message}", "ParkingLaneService");
+            }
+
+            return (false, string.Empty);
         }
 
         private void QueueSingleImageSync(string localFilePath, string remoteRelativePath)
@@ -743,17 +749,17 @@ namespace HPParkingSystem.Services.Parking
             }
         }
 
-        private void QueueOfflineImageSync(bool isLocalFallback, bool plateOk, bool ovwOk, string filePlate, string fileOverview, string dateFolder, string fileNamePlate, string fileNameOvw)
+        private void QueueOfflineImageSync(CapturePathContext context, bool plateOk, bool ovwOk, string actualPlatePath, string actualOvwPath)
         {
-            if (!isLocalFallback) return;
+            if (!context.IsLocalFallback) return;
 
-            if (plateOk && File.Exists(filePlate))
+            if (plateOk && File.Exists(actualPlatePath))
             {
-                QueueSingleImageSync(filePlate, Path.Combine(dateFolder, fileNamePlate));
+                QueueSingleImageSync(actualPlatePath, Path.Combine(context.DateFolder, context.PlateFileName));
             }
-            if (ovwOk && File.Exists(fileOverview))
+            if (ovwOk && File.Exists(actualOvwPath))
             {
-                QueueSingleImageSync(fileOverview, Path.Combine(dateFolder, fileNameOvw));
+                QueueSingleImageSync(actualOvwPath, Path.Combine(context.DateFolder, context.OverviewFileName));
             }
         }
 

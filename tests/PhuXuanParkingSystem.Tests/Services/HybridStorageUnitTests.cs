@@ -47,6 +47,18 @@ namespace HPParkingSystem.Tests.Services
             ServerStatusChanged?.Invoke(this, IsServerOnline && IsImageShareOnline);
         }
 
+        public void MarkMongoStatus(bool isOk, string? error = null)
+        {
+            if (!isOk)
+            {
+                MarkOffline(error);
+            }
+            else
+            {
+                LastMongoError = null;
+            }
+        }
+
         public string GetIncidentSummary(int pendingRecords, int pendingImages)
         {
             return $"Mock Incident: Online={IsServerOnline}, Share={IsImageShareOnline}, Records={pendingRecords}, Images={pendingImages}";

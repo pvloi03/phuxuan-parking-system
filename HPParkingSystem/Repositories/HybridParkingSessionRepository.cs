@@ -1,11 +1,13 @@
-﻿using MongoDB.Driver;
+using MongoDB.Driver;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
+using HPParkingSystem.Services.Logging;
 using HPParkingSystem.Services.Offline;
 using System;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace HPParkingSystem.Repositories
@@ -54,7 +56,9 @@ namespace HPParkingSystem.Repositories
                 catch (Exception ex)
                 {
                     // Đánh dấu server offline khi gặp lỗi kết nối
-                    _healthTracker.MarkOffline($"Truy vấn MongoDB thất bại: {ex.Message}");
+                    string errMsg = $"Truy vấn MongoDB thất bại: {ex.Message}";
+                    AppLogger.Error(ex, $"[HybridRepo] {errMsg} (Biển số: {cleanPlateNumber})", "HybridParkingSessionRepository");
+                    _healthTracker.MarkMongoStatus(false, errMsg);
                 }
             }
 
@@ -67,9 +71,9 @@ namespace HPParkingSystem.Repositories
                                           .OrderByDescending(s => s.InTime)
                                           .FirstOrDefault();
             }
-            catch
+            catch (Exception ex)
             {
-                // Bỏ qua lỗi đọc LiteDB cục bộ nếu có
+                AppLogger.Warning($"[HybridRepo] Không thể đọc phiên xe từ LiteDB cục bộ: {ex.Message}");
             }
 
             // 3. Quyết định ưu tiên bản ghi mới nhất
@@ -105,7 +109,9 @@ namespace HPParkingSystem.Repositories
                 catch (Exception ex)
                 {
                     // Lỗi mạng bất ngờ -> Chuyển sang Offline ngay và fallback lưu LiteDB
-                    _healthTracker.MarkOffline($"Thao tác CheckIn lên MongoDB thất bại: {ex.Message}");
+                    string errMsg = $"Thao tác CheckIn lên MongoDB thất bại: {ex.Message}";
+                    AppLogger.Error(ex, $"[HybridRepo] {errMsg} (Biển số: {session.PlateNumber})", "HybridParkingSessionRepository");
+                    _healthTracker.MarkMongoStatus(false, errMsg);
                 }
             }
 
@@ -167,12 +173,28 @@ namespace HPParkingSystem.Repositories
                 }
                 catch (Exception ex)
                 {
-                    _healthTracker.MarkOffline($"Thao tác CheckOut lên MongoDB thất bại: {ex.Message}");
+                    string errMsg = $"Thao tác CheckOut lên MongoDB thất bại: {ex.Message}";
+                    AppLogger.Error(ex, $"[HybridRepo] {errMsg} (Biển số: {session.PlateNumber})", "HybridParkingSessionRepository");
+                    _healthTracker.MarkMongoStatus(false, errMsg);
                 }
             }
 
             // Fallback khi server offline: Lưu bản ghi cập nhật vào LiteDB kèm task Update
             SaveOfflineSession(session, "Update");
+        }
+
+        public override async Task<ParkingSession> AddAsync(ParkingSession entity, CancellationToken cancellationToken = default)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            await CheckInAsync(entity).ConfigureAwait(false);
+            return entity;
+        }
+
+        public override async Task<bool> UpdateAsync(ParkingSession entity, CancellationToken cancellationToken = default)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            await CheckOutAsync(entity).ConfigureAwait(false);
+            return true;
         }
 
         public Task<int> GetPendingSyncCountAsync()
@@ -182,27 +204,35 @@ namespace HPParkingSystem.Repositories
                 int count = _liteDb.GetSyncTasks().Count(t => !t.IsSynced);
                 return Task.FromResult(count);
             }
-            catch
+            catch (Exception ex)
             {
+                AppLogger.Warning($"[HybridRepo] Không thể đếm số task đồng bộ từ LiteDB: {ex.Message}");
                 return Task.FromResult(0);
             }
         }
 
         private void SaveOfflineSession(ParkingSession session, string operation)
         {
-            var localCol = _liteDb.GetCollection<ParkingSession>("offline_sessions");
-            localCol.Upsert(session);
-
-            var syncTasksCol = _liteDb.GetSyncTasks();
-            syncTasksCol.Insert(new OfflineSyncTask
+            try
             {
-                RecordId = session.Id,
-                EntityType = nameof(ParkingSession),
-                Operation = operation,
-                PayloadJson = JsonSerializer.Serialize(session),
-                CreatedAt = DateTime.Now,
-                IsSynced = false
-            });
+                var localCol = _liteDb.GetCollection<ParkingSession>("offline_sessions");
+                localCol.Upsert(session);
+
+                var syncTasksCol = _liteDb.GetSyncTasks();
+                syncTasksCol.Insert(new OfflineSyncTask
+                {
+                    RecordId = session.Id,
+                    EntityType = nameof(ParkingSession),
+                    Operation = operation,
+                    PayloadJson = JsonSerializer.Serialize(session),
+                    CreatedAt = DateTime.Now,
+                    IsSynced = false
+                });
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, $"[HybridRepo] Không thể lưu phiên ngoại tuyến vào LiteDB (xe {session.PlateNumber}): {ex.Message}", "HybridParkingSessionRepository");
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
 using HPParkingSystem.Models.Data;
+using HPParkingSystem.Services.Logging;
 using System;
 using System.Net.Sockets;
 using System.Text;
@@ -113,6 +114,21 @@ namespace HPParkingSystem.Services.Offline
             }
         }
 
+        public void MarkMongoStatus(bool isOk, string? error = null)
+        {
+            if (!isOk)
+            {
+                MarkOffline(error);
+            }
+            else
+            {
+                lock (_lockObj)
+                {
+                    _lastMongoError = null;
+                }
+            }
+        }
+
         public string GetIncidentSummary(int pendingRecords, int pendingImages)
         {
             var sb = new StringBuilder();
@@ -178,11 +194,20 @@ namespace HPParkingSystem.Services.Offline
                     // Lớp 2: Kiểm tra database engine thực sự phản hồi lệnh ping
                     bool mongoOk = await _context.PingAsync(1000, cancellationToken).ConfigureAwait(false);
                     currentCheckSuccess = mongoOk;
+                    if (!mongoOk && string.IsNullOrEmpty(_lastMongoError))
+                    {
+                        _lastMongoError = "Lệnh Ping MongoDB không phản hồi trong 1000ms";
+                    }
+                }
+                else
+                {
+                    _lastMongoError = $"Không thể kết nối cổng TCP {_host}:{_port} (quá thời gian chờ 150ms)";
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 currentCheckSuccess = false;
+                _lastMongoError = ex.Message;
             }
 
             bool statusChanged = false;
@@ -219,6 +244,14 @@ namespace HPParkingSystem.Services.Offline
 
             if (statusChanged)
             {
+                if (newStatus)
+                {
+                    AppLogger.Information("[ServerHealthTracker] Kết nối máy chủ MongoDB đã phục hồi (Online).", "HealthTracker");
+                }
+                else
+                {
+                    AppLogger.Warning($"[ServerHealthTracker] Mất kết nối máy chủ MongoDB (Offline). Lý do: {_lastMongoError}", "HealthTracker");
+                }
                 ServerStatusChanged?.Invoke(this, newStatus);
             }
 
