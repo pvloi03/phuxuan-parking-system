@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Services.Logging;
+using HPParkingSystem.Services.Logging;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -35,25 +35,54 @@ namespace HPParkingSystem.Services.Devices.Camera
                     Directory.CreateDirectory(dir);
                 }
 
-                // Nếu ảnh nhận được là BMP, tự động nén sang JPEG mức chất lượng trung bình (Quality = 75%)
+                byte[] dataToWrite = bytes;
+
+                // Nếu ảnh nhận được là BMP, tự động nén sang JPEG trong bộ nhớ RAM (Quality = 75%)
                 if (bytes.Length > 2 && bytes[0] == 0x42 && bytes[1] == 0x4D)
                 {
                     try
                     {
-                        using var ms = new MemoryStream(bytes);
-                        using var bmp = new Bitmap(ms);
-                        SaveBitmapAsMediumJpeg(bmp, filePath, 75L);
-                        return true;
+                        using var inMs = new MemoryStream(bytes);
+                        using var bmp = new Bitmap(inMs);
+                        using var outMs = new MemoryStream();
+                        var jgpEncoder = GetEncoder(ImageFormat.Jpeg);
+                        if (jgpEncoder != null)
+                        {
+                            using var myEncoderParameters = new EncoderParameters(1);
+                            myEncoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 75L);
+                            bmp.Save(outMs, jgpEncoder, myEncoderParameters);
+                        }
+                        else
+                        {
+                            bmp.Save(outMs, ImageFormat.Jpeg);
+                        }
+                        dataToWrite = outMs.ToArray();
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // Fallback ghi file nhị phân trực tiếp nếu lỗi decode BMP
+                        // Fallback ghi dữ liệu gốc nếu lỗi nén BMP trong RAM
+                        AppLogger.Warning($"[{logTag}] Không thể nén BMP sang JPEG trong RAM ({ex.Message}), sẽ lưu dữ liệu gốc.", logCategory);
                     }
                 }
 
-                using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.Read, 4096, true);
-                await fs.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
-                return true;
+                // Ghi dữ liệu ra file với cơ chế Retry chống tranh chấp khóa mạng SMB / Windows Defender quét file
+                const int maxRetries = 3;
+                for (int attempt = 1; attempt <= maxRetries; attempt++)
+                {
+                    try
+                    {
+                        using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete, 4096, true);
+                        await fs.WriteAsync(dataToWrite, 0, dataToWrite.Length, cancellationToken).ConfigureAwait(false);
+                        return true;
+                    }
+                    catch (IOException ex) when (attempt < maxRetries)
+                    {
+                        AppLogger.Warning($"[{logTag}] Tranh chấp file tạm thời ({filePath}), thử lại lần {attempt}/{maxRetries} sau 50ms: {ex.Message}", logCategory);
+                        await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                return false;
             }
             catch (Exception ex)
             {

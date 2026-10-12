@@ -29,12 +29,12 @@ namespace HPParkingSystem.Services.Parking
         public string DateFolder { get; set; }
 
         /// <summary>
-        /// Tên file ảnh biển số (ví dụ: 20261012_110000_000_RADAR_in_plate.jpg)
+        /// Tên file ảnh biển số (ví dụ: 20261012_110000_000_a1b2_RADAR_in_plate.jpg)
         /// </summary>
         public string PlateFileName { get; set; }
 
         /// <summary>
-        /// Tên file ảnh toàn cảnh (ví dụ: 20261012_110000_000_RADAR_in_overview.jpg)
+        /// Tên file ảnh toàn cảnh (ví dụ: 20261012_110000_000_a1b2_RADAR_in_overview.jpg)
         /// </summary>
         public string OverviewFileName { get; set; }
 

@@ -479,9 +479,20 @@ namespace HPParkingSystem.Services.Parking
         {
             try
             {
-                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
+                if (!string.IsNullOrEmpty(filePath))
                 {
-                    File.Delete(filePath);
+                    if (File.Exists(filePath))
+                    {
+                        File.Delete(filePath);
+                    }
+
+                    // Hủy task đồng bộ nếu có task chờ sync trỏ vào file này
+                    try
+                    {
+                        var col = LiteDbContext.Instance.GetImageSyncTasks();
+                        col.DeleteMany(t => t.LocalFilePath == filePath && !t.IsSynced);
+                    }
+                    catch { }
                 }
             }
             catch (Exception ex)
@@ -653,8 +664,9 @@ namespace HPParkingSystem.Services.Parking
             string captureDir, string timeStamp, string triggerSource, string laneType)
         {
             string dateFolder = DateTime.Now.ToString("yyyy-MM-dd");
-            string fileNamePlate = $"{timeStamp}_{triggerSource}_{laneType}_plate.jpg";
-            string fileNameOvw = $"{timeStamp}_{triggerSource}_{laneType}_overview.jpg";
+            string uniqueId = Guid.NewGuid().ToString("N").Substring(0, 4);
+            string fileNamePlate = $"{timeStamp}_{uniqueId}_{triggerSource}_{laneType}_plate.jpg";
+            string fileNameOvw = $"{timeStamp}_{uniqueId}_{triggerSource}_{laneType}_overview.jpg";
 
             string primaryBase = string.IsNullOrWhiteSpace(captureDir) ? "Captures" : captureDir;
             string primaryDir = Path.IsPathRooted(primaryBase) ? primaryBase : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, primaryBase);
@@ -718,7 +730,6 @@ namespace HPParkingSystem.Services.Parking
                 if (File.Exists(localFilePath))
                 {
                     _healthTracker?.MarkImageShareStatus(false, $"Lỗi ghi ảnh {camDescription} lên máy chủ, đã chuyển lưu cục bộ: {fileName}");
-                    QueueSingleImageSync(localFilePath, Path.Combine(dateFolder, fileName));
                     return (true, localFilePath);
                 }
             }
@@ -751,15 +762,22 @@ namespace HPParkingSystem.Services.Parking
 
         private void QueueOfflineImageSync(CapturePathContext context, bool plateOk, bool ovwOk, string actualPlatePath, string actualOvwPath)
         {
-            if (!context.IsLocalFallback) return;
+            string offlineBase = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures");
 
-            if (plateOk && File.Exists(actualPlatePath))
+            if (plateOk && !string.IsNullOrEmpty(actualPlatePath) && File.Exists(actualPlatePath))
             {
-                QueueSingleImageSync(actualPlatePath, Path.Combine(context.DateFolder, context.PlateFileName));
+                if (context.IsLocalFallback || actualPlatePath.StartsWith(offlineBase, StringComparison.OrdinalIgnoreCase))
+                {
+                    QueueSingleImageSync(actualPlatePath, Path.Combine(context.DateFolder, context.PlateFileName));
+                }
             }
-            if (ovwOk && File.Exists(actualOvwPath))
+
+            if (ovwOk && !string.IsNullOrEmpty(actualOvwPath) && File.Exists(actualOvwPath))
             {
-                QueueSingleImageSync(actualOvwPath, Path.Combine(context.DateFolder, context.OverviewFileName));
+                if (context.IsLocalFallback || actualOvwPath.StartsWith(offlineBase, StringComparison.OrdinalIgnoreCase))
+                {
+                    QueueSingleImageSync(actualOvwPath, Path.Combine(context.DateFolder, context.OverviewFileName));
+                }
             }
         }
 
