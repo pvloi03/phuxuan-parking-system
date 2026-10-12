@@ -60,6 +60,13 @@ namespace HPParkingSystem.Api.Tests.Controllers
                 .ReturnsAsync(2);
 
             _sessionRepoMock
+                .Setup(r => r.SumAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<System.Linq.Expressions.Expression<Func<ParkingSession, double?>>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(25.5);
+
+            _sessionRepoMock
                 .Setup(r => r.FindAsync(
                     It.IsAny<FilterDefinition<ParkingSession>>(),
                     It.IsAny<SortDefinition<ParkingSession>>(),
@@ -92,6 +99,11 @@ namespace HPParkingSystem.Api.Tests.Controllers
             response.Data.Items[0].Weight.Should().Be(10.5);
             response.Data.Items[1].VehicleType.Should().Be(VehicleType.Truck);
             response.Data.Items[1].Weight.Should().Be(15.0);
+
+            // Full Dataset Aggregations assertions
+            response.Data.TotalWeight.Should().Be(25.5);
+            response.Data.TotalTruckCount.Should().Be(2);
+            response.Data.TotalActiveCount.Should().Be(2);
         }
 
         [Fact]

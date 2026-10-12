@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace HPParkingSystem.Api.DTOs
 {
@@ -9,6 +9,9 @@ namespace HPParkingSystem.Api.DTOs
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
         public int TotalPages => PageSize > 0 ? (int)System.Math.Ceiling((double)TotalCount / PageSize) : 0;
+        public double? TotalWeight { get; set; }
+        public int? TotalTruckCount { get; set; }
+        public int? TotalActiveCount { get; set; }
     }
 
     public class DashboardMetricsDto

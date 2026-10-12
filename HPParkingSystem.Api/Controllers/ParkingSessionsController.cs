@@ -70,12 +70,22 @@ namespace HPParkingSystem.Api.Controllers
             var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.CreatedAt);
             var items = await _sessionRepo.FindAsync(filter, sort, skip, pageSize);
 
+            // Tổng hợp toàn bộ tập dữ liệu (Full Dataset Aggregation) theo bộ lọc
+            var totalWeight = await _sessionRepo.SumAsync(filter, s => s.Weight);
+            var totalTruckCount = (int)await _sessionRepo.CountAsync(
+                filter & MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, VehicleType.Truck));
+            var totalActiveCount = (int)await _sessionRepo.CountAsync(
+                filter & MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.Status, ParkingSessionStatus.Active));
+
             var result = new PagedResult<ParkingSession>
             {
                 Items = items,
                 TotalCount = totalCount,
                 PageNumber = pageNumber,
-                PageSize = pageSize
+                PageSize = pageSize,
+                TotalWeight = Math.Round(totalWeight, 2),
+                TotalTruckCount = totalTruckCount,
+                TotalActiveCount = totalActiveCount
             };
 
             return Ok(ApiResponse<PagedResult<ParkingSession>>.Ok(result, "Lấy danh sách phiên đỗ xe thành công."));

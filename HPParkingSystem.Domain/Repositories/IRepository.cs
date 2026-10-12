@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Common;
+using HPParkingSystem.Models.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -56,6 +56,11 @@ namespace HPParkingSystem.Repositories
         /// Đếm số lượng bản ghi theo FilterDefinition
         /// </summary>
         Task<long> CountAsync(MongoDB.Driver.FilterDefinition<T> filter, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Tính tổng một trường số thực (nullable double) theo FilterDefinition
+        /// </summary>
+        Task<double> SumAsync(MongoDB.Driver.FilterDefinition<T> filter, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default);
 
         // =========================================================================
         // --- 2. THAO TÁC GHI (WRITE) ---

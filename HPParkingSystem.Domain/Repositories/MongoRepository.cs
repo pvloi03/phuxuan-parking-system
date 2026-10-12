@@ -1,4 +1,4 @@
-﻿using Humanizer;
+using Humanizer;
 using MongoDB.Driver;
 using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Data;
@@ -122,6 +122,31 @@ namespace HPParkingSystem.Repositories
         {
             var combinedFilter = CombineSoftDeleteFilter(filter);
             return await _collection.CountDocumentsAsync(combinedFilter, null, cancellationToken);
+        }
+
+        public virtual async Task<double> SumAsync(FilterDefinition<T> filter, Expression<Func<T, double?>> selector, CancellationToken cancellationToken = default)
+        {
+            var combinedFilter = CombineSoftDeleteFilter(filter);
+            var member = selector.Body is UnaryExpression u
+                ? (MemberExpression)u.Operand
+                : (MemberExpression)selector.Body;
+            string fieldName = member.Member.Name;
+
+            var group = await _collection.Aggregate()
+                .Match(combinedFilter)
+                .Group(new MongoDB.Bson.BsonDocument
+                {
+                    { "_id", MongoDB.Bson.BsonNull.Value },
+                    { "total", new MongoDB.Bson.BsonDocument("$sum", "$" + fieldName) }
+                })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (group != null && group.Contains("total") && group["total"].IsNumeric)
+            {
+                return group["total"].ToDouble();
+            }
+
+            return 0;
         }
 
         public virtual async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)

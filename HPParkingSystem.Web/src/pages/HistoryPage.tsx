@@ -394,11 +394,11 @@ export function HistoryPage() {
   const totalPages = data?.totalPages || 1
   const totalCount = data?.totalCount || 0
   const currentPageItems = data?.items || []
-  const currentPageWeight = currentPageItems.reduce((acc, curr) => acc + (curr.weight || 0), 0)
-  const truckSessionsCount = currentPageItems.filter(
+  const totalWeight = data?.totalWeight ?? currentPageItems.reduce((acc, curr) => acc + (curr.weight || 0), 0)
+  const truckSessionsCount = data?.totalTruckCount ?? currentPageItems.filter(
     (i) => i.vehicleType === 'Truck'
   ).length
-  const activeSessionsCount = currentPageItems.filter(
+  const activeSessionsCount = data?.totalActiveCount ?? currentPageItems.filter(
     (i) => i.status === 'Active'
   ).length
   const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
@@ -446,9 +446,9 @@ export function HistoryPage() {
 
         <Card className="p-3.5 shadow-xs flex items-center justify-between border-blue-100 dark:border-blue-900/50 bg-blue-50/20 dark:bg-blue-950/10">
           <div>
-            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">Tổng Khối Lượng (Trang Này)</span>
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">Tổng Khối Lượng</span>
             <span className="text-xl font-bold font-mono text-blue-700 dark:text-blue-300">
-              {currentPageWeight.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} <span className="text-xs font-normal">tấn</span>
+              {totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} <span className="text-xs font-normal">tấn</span>
             </span>
           </div>
           <div className="h-9 w-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
@@ -458,7 +458,7 @@ export function HistoryPage() {
 
         <Card className="p-3.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Lượt Xe Tải (Trang Này)</span>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Lượt Xe Tải</span>
             <span className="text-xl font-bold font-mono text-purple-600 dark:text-purple-400">
               {truckSessionsCount.toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">lượt</span>
             </span>
@@ -470,7 +470,7 @@ export function HistoryPage() {
 
         <Card className="p-3.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Đang Trong Bãi (Trang Này)</span>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Đang Trong Bãi</span>
             <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
               {activeSessionsCount.toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">xe</span>
             </span>

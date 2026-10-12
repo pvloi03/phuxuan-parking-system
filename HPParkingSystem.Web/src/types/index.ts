@@ -178,6 +178,9 @@ export interface PagedResult<T> {
   pageNumber: number
   pageSize: number
   totalPages: number
+  totalWeight?: number
+  totalTruckCount?: number
+  totalActiveCount?: number
 }
 
 export interface HourlyTraffic {
