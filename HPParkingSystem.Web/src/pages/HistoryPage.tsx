@@ -396,10 +396,10 @@ export function HistoryPage() {
   const currentPageItems = data?.items || []
   const currentPageWeight = currentPageItems.reduce((acc, curr) => acc + (curr.weight || 0), 0)
   const truckSessionsCount = currentPageItems.filter(
-    (i) => (i.vehicleType as any) === 'Truck' || (i.vehicleType as any) === 3
+    (i) => i.vehicleType === 'Truck'
   ).length
   const activeSessionsCount = currentPageItems.filter(
-    (i) => (i.status as any) === 'Active' || (i.status as any) === 1
+    (i) => i.status === 'Active'
   ).length
   const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
   const endItem = Math.min(page * pageSize, totalCount)
@@ -530,7 +530,6 @@ export function HistoryPage() {
               <option value="Car">Ô tô</option>
               <option value="Motorcycle">Xe máy</option>
               <option value="Truck">Xe tải</option>
-              <option value="Bicycle">Xe đạp</option>
             </select>
           </div>
 

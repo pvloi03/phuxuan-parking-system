@@ -435,20 +435,10 @@ namespace HPParkingSystem.Forms
 
         private static string GetVehicleTypeDisplay(VehicleType type, double? weight)
         {
-            string typeName = type switch
-            {
-                VehicleType.Car => "Ô tô",
-                VehicleType.Motorcycle => "Xe máy",
-                VehicleType.Truck => "Xe tải",
-                _ => "Khác"
-            };
-
-            if (weight.HasValue && weight.Value > 0)
-            {
-                return $"{typeName} - {weight.Value:G} tấn";
-            }
-
-            return typeName;
+            string typeName = type.ToDisplayName();
+            return (weight.HasValue && weight.Value > 0)
+                ? $"{typeName} - {weight.Value:G} tấn"
+                : typeName;
         }
 
         private void DisplayCapturedBytes(PictureBox picBox, byte[] bytes)

@@ -21,7 +21,17 @@ namespace HPParkingSystem.Models.Entities
         public string PlateNumber { get; set; } = string.Empty;                        // [LƯU DB] Biển số xe (chuỗi chuẩn hóa)
         [BsonRepresentation(BsonType.String)]
         public VehicleType VehicleType { get; set; } = VehicleType.Car;                 // [LƯU DB] Loại xe (Ô tô, Xe máy...)
-        public double? Weight { get; set; }                                            // [LƯU DB] Khối lượng phương tiện tại thời điểm vào (đơn vị: tấn)
+        private double? _weight;
+        public double? Weight
+        {
+            get => _weight;
+            set
+            {
+                if (value.HasValue && value.Value < 0)
+                    throw new System.ArgumentOutOfRangeException(nameof(value), "Khối lượng không thể nhỏ hơn 0.");
+                _weight = value;
+            }
+        }
         [BsonRepresentation(BsonType.String)]
         public ParkingSessionStatus Status { get; set; } = ParkingSessionStatus.Active;// [LƯU DB] Trạng thái (Active, Completed, UnmatchedOut)
 

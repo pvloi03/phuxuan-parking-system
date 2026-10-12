@@ -129,14 +129,6 @@ namespace HPParkingSystem.Api.Controllers
             var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.CreatedAt);
             var sessions = await _sessionRepo.FindAsync(filter, sort, 0, 5000);
 
-            static string FormatVehicleTypeName(VehicleType vt) => vt switch
-            {
-                VehicleType.Car => "Ô tô",
-                VehicleType.Motorcycle => "Xe máy",
-                VehicleType.Truck => "Xe tải",
-                _ => "Khác"
-            };
-
             using var package = new ExcelPackage();
 
             // =========================================================================
@@ -200,7 +192,7 @@ namespace HPParkingSystem.Api.Controllers
                 bool isCurrentlyInParking = g.Any(s => s.Status == ParkingSessionStatus.Active);
 
                 double? vehicleWeight = first.Weight ?? g.FirstOrDefault(s => s.Weight.HasValue)?.Weight;
-                int turnsForWeight = outCount > 0 ? outCount : inCount;
+                int turnsForWeight = outCount;
                 double totalGroupWeight = (vehicleWeight ?? 0) * turnsForWeight;
 
                 var totalDurationMinutes = g.Where(s => s.Duration.HasValue).Sum(s => s.Duration!.Value.TotalMinutes);
@@ -214,7 +206,7 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 1].Value = sumStt++;
                 wsSummary.Cells[sumRow, 2].Value = g.Key;
                 wsSummary.Cells[sumRow, 3].Value = first.PersonName ?? "Xe vãng lai";
-                wsSummary.Cells[sumRow, 4].Value = FormatVehicleTypeName(first.VehicleType);
+                wsSummary.Cells[sumRow, 4].Value = first.VehicleType.ToDisplayName();
                 if (vehicleWeight.HasValue && vehicleWeight.Value > 0)
                 {
                     wsSummary.Cells[sumRow, 5].Value = vehicleWeight.Value;
@@ -272,7 +264,6 @@ namespace HPParkingSystem.Api.Controllers
                 {
                     var w = g.First().Weight ?? g.FirstOrDefault(s => s.Weight.HasValue)?.Weight ?? 0;
                     int turns = g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed);
-                    if (turns == 0) turns = g.Count(s => s.InTime.HasValue);
                     return w * turns;
                 });
                 wsSummary.Cells[sumRow, 8].Value = grandTotalWeightSheet1;
@@ -329,7 +320,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 1].Value = stt++;
                 ws.Cells[row, 2].Value = s.PlateNumber;
                 ws.Cells[row, 3].Value = s.PersonName ?? "Xe vãng lai";
-                ws.Cells[row, 4].Value = FormatVehicleTypeName(s.VehicleType);
+                ws.Cells[row, 4].Value = s.VehicleType.ToDisplayName();
                 if (s.Weight.HasValue && s.Weight.Value > 0)
                 {
                     ws.Cells[row, 5].Value = s.Weight.Value;

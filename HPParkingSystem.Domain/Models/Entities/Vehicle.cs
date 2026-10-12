@@ -27,6 +27,9 @@ namespace HPParkingSystem.Models.Entities
 
         public Vehicle(string plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null, double? weight = null)
         {
+            if (weight.HasValue && weight.Value < 0)
+                throw new System.ArgumentOutOfRangeException(nameof(weight), "Khối lượng xe không thể nhỏ hơn 0.");
+
             PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber);
             Type = type;
             OwnerPersonId = ownerPersonId;
