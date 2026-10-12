@@ -421,18 +421,6 @@ namespace HPParkingSystem.Forms
             }
         }
 
-        private static string GetPersonTypeDisplay(PersonType personType, bool isRegistered)
-        {
-            return personType switch
-            {
-                PersonType.Employee => "Cán bộ / Nhân viên",
-                PersonType.Contractor => "Đối tác / Nhà thầu",
-                PersonType.VIP => "Khách VIP",
-                PersonType.Visitor => isRegistered ? "Khách đã đăng ký" : "Khách vãng lai",
-                _ => "Khách vãng lai"
-            };
-        }
-
         private static string GetVehicleTypeDisplay(VehicleType type, double? weight)
         {
             string typeName = type.ToDisplayName();
