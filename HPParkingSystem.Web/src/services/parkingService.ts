@@ -1,9 +1,10 @@
 import { apiClient } from './apiClient'
-import type { ApiResponse, DashboardMetrics, PagedResult, ParkingSession, ParkingSessionStatus } from '@/types'
+import type { ApiResponse, DashboardMetrics, PagedResult, ParkingSession, ParkingSessionStatus, VehicleType } from '@/types'
 
 export interface SessionFilterParams {
   plateNumber?: string
   status?: ParkingSessionStatus
+  vehicleType?: VehicleType
   fromDate?: string
   toDate?: string
   laneName?: string

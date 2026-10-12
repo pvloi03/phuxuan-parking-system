@@ -21,6 +21,7 @@ namespace HPParkingSystem.Models.Entities
         public string PlateNumber { get; set; } = string.Empty;                        // [LƯU DB] Biển số xe (chuỗi chuẩn hóa)
         [BsonRepresentation(BsonType.String)]
         public VehicleType VehicleType { get; set; } = VehicleType.Car;                 // [LƯU DB] Loại xe (Ô tô, Xe máy...)
+        public double? Weight { get; set; }                                            // [LƯU DB] Khối lượng phương tiện tại thời điểm vào (đơn vị: tấn)
         [BsonRepresentation(BsonType.String)]
         public ParkingSessionStatus Status { get; set; } = ParkingSessionStatus.Active;// [LƯU DB] Trạng thái (Active, Completed, UnmatchedOut)
 
@@ -84,7 +85,8 @@ namespace HPParkingSystem.Models.Entities
             string? personId = null,
             string? companyName = null,
             string? departmentName = null,
-            PersonType? personType = null)
+            PersonType? personType = null,
+            double? weight = null)
         {
             return new ParkingSession
             {
@@ -98,6 +100,7 @@ namespace HPParkingSystem.Models.Entities
                 DepartmentName = departmentName,
                 PersonType = personType,
                 VehicleType = vehicleType,
+                Weight = weight,
                 Note = note,
                 InTime = DateTime.Now,
                 Status = ParkingSessionStatus.Active
@@ -139,7 +142,8 @@ namespace HPParkingSystem.Models.Entities
             string? personId = null,
             string? companyName = null,
             string? departmentName = null,
-            PersonType? personType = null)
+            PersonType? personType = null,
+            double? weight = null)
         {
             return new ParkingSession
             {
@@ -153,6 +157,7 @@ namespace HPParkingSystem.Models.Entities
                 DepartmentName = departmentName,
                 PersonType = personType,
                 VehicleType = vehicleType,
+                Weight = weight,
                 Note = note,
                 OutTime = DateTime.Now,
                 Status = ParkingSessionStatus.UnmatchedOut
@@ -173,7 +178,8 @@ namespace HPParkingSystem.Models.Entities
             string? personId = null,
             string? companyName = null,
             string? departmentName = null,
-            PersonType? personType = null)
+            PersonType? personType = null,
+            double? weight = null)
         {
             return new ParkingSession
             {
@@ -187,6 +193,7 @@ namespace HPParkingSystem.Models.Entities
                 DepartmentName = departmentName,
                 PersonType = personType,
                 VehicleType = vehicleType,
+                Weight = weight,
                 Note = note,
                 OutTime = DateTime.Now,
                 Status = ParkingSessionStatus.Completed

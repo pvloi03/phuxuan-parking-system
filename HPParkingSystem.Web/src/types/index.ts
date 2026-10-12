@@ -23,6 +23,7 @@ export interface ParkingSession {
   id: string
   plateNumber: string
   vehicleType: VehicleType
+  weight?: number
   status: ParkingSessionStatus
   personId?: string
   personName?: string
@@ -47,6 +48,7 @@ export interface Vehicle {
   id: string
   plateNumber: string
   type: VehicleType
+  weight?: number
   ownerPersonId?: string
   ownerPersonName?: string
   isActive: boolean

@@ -21,6 +21,8 @@ import {
   Timer,
   Trash2,
   Calendar,
+  Scale,
+  Truck,
 } from 'lucide-react'
 import { parkingService } from '@/services/parkingService'
 import type { ImageStoragePathDto, ParkingSession, ParkingSessionStatus, VehicleType } from '@/types'
@@ -41,6 +43,7 @@ export function HistoryPage() {
   const queryClient = useQueryClient()
   const [plateNumber, setPlateNumber] = useState('')
   const [status, setStatus] = useState<string>('')
+  const [vehicleType, setVehicleType] = useState<string>('')
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
   const [page, setPage] = useState(1)
@@ -59,11 +62,12 @@ export function HistoryPage() {
   }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parking-history', plateNumber, status, fromDate, toDate, page, pageSize],
+    queryKey: ['parking-history', plateNumber, status, vehicleType, fromDate, toDate, page, pageSize],
     queryFn: () =>
       parkingService.getSessions({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
+        vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
         fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate: toDate ? `${toDate}T23:59:59` : undefined,
         pageNumber: page,
@@ -161,6 +165,7 @@ export function HistoryPage() {
       await parkingService.exportExcel({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
+        vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
         fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate: toDate ? `${toDate}T23:59:59` : undefined,
       })
@@ -388,6 +393,14 @@ export function HistoryPage() {
 
   const totalPages = data?.totalPages || 1
   const totalCount = data?.totalCount || 0
+  const currentPageItems = data?.items || []
+  const currentPageWeight = currentPageItems.reduce((acc, curr) => acc + (curr.weight || 0), 0)
+  const truckSessionsCount = currentPageItems.filter(
+    (i) => (i.vehicleType as any) === 'Truck' || (i.vehicleType as any) === 3
+  ).length
+  const activeSessionsCount = currentPageItems.filter(
+    (i) => (i.status as any) === 'Active' || (i.status as any) === 1
+  ).length
   const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
   const endItem = Math.min(page * pageSize, totalCount)
 
@@ -400,7 +413,7 @@ export function HistoryPage() {
             Lịch Sử Xe Vào Ra
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Tra cứu, xem lại hình ảnh và quản lý dữ liệu xe vào/ra trên toàn hệ thống
+            Tra cứu, xem lại hình ảnh, thống kê khối lượng và quản lý dữ liệu xe vào/ra trên toàn hệ thống
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -417,15 +430,66 @@ export function HistoryPage() {
         </div>
       </div>
 
+      {/* Summary Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Tổng Lượt Xe</span>
+            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+              {totalCount.toLocaleString('vi-VN')}
+            </span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <Car className="h-5 w-5" />
+          </div>
+        </Card>
+
+        <Card className="p-3.5 shadow-xs flex items-center justify-between border-blue-100 dark:border-blue-900/50 bg-blue-50/20 dark:bg-blue-950/10">
+          <div>
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">Tổng Khối Lượng (Trang Này)</span>
+            <span className="text-xl font-bold font-mono text-blue-700 dark:text-blue-300">
+              {currentPageWeight.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} <span className="text-xs font-normal">tấn</span>
+            </span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <Scale className="h-5 w-5" />
+          </div>
+        </Card>
+
+        <Card className="p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Lượt Xe Tải (Trang Này)</span>
+            <span className="text-xl font-bold font-mono text-purple-600 dark:text-purple-400">
+              {truckSessionsCount.toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">lượt</span>
+            </span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <Truck className="h-5 w-5" />
+          </div>
+        </Card>
+
+        <Card className="p-3.5 shadow-xs flex items-center justify-between">
+          <div>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Đang Trong Bãi (Trang Này)</span>
+            <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              {activeSessionsCount.toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">xe</span>
+            </span>
+          </div>
+          <div className="h-9 w-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <Clock className="h-5 w-5" />
+          </div>
+        </Card>
+      </div>
+
       {/* Filters Bar & Quick Date Selector */}
       <Card className="p-4 shadow-xs space-y-3">
         {/* Hàng 1: Các trường lọc chính */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* 1. Tìm theo biển số */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Tìm theo biển số xe (VD: 30A-12345)..."
+              placeholder="Tìm theo biển số..."
               value={plateNumber}
               onChange={(e) => {
                 setPlateNumber(e.target.value)
@@ -452,7 +516,25 @@ export function HistoryPage() {
             </select>
           </div>
 
-          {/* 3. Từ ngày */}
+          {/* 3. Lọc loại xe */}
+          <div>
+            <select
+              value={vehicleType}
+              onChange={(e) => {
+                setVehicleType(e.target.value)
+                setPage(1)
+              }}
+              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200"
+            >
+              <option value="">-- Tất cả loại xe --</option>
+              <option value="Car">Ô tô</option>
+              <option value="Motorcycle">Xe máy</option>
+              <option value="Truck">Xe tải</option>
+              <option value="Bicycle">Xe đạp</option>
+            </select>
+          </div>
+
+          {/* 4. Từ ngày */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
             <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Từ:</span>
             <input
@@ -466,7 +548,7 @@ export function HistoryPage() {
             />
           </div>
 
-          {/* 4. Đến ngày */}
+          {/* 5. Đến ngày */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
             <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Đến:</span>
             <input
@@ -547,6 +629,7 @@ export function HistoryPage() {
             onClick={() => {
               setPlateNumber('')
               setStatus('')
+              setVehicleType('')
               setFromDate('')
               setToDate('')
               setPage(1)
@@ -576,6 +659,7 @@ export function HistoryPage() {
                 <th className="p-3.5">Biển Số Xe</th>
                 <th className="p-3.5">Chủ Xe</th>
                 <th className="p-3.5 text-center">Loại Xe</th>
+                <th className="p-3.5 text-center">Khối Lượng</th>
                 <th className="p-3.5">Thời Gian Vào</th>
                 <th className="p-3.5">Thời Gian Ra</th>
                 <th className="p-3.5 text-center">Trạng Thái</th>
@@ -585,7 +669,7 @@ export function HistoryPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
                     Đang nạp dữ liệu lịch sử...
                   </td>
                 </tr>
@@ -623,6 +707,16 @@ export function HistoryPage() {
                       </td>
                       <td className="p-3.5 text-center">
                         {getVehicleTypeBadge(session.vehicleType)}
+                      </td>
+                      <td className="p-3.5 text-center">
+                        {session.weight !== undefined && session.weight !== null ? (
+                          <span className="inline-flex items-center gap-1 font-semibold font-mono text-[11px] text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded shadow-2xs">
+                            <Scale className="h-3 w-3 text-slate-500" />
+                            {session.weight} tấn
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-mono text-[11px]">--</span>
+                        )}
                       </td>
                       <td className="p-3.5 text-slate-600 dark:text-slate-400 font-mono">
                         {session.inTime ? new Date(session.inTime).toLocaleString('vi-VN') : '--'}
@@ -674,7 +768,7 @@ export function HistoryPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400 italic">
+                  <td colSpan={9} className="p-8 text-center text-slate-400 italic">
                     Không tìm thấy bản ghi lịch sử nào phù hợp
                   </td>
                 </tr>
@@ -805,7 +899,7 @@ export function HistoryPage() {
                     Chi Tiết Lượt Xe: {selectedSession?.plateNumber}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 ml-2 font-normal hidden sm:inline">
-                    ({selectedSession?.personName || 'Khách vãng lai'} • {selectedSession ? getVehicleTypeName(selectedSession.vehicleType) : ''})
+                    ({selectedSession?.personName || 'Khách vãng lai'} • {selectedSession ? getVehicleTypeName(selectedSession.vehicleType) : ''}{selectedSession?.weight !== undefined && selectedSession?.weight !== null ? ` - ${selectedSession.weight} tấn` : ''})
                   </span>
                 </div>
               </div>
@@ -998,6 +1092,14 @@ export function HistoryPage() {
                           <span className="text-slate-400 block text-[11px]">Loại phương tiện:</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">
                             {getVehicleTypeName(selectedSession.vehicleType)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 block text-[11px]">Khối lượng:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            {selectedSession.weight !== undefined && selectedSession.weight !== null
+                              ? `${selectedSession.weight} tấn`
+                              : '--'}
                           </span>
                         </div>
                         <div>

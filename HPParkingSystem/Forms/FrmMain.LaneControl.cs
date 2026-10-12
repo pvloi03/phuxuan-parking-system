@@ -304,7 +304,7 @@ namespace HPParkingSystem.Forms
             lblInTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
             lblInOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
             lblInDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
-            lblInTypeVal.Text = GetPersonTypeDisplay(res.PersonType, res.IsRegisteredVehicle);
+            lblInTypeVal.Text = GetVehicleTypeDisplay(res.VehicleType, res.Weight);
 
             // 4. Trạng thái kết quả
             if (res.IsCrossLaneIgnored)
@@ -372,7 +372,7 @@ namespace HPParkingSystem.Forms
             lblOutTimeVal.Text = res.ProcessedTime.ToString("dd/MM/yyyy HH:mm:ss");
             lblOutOwnerVal.Text = !string.IsNullOrEmpty(res.PersonName) ? res.PersonName : (res.IsRegisteredVehicle ? "Chưa gán chủ xe" : "Khách vãng lai");
             lblOutDeptVal.Text = !string.IsNullOrEmpty(res.DepartmentName) ? res.DepartmentName : "---";
-            lblOutTypeVal.Text = GetPersonTypeDisplay(res.PersonType, res.IsRegisteredVehicle);
+            lblOutTypeVal.Text = GetVehicleTypeDisplay(res.VehicleType, res.Weight);
 
             // 4. Trạng thái kết quả
             if (res.IsCrossLaneIgnored)
@@ -431,6 +431,24 @@ namespace HPParkingSystem.Forms
                 PersonType.Visitor => isRegistered ? "Khách đã đăng ký" : "Khách vãng lai",
                 _ => "Khách vãng lai"
             };
+        }
+
+        private static string GetVehicleTypeDisplay(VehicleType type, double? weight)
+        {
+            string typeName = type switch
+            {
+                VehicleType.Car => "Ô tô",
+                VehicleType.Motorcycle => "Xe máy",
+                VehicleType.Truck => "Xe tải",
+                _ => "Khác"
+            };
+
+            if (weight.HasValue && weight.Value > 0)
+            {
+                return $"{typeName} - {weight.Value:G} tấn";
+            }
+
+            return typeName;
         }
 
         private void DisplayCapturedBytes(PictureBox picBox, byte[] bytes)

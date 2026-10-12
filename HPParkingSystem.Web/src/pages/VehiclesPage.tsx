@@ -100,6 +100,7 @@ export function VehiclesPage() {
   // Form State
   const [formPlate, setFormPlate] = useState('')
   const [formType, setFormType] = useState<VehicleType>('Car')
+  const [formWeight, setFormWeight] = useState('')
   const [formOwnerPersonId, setFormOwnerPersonId] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
 
@@ -157,6 +158,7 @@ export function VehiclesPage() {
       await apiClient.post('/vehicles', {
         plateNumber: cleanPlateNumber(formPlate),
         type: formType,
+        weight: formWeight ? parseFloat(formWeight) : null,
         ownerPersonId: formOwnerPersonId || null,
         isActive: formIsActive,
       })
@@ -178,6 +180,7 @@ export function VehiclesPage() {
       await apiClient.put(`/vehicles/${selectedVehicle.id}`, {
         plateNumber: cleanPlateNumber(formPlate),
         type: formType,
+        weight: formWeight ? parseFloat(formWeight) : null,
         ownerPersonId: formOwnerPersonId || null,
         isActive: formIsActive,
       })
@@ -238,6 +241,7 @@ export function VehiclesPage() {
   const resetForm = () => {
     setFormPlate('')
     setFormType('Car')
+    setFormWeight('')
     setFormOwnerPersonId('')
     setFormIsActive(true)
     setSelectedVehicle(null)
@@ -247,6 +251,7 @@ export function VehiclesPage() {
     setSelectedVehicle(vehicle)
     setFormPlate(vehicle.plateNumber || '')
     setFormType(vehicle.type || 'Car')
+    setFormWeight(vehicle.weight !== undefined && vehicle.weight !== null ? String(vehicle.weight) : '')
     setFormOwnerPersonId(vehicle.ownerPersonId || '')
     setFormIsActive(vehicle.isActive ?? true)
     setIsEditOpen(true)
@@ -284,6 +289,7 @@ export function VehiclesPage() {
         STT: (pageNumber - 1) * pageSize + i + 1,
         'Biển Số Xe': v.plateNumber,
         'Loại Phương Tiện': getVehicleTypeLabel(v.type),
+        'Khối Lượng (Tấn)': v.weight !== undefined && v.weight !== null ? `${v.weight} tấn` : '--',
         'Chủ Sở Hữu': owner ? owner.fullName : 'Xe vãng lai / Chưa gán',
         'Mã Chủ Xe': owner ? owner.code : '',
         'Số Điện Thoại': owner ? (owner.phoneNumber || '') : '',
@@ -299,12 +305,14 @@ export function VehiclesPage() {
     const template = [
       {
         'Biển Số Xe': '30A12345',
-        'Loại Xe (Car/Motorcycle/Truck)': 'Car',
+        'Loại Xe (Car/Motorcycle/Truck)': 'Truck',
+        'Khối Lượng (Tấn)': '10.5',
         'Mã Nhân Sự Chủ Xe (Nếu có)': 'NS001',
       },
       {
         'Biển Số Xe': '29B99988',
         'Loại Xe (Car/Motorcycle/Truck)': 'Motorcycle',
+        'Khối Lượng (Tấn)': '',
         'Mã Nhân Sự Chủ Xe (Nếu có)': 'NS002',
       },
     ]
@@ -334,12 +342,18 @@ export function VehiclesPage() {
         if (rawType.includes('motor') || rawType.includes('máy')) vehicleType = 'Motorcycle'
         else if (rawType.includes('truck') || rawType.includes('tải')) vehicleType = 'Truck'
 
+        const rawWeight = row['Khối Lượng (Tấn)'] || row['Khối Lượng'] || row['weight']
+        const weightVal = rawWeight !== undefined && rawWeight !== null && String(rawWeight).trim() !== ''
+          ? parseFloat(String(rawWeight))
+          : undefined
+
         const ownerCode = String(row['Mã Nhân Sự Chủ Xe (Nếu có)'] || row['Mã Nhân Sự'] || row['ownerCode'] || '').toLowerCase().trim()
         const ownerPersonId = ownerCode ? (codeToIdMap.get(ownerCode) || null) : null
 
         return {
           plateNumber: String(row['Biển Số Xe'] || row['plateNumber'] || '').trim(),
           type: vehicleType,
+          weight: isNaN(weightVal as number) ? undefined : weightVal,
           ownerPersonId: ownerPersonId || undefined,
           isActive: true,
         }
@@ -361,7 +375,7 @@ export function VehiclesPage() {
   // ======================== Form JSX ========================
   const renderFormFields = () => (
     <div className="space-y-3.5 py-2 text-xs">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1">
           <label className="font-semibold text-slate-700 dark:text-slate-300">Biển số xe *</label>
           <Input
@@ -384,6 +398,18 @@ export function VehiclesPage() {
             <option value="Bicycle">🚲 Xe đạp</option>
             <option value="Other">Khác</option>
           </select>
+        </div>
+        <div className="space-y-1">
+          <label className="font-semibold text-slate-700 dark:text-slate-300">Khối lượng (tấn)</label>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="VD: 10.5"
+            value={formWeight}
+            onChange={(e) => setFormWeight(e.target.value)}
+            className="text-xs font-mono"
+          />
         </div>
       </div>
 
@@ -528,6 +554,7 @@ export function VehiclesPage() {
                 </th>
                 <th className="p-3.5">Biển Số Xe</th>
                 <th className="p-3.5">Loại Phương Tiện</th>
+                <th className="p-3.5">Khối Lượng</th>
                 <th className="p-3.5">Chủ Sở Hữu (Person)</th>
                 <th className="p-3.5">Trạng Thái</th>
                 <th className="p-3.5">Ngày Đăng Ký</th>
@@ -536,7 +563,7 @@ export function VehiclesPage() {
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {isLoading ? (
-                <tr><td colSpan={7} className="p-8 text-center text-slate-400">Đang tải danh sách phương tiện...</td></tr>
+                <tr><td colSpan={8} className="p-8 text-center text-slate-400">Đang tải danh sách phương tiện...</td></tr>
               ) : items.length > 0 ? (
                 items.map((vehicle) => {
                   const isSelected = selectedIds.includes(vehicle.id)
@@ -554,6 +581,9 @@ export function VehiclesPage() {
                       </td>
                       <td className="p-3.5">
                         {getVehicleTypeBadge(vehicle.type)}
+                      </td>
+                      <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300">
+                        {vehicle.weight !== undefined && vehicle.weight !== null ? `${vehicle.weight} tấn` : <span className="text-slate-400 italic">--</span>}
                       </td>
                       <td className="p-3.5">
                         {owner ? (
@@ -779,14 +809,20 @@ export function VehiclesPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2.5 pt-0.5">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Mã ID bản ghi:</span>
-                    <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400">{selectedVehicle.id}</span>
+                    <span className="text-slate-400 block text-[11px]">Khối lượng tải trọng:</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                      {selectedVehicle.weight !== undefined && selectedVehicle.weight !== null ? `${selectedVehicle.weight} tấn` : '--'}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[11px]">Ngày đăng ký:</span>
                     <span className="font-mono text-slate-700 dark:text-slate-300">
                       {selectedVehicle.createdAt ? new Date(selectedVehicle.createdAt).toLocaleString('vi-VN') : '--'}
                     </span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-slate-400 block text-[11px]">Mã ID bản ghi:</span>
+                    <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400">{selectedVehicle.id}</span>
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using HPParkingSystem.Api.DTOs;
@@ -132,6 +132,7 @@ namespace HPParkingSystem.Api.Controllers
             existing.Type = vehicle.Type;
             existing.OwnerPersonId = string.IsNullOrWhiteSpace(vehicle.OwnerPersonId) ? null : vehicle.OwnerPersonId.Trim();
             existing.IsActive = vehicle.IsActive;
+            existing.Weight = vehicle.Weight;
             existing.UpdatedAt = DateTime.Now;
 
             await _vehicleRepo.UpdateAsync(existing);

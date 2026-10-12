@@ -207,7 +207,7 @@ namespace HPParkingSystem.Services.Parking
             }
 
             // 6. Tra cứu hồ sơ phương tiện & chủ xe đã đăng ký (PersonType rõ ràng)
-            var (personName, deptName, compName, personId, vehicleType, personType, isRegistered) =
+            var (personName, deptName, compName, personId, vehicleType, personType, isRegistered, weight) =
                 await LookupVehicleAndPersonAsync(detectedPlate);
 
             result.PersonName = personName;
@@ -216,6 +216,7 @@ namespace HPParkingSystem.Services.Parking
             result.VehicleType = vehicleType;
             result.PersonType = personType;
             result.IsRegisteredVehicle = isRegistered;
+            result.Weight = weight;
 
             // 7. Tạo phiên đỗ xe (ParkingSession) và lưu (Hybrid: MongoDB hoặc LiteDB < 2ms)
             string? note = null;
@@ -237,7 +238,8 @@ namespace HPParkingSystem.Services.Parking
                 personId: personId,
                 companyName: compName,
                 departmentName: deptName,
-                personType: personType
+                personType: personType,
+                weight: weight
             );
 
             if (_sessionRepo is IHybridParkingSessionRepository sessionHybridRepo)
@@ -367,7 +369,7 @@ namespace HPParkingSystem.Services.Parking
             }
 
             // 5. Tra cứu hồ sơ phương tiện & chủ xe (PersonType rõ ràng)
-            var (personName, deptName, compName, personId, vehicleType, personType, isRegistered) =
+            var (personName, deptName, compName, personId, vehicleType, personType, isRegistered, weight) =
                 await LookupVehicleAndPersonAsync(detectedPlate);
 
             result.PersonName = personName;
@@ -376,6 +378,7 @@ namespace HPParkingSystem.Services.Parking
             result.VehicleType = vehicleType;
             result.PersonType = personType;
             result.IsRegisteredVehicle = isRegistered;
+            result.Weight = weight;
 
             // 6. Tìm kiếm phiên Active trong bãi khớp 100% biển số (Kiểm tra cả Mongo lẫn LiteDB)
             ParkingSession? activeSession = null;
@@ -425,6 +428,7 @@ namespace HPParkingSystem.Services.Parking
                 }
 
                 result.Session = activeSession;
+                result.Weight = activeSession.Weight ?? weight;
                 result.Success = true;
                 AppLogger.Information($"[LÀN RA] Hoàn tất Check-out cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {activeSession.Id}, Thời gian gửi: {activeSession.Duration?.TotalMinutes:F0} phút.", "ParkingLaneService");
             }
@@ -442,7 +446,8 @@ namespace HPParkingSystem.Services.Parking
                     personId: personId,
                     companyName: compName,
                     departmentName: deptName,
-                    personType: personType
+                    personType: personType,
+                    weight: weight
                 );
 
                 if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
@@ -602,12 +607,12 @@ namespace HPParkingSystem.Services.Parking
             return false;
         }
 
-        private async Task<(string? personName, string? deptName, string? compName, string? personId, VehicleType vehicleType, PersonType personType, bool isRegistered)>
+        private async Task<(string? personName, string? deptName, string? compName, string? personId, VehicleType vehicleType, PersonType personType, bool isRegistered, double? weight)>
             LookupVehicleAndPersonAsync(string plateNumber)
         {
             if (string.IsNullOrWhiteSpace(plateNumber) || PlateNumber.IsUnrecognized(plateNumber))
             {
-                return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
+                return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false, null);
             }
 
             try
@@ -638,7 +643,7 @@ namespace HPParkingSystem.Services.Parking
                         }
                     }
 
-                    return (personName, deptName, compName, personId, vehicle.Type, personType, true);
+                    return (personName, deptName, compName, personId, vehicle.Type, personType, true, vehicle.Weight);
                 }
             }
             catch (Exception ex)
@@ -646,7 +651,7 @@ namespace HPParkingSystem.Services.Parking
                 AppLogger.Error(ex, $"Lỗi tra cứu thông tin xe/chủ xe: {ex.Message}", "ParkingLaneService");
             }
 
-            return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false);
+            return (null, null, null, null, VehicleType.Car, PersonType.Visitor, false, null);
         }
 
         private CapturePathContext PrepareCapturePaths(

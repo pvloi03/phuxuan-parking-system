@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Common;
+using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Models.ValueObjects;
 using MongoDB.Bson;
@@ -21,14 +21,16 @@ namespace HPParkingSystem.Models.Entities
         [BsonRepresentation(BsonType.ObjectId)]
         public string? OwnerPersonId { get; set; }                                       // [LƯU DB] Khóa ngoại liên kết chủ xe (Person)
         public bool IsActive { get; set; } = true;                                       // [LƯU DB] Trạng thái hoạt động
+        public double? Weight { get; set; }                                              // [LƯU DB] Khối lượng phương tiện (đơn vị: tấn)
 
         public Vehicle() { }
 
-        public Vehicle(string plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null)
+        public Vehicle(string plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null, double? weight = null)
         {
             PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber);
             Type = type;
             OwnerPersonId = ownerPersonId;
+            Weight = weight;
         }
     }
 }

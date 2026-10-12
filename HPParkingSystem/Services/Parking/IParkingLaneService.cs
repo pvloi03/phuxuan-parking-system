@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Services.Devices.Camera;
 using System;
@@ -22,6 +22,7 @@ namespace HPParkingSystem.Services.Parking
         public string? DepartmentName { get; set; }
         public string? CompanyName { get; set; }
         public VehicleType VehicleType { get; set; } = VehicleType.Car;
+        public double? Weight { get; set; }
         public PersonType PersonType { get; set; } = PersonType.Visitor;
         public byte[]? OverviewImageBytes { get; set; }
         public bool IsRegisteredVehicle { get; set; }
