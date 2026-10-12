@@ -182,8 +182,15 @@ namespace HPParkingSystem.Api.Controllers
                 .OrderByDescending(g => g.Count())
                 .ToList();
 
+            static double? GetRegisteredWeight(IGrouping<string, ParkingSession> g) =>
+                g.FirstOrDefault(s => s.Weight.HasValue)?.Weight;
+
             int sumRow = 5;
             int sumStt = 1;
+            int grandTotalIn = 0;
+            int grandTotalOut = 0;
+            double grandTotalWeightSheet1 = 0;
+
             foreach (var g in vehicleGroups)
             {
                 var first = g.First();
@@ -191,9 +198,12 @@ namespace HPParkingSystem.Api.Controllers
                 int outCount = g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed);
                 bool isCurrentlyInParking = g.Any(s => s.Status == ParkingSessionStatus.Active);
 
-                double? vehicleWeight = first.Weight ?? g.FirstOrDefault(s => s.Weight.HasValue)?.Weight;
-                int turnsForWeight = outCount;
-                double totalGroupWeight = (vehicleWeight ?? 0) * turnsForWeight;
+                double? vehicleWeight = GetRegisteredWeight(g);
+                double totalGroupWeight = (vehicleWeight ?? 0) * outCount;
+
+                grandTotalIn += inCount;
+                grandTotalOut += outCount;
+                grandTotalWeightSheet1 += totalGroupWeight;
 
                 var totalDurationMinutes = g.Where(s => s.Duration.HasValue).Sum(s => s.Duration!.Value.TotalMinutes);
                 int totalHours = (int)(totalDurationMinutes / 60);
@@ -252,20 +262,14 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 1].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                wsSummary.Cells[sumRow, 6].Value = vehicleGroups.Sum(g => g.Count(s => s.InTime.HasValue));
+                wsSummary.Cells[sumRow, 6].Value = grandTotalIn;
                 wsSummary.Cells[sumRow, 6].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                wsSummary.Cells[sumRow, 7].Value = vehicleGroups.Sum(g => g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed));
+                wsSummary.Cells[sumRow, 7].Value = grandTotalOut;
                 wsSummary.Cells[sumRow, 7].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 7].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                double grandTotalWeightSheet1 = vehicleGroups.Sum(g =>
-                {
-                    var w = g.First().Weight ?? g.FirstOrDefault(s => s.Weight.HasValue)?.Weight ?? 0;
-                    int turns = g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed);
-                    return w * turns;
-                });
                 wsSummary.Cells[sumRow, 8].Value = grandTotalWeightSheet1;
                 wsSummary.Cells[sumRow, 8].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
