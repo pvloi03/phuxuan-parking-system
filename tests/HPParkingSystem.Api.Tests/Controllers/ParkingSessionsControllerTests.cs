@@ -82,6 +82,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
                 vehicleType: VehicleType.Truck,
                 fromDate: null,
                 toDate: null,
+                hour: null,
                 laneName: null,
                 pageNumber: 1,
                 pageSize: 15);
@@ -104,6 +105,62 @@ namespace HPParkingSystem.Api.Tests.Controllers
             response.Data.TotalWeight.Should().Be(25.5);
             response.Data.TotalTruckCount.Should().Be(2);
             response.Data.TotalActiveCount.Should().Be(2);
+        }
+
+        [Fact]
+        public async Task GetList_FilteredByFixedHour_ShouldApplyHourFilter()
+        {
+            // Arrange: 1 session at 08:30 (hour 8)
+            var session = new ParkingSession
+            {
+                Id = "s_08h",
+                PlateNumber = "29C-88888",
+                InTime = DateTime.Today.AddHours(8).AddMinutes(30),
+                Status = ParkingSessionStatus.Active,
+                VehicleType = VehicleType.Truck
+            };
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(1);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession> { session });
+
+            // Act: query for fixed hour 8 (08:00)
+            var actionResult = await _controller.GetList(
+                plateNumber: null,
+                status: null,
+                vehicleType: null,
+                fromDate: null,
+                toDate: null,
+                hour: 8,
+                laneName: null,
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            actionResult.Should().BeOfType<OkObjectResult>();
+            var okResult = (OkObjectResult)actionResult;
+            var response = okResult.Value as ApiResponse<PagedResult<ParkingSession>>;
+
+            response.Should().NotBeNull();
+            response!.Success.Should().BeTrue();
+            response.Data!.Items.Should().HaveCount(1);
+            response.Data.Items[0].PlateNumber.Should().Be("29C-88888");
+
+            _sessionRepoMock.Verify(r => r.FindAsync(
+                It.IsAny<FilterDefinition<ParkingSession>>(),
+                It.IsAny<SortDefinition<ParkingSession>>(),
+                0,
+                15,
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -159,7 +216,8 @@ namespace HPParkingSystem.Api.Tests.Controllers
                 status: null,
                 vehicleType: VehicleType.Truck,
                 fromDate: null,
-                toDate: null);
+                toDate: null,
+                hour: null);
 
             // Assert
             actionResult.Should().BeOfType<FileContentResult>();

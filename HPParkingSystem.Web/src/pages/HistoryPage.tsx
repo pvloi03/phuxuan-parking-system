@@ -44,6 +44,7 @@ export function HistoryPage() {
   const [plateNumber, setPlateNumber] = useState('')
   const [status, setStatus] = useState<string>('')
   const [vehicleType, setVehicleType] = useState<string>('')
+  const [hour, setHour] = useState<string>('')
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
   const [page, setPage] = useState(1)
@@ -62,12 +63,13 @@ export function HistoryPage() {
   }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parking-history', plateNumber, status, vehicleType, fromDate, toDate, page, pageSize],
+    queryKey: ['parking-history', plateNumber, status, vehicleType, hour, fromDate, toDate, page, pageSize],
     queryFn: () =>
       parkingService.getSessions({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
+        hour: hour !== '' ? parseInt(hour, 10) : undefined,
         fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate: toDate ? `${toDate}T23:59:59` : undefined,
         pageNumber: page,
@@ -166,6 +168,7 @@ export function HistoryPage() {
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
+        hour: hour !== '' ? parseInt(hour, 10) : undefined,
         fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate: toDate ? `${toDate}T23:59:59` : undefined,
       })
@@ -484,7 +487,7 @@ export function HistoryPage() {
       {/* Filters Bar & Quick Date Selector */}
       <Card className="p-4 shadow-xs space-y-3">
         {/* Hàng 1: Các trường lọc chính */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* 1. Tìm theo biển số */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -534,7 +537,29 @@ export function HistoryPage() {
             </select>
           </div>
 
-          {/* 4. Từ ngày */}
+          {/* 4. Lọc giờ cố định */}
+          <div>
+            <select
+              value={hour}
+              onChange={(e) => {
+                setHour(e.target.value)
+                setPage(1)
+              }}
+              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200"
+            >
+              <option value="">-- Tất cả giờ --</option>
+              {Array.from({ length: 24 }, (_, i) => {
+                const hStr = `${i.toString().padStart(2, '0')}:00`
+                return (
+                  <option key={i} value={i.toString()}>
+                    {hStr}
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+
+          {/* 5. Từ ngày */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
             <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Từ:</span>
             <input
@@ -548,7 +573,7 @@ export function HistoryPage() {
             />
           </div>
 
-          {/* 5. Đến ngày */}
+          {/* 6. Đến ngày */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
             <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Đến:</span>
             <input
@@ -630,6 +655,7 @@ export function HistoryPage() {
               setPlateNumber('')
               setStatus('')
               setVehicleType('')
+              setHour('')
               setFromDate('')
               setToDate('')
               setPage(1)

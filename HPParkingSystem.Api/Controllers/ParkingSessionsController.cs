@@ -29,6 +29,7 @@ namespace HPParkingSystem.Api.Controllers
             [FromQuery] VehicleType? vehicleType,
             [FromQuery] DateTime? fromDate,
             [FromQuery] DateTime? toDate,
+            [FromQuery] int? hour,
             [FromQuery] string? laneName,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 15)
@@ -52,7 +53,7 @@ namespace HPParkingSystem.Api.Controllers
                 filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, vehicleType.Value);
             }
 
-            var timeFilter = BuildTimeFilter(fromDate, toDate, status);
+            var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
             if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
             {
                 filter &= timeFilter;
@@ -109,7 +110,8 @@ namespace HPParkingSystem.Api.Controllers
             [FromQuery] ParkingSessionStatus? status,
             [FromQuery] VehicleType? vehicleType,
             [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate)
+            [FromQuery] DateTime? toDate,
+            [FromQuery] int? hour)
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
@@ -130,7 +132,7 @@ namespace HPParkingSystem.Api.Controllers
                 filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, vehicleType.Value);
             }
 
-            var timeFilter = BuildTimeFilter(fromDate, toDate, status);
+            var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
             if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
             {
                 filter &= timeFilter;
@@ -420,58 +422,93 @@ namespace HPParkingSystem.Api.Controllers
         private static MongoDB.Driver.FilterDefinition<ParkingSession> BuildTimeFilter(
             DateTime? fromDate,
             DateTime? toDate,
+            int? hour,
             ParkingSessionStatus? status)
         {
             var fb = MongoDB.Driver.Builders<ParkingSession>.Filter;
-            if (!fromDate.HasValue && !toDate.HasValue)
-            {
-                return fb.Empty;
-            }
+            var dateFilter = fb.Empty;
 
-            if (status == ParkingSessionStatus.UnmatchedOut)
+            if (fromDate.HasValue || toDate.HasValue)
             {
-                var outFilter = fb.Empty;
-                if (fromDate.HasValue)
+                if (status == ParkingSessionStatus.UnmatchedOut)
                 {
-                    outFilter &= fb.Gte(s => s.OutTime, fromDate.Value);
+                    if (fromDate.HasValue) dateFilter &= fb.Gte(s => s.OutTime, fromDate.Value);
+                    if (toDate.HasValue) dateFilter &= fb.Lte(s => s.OutTime, toDate.Value);
                 }
-                if (toDate.HasValue)
+                else if (status == ParkingSessionStatus.Active)
                 {
-                    outFilter &= fb.Lte(s => s.OutTime, toDate.Value);
+                    if (fromDate.HasValue) dateFilter &= fb.Gte(s => s.InTime, fromDate.Value);
+                    if (toDate.HasValue) dateFilter &= fb.Lte(s => s.InTime, toDate.Value);
                 }
-                return outFilter;
-            }
-
-            if (status == ParkingSessionStatus.Active)
-            {
-                var inFilter = fb.Empty;
-                if (fromDate.HasValue)
+                else
                 {
-                    inFilter &= fb.Gte(s => s.InTime, fromDate.Value);
+                    var inConditions = fb.Empty;
+                    var outConditions = fb.Empty;
+
+                    if (fromDate.HasValue)
+                    {
+                        inConditions &= fb.Gte(s => s.InTime, fromDate.Value);
+                        outConditions &= fb.Gte(s => s.OutTime, fromDate.Value);
+                    }
+
+                    if (toDate.HasValue)
+                    {
+                        inConditions &= fb.Lte(s => s.InTime, toDate.Value);
+                        outConditions &= fb.Lte(s => s.OutTime, toDate.Value);
+                    }
+
+                    dateFilter = inConditions | outConditions;
                 }
-                if (toDate.HasValue)
+            }
+
+            var hourFilter = fb.Empty;
+            if (hour.HasValue && hour.Value >= 0 && hour.Value <= 23)
+            {
+                var inHourDoc = new MongoDB.Bson.BsonDocument("$expr", new MongoDB.Bson.BsonDocument("$and", new MongoDB.Bson.BsonArray
                 {
-                    inFilter &= fb.Lte(s => s.InTime, toDate.Value);
+                    new MongoDB.Bson.BsonDocument("$ne", new MongoDB.Bson.BsonArray { "$InTime", MongoDB.Bson.BsonNull.Value }),
+                    new MongoDB.Bson.BsonDocument("$eq", new MongoDB.Bson.BsonArray
+                    {
+                        new MongoDB.Bson.BsonDocument("$hour", new MongoDB.Bson.BsonDocument { { "date", "$InTime" }, { "timezone", "+07:00" } }),
+                        hour.Value
+                    })
+                }));
+
+                var outHourDoc = new MongoDB.Bson.BsonDocument("$expr", new MongoDB.Bson.BsonDocument("$and", new MongoDB.Bson.BsonArray
+                {
+                    new MongoDB.Bson.BsonDocument("$ne", new MongoDB.Bson.BsonArray { "$OutTime", MongoDB.Bson.BsonNull.Value }),
+                    new MongoDB.Bson.BsonDocument("$eq", new MongoDB.Bson.BsonArray
+                    {
+                        new MongoDB.Bson.BsonDocument("$hour", new MongoDB.Bson.BsonDocument { { "date", "$OutTime" }, { "timezone", "+07:00" } }),
+                        hour.Value
+                    })
+                }));
+
+                var inHourFilter = new MongoDB.Driver.BsonDocumentFilterDefinition<ParkingSession>(inHourDoc);
+                var outHourFilter = new MongoDB.Driver.BsonDocumentFilterDefinition<ParkingSession>(outHourDoc);
+
+                if (status == ParkingSessionStatus.UnmatchedOut)
+                {
+                    hourFilter = outHourFilter;
                 }
-                return inFilter;
+                else if (status == ParkingSessionStatus.Active)
+                {
+                    hourFilter = inHourFilter;
+                }
+                else
+                {
+                    hourFilter = inHourFilter | outHourFilter;
+                }
             }
 
-            var inConditions = fb.Empty;
-            var outConditions = fb.Empty;
-
-            if (fromDate.HasValue)
+            if (dateFilter != fb.Empty && hourFilter != fb.Empty)
             {
-                inConditions &= fb.Gte(s => s.InTime, fromDate.Value);
-                outConditions &= fb.Gte(s => s.OutTime, fromDate.Value);
+                return dateFilter & hourFilter;
             }
+            if (dateFilter != fb.Empty) return dateFilter;
+            if (hourFilter != fb.Empty) return hourFilter;
 
-            if (toDate.HasValue)
-            {
-                inConditions &= fb.Lte(s => s.InTime, toDate.Value);
-                outConditions &= fb.Lte(s => s.OutTime, toDate.Value);
-            }
-
-            return inConditions | outConditions;
+            return fb.Empty;
         }
     }
 }

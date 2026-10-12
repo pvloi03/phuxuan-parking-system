@@ -7,6 +7,7 @@ export interface SessionFilterParams {
   vehicleType?: VehicleType
   fromDate?: string
   toDate?: string
+  hour?: number
   laneName?: string
   pageNumber?: number
   pageSize?: number
