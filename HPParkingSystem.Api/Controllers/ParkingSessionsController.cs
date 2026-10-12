@@ -351,11 +351,13 @@ namespace HPParkingSystem.Api.Controllers
             if (sessions.Count > 0)
             {
                 ws.Cells[row, 1, row, 4].Merge = true;
-                ws.Cells[row, 1].Value = "TỔNG CỘNG KHỐI LƯỢNG";
+                ws.Cells[row, 1].Value = "TỔNG CỘNG KHỐI LƯỢNG (LƯỢT ĐÃ RA)";
                 ws.Cells[row, 1].Style.Font.Bold = true;
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                double grandTotalSessionsWeight = sessions.Where(s => s.Weight.HasValue).Sum(s => s.Weight!.Value);
+                double grandTotalSessionsWeight = sessions
+                    .Where(s => (s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed) && s.Weight.HasValue)
+                    .Sum(s => s.Weight!.Value);
                 ws.Cells[row, 5].Value = grandTotalSessionsWeight;
                 ws.Cells[row, 5].Style.Font.Bold = true;
                 ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
