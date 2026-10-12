@@ -224,7 +224,7 @@ namespace HPParkingSystem.Services.Parking
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
             // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
-            QueueOfflineImageSync(captureContext, plateOk, ovwOk, filePlate, fileOverview);
+            QueueOfflineImageSync(captureContext, captureResult);
 
             var session = ParkingSession.CheckIn(
                 inLaneName: inLaneName,
@@ -403,7 +403,7 @@ namespace HPParkingSystem.Services.Parking
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
             // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
-            QueueOfflineImageSync(captureContext, plateOk, ovwOk, filePlate, fileOverview);
+            QueueOfflineImageSync(captureContext, captureResult);
 
             if (activeSession != null)
             {
@@ -479,20 +479,9 @@ namespace HPParkingSystem.Services.Parking
         {
             try
             {
-                if (!string.IsNullOrEmpty(filePath))
+                if (!string.IsNullOrEmpty(filePath) && File.Exists(filePath))
                 {
-                    if (File.Exists(filePath))
-                    {
-                        File.Delete(filePath);
-                    }
-
-                    // Hủy task đồng bộ nếu có task chờ sync trỏ vào file này
-                    try
-                    {
-                        var col = LiteDbContext.Instance.GetImageSyncTasks();
-                        col.DeleteMany(t => t.LocalFilePath == filePath && !t.IsSynced);
-                    }
-                    catch { }
+                    File.Delete(filePath);
                 }
             }
             catch (Exception ex)
@@ -760,25 +749,23 @@ namespace HPParkingSystem.Services.Parking
             }
         }
 
-        private void QueueOfflineImageSync(CapturePathContext context, bool plateOk, bool ovwOk, string actualPlatePath, string actualOvwPath)
+        private void QueueOfflineImageSync(CapturePathContext context, LaneCaptureResult captureResult)
         {
             string offlineBase = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OfflineCaptures");
 
-            if (plateOk && !string.IsNullOrEmpty(actualPlatePath) && File.Exists(actualPlatePath))
+            void TryQueueSync(bool isCamOk, string actualPath, string fileName)
             {
-                if (context.IsLocalFallback || actualPlatePath.StartsWith(offlineBase, StringComparison.OrdinalIgnoreCase))
+                if (isCamOk && !string.IsNullOrEmpty(actualPath) && File.Exists(actualPath))
                 {
-                    QueueSingleImageSync(actualPlatePath, Path.Combine(context.DateFolder, context.PlateFileName));
+                    if (context.IsLocalFallback || actualPath.StartsWith(offlineBase, StringComparison.OrdinalIgnoreCase))
+                    {
+                        QueueSingleImageSync(actualPath, Path.Combine(context.DateFolder, fileName));
+                    }
                 }
             }
 
-            if (ovwOk && !string.IsNullOrEmpty(actualOvwPath) && File.Exists(actualOvwPath))
-            {
-                if (context.IsLocalFallback || actualOvwPath.StartsWith(offlineBase, StringComparison.OrdinalIgnoreCase))
-                {
-                    QueueSingleImageSync(actualOvwPath, Path.Combine(context.DateFolder, context.OverviewFileName));
-                }
-            }
+            TryQueueSync(captureResult.PlateCamSuccess, captureResult.PlateImagePath, context.PlateFileName);
+            TryQueueSync(captureResult.OverviewCamSuccess, captureResult.OverviewImagePath, context.OverviewFileName);
         }
 
         #endregion

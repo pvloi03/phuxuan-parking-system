@@ -45,17 +45,7 @@ namespace HPParkingSystem.Services.Devices.Camera
                         using var inMs = new MemoryStream(bytes);
                         using var bmp = new Bitmap(inMs);
                         using var outMs = new MemoryStream();
-                        var jgpEncoder = GetEncoder(ImageFormat.Jpeg);
-                        if (jgpEncoder != null)
-                        {
-                            using var myEncoderParameters = new EncoderParameters(1);
-                            myEncoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, 75L);
-                            bmp.Save(outMs, jgpEncoder, myEncoderParameters);
-                        }
-                        else
-                        {
-                            bmp.Save(outMs, ImageFormat.Jpeg);
-                        }
+                        SaveJpegToStream(bmp, outMs, 75L);
                         dataToWrite = outMs.ToArray();
                     }
                     catch (Exception ex)
@@ -92,21 +82,30 @@ namespace HPParkingSystem.Services.Devices.Camera
         }
 
         /// <summary>
+        /// Ghi Bitmap ra Stream đích dưới định dạng JPEG với mức chất lượng chỉ định (Mặc định: 75%)
+        /// </summary>
+        public static void SaveJpegToStream(Bitmap bitmap, Stream destinationStream, long quality = 75L)
+        {
+            var jpegEncoder = GetEncoder(ImageFormat.Jpeg);
+            if (jpegEncoder != null)
+            {
+                using var encoderParameters = new EncoderParameters(1);
+                encoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, quality);
+                bitmap.Save(destinationStream, jpegEncoder, encoderParameters);
+            }
+            else
+            {
+                bitmap.Save(destinationStream, ImageFormat.Jpeg);
+            }
+        }
+
+        /// <summary>
         /// Lưu Bitmap ra định dạng JPEG với mức chất lượng chỉ định (Mặc định: 75% - Mức trung bình)
         /// </summary>
         public static void SaveBitmapAsMediumJpeg(Bitmap bitmap, string filePath, long quality = 75L)
         {
-            var jgpEncoder = GetEncoder(ImageFormat.Jpeg);
-            if (jgpEncoder != null)
-            {
-                using var myEncoderParameters = new EncoderParameters(1);
-                myEncoderParameters.Param[0] = new EncoderParameter(Encoder.Quality, quality);
-                bitmap.Save(filePath, jgpEncoder, myEncoderParameters);
-            }
-            else
-            {
-                bitmap.Save(filePath, ImageFormat.Jpeg);
-            }
+            using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            SaveJpegToStream(bitmap, fs, quality);
         }
 
         private static ImageCodecInfo? GetEncoder(ImageFormat format)
