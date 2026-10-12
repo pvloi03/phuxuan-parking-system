@@ -97,9 +97,6 @@ namespace HPParkingSystem.Services.Parking
             result.PlateImagePath = plateOk ? filePlate : null;
             result.OverviewImagePath = ovwOk ? fileOverview : null;
 
-            // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
-            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
-
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = PlateNumber.Unrecognized;
             Bitmap? croppedBmp = null;
@@ -120,6 +117,24 @@ namespace HPParkingSystem.Services.Parking
                     AppLogger.Error(ex, $"[LÀN VÀO] Lỗi trong quá trình nhận diện ANPR: {ex.Message}", "ParkingLaneService");
                 }
             }
+
+            // Nếu nhận diện không thành công: Không lưu ảnh, không lưu DB, trả về thất bại
+            if (PlateNumber.IsUnrecognized(detectedPlate) || string.IsNullOrWhiteSpace(detectedPlate))
+            {
+                AppLogger.Information($"[LÀN VÀO] Nhận diện biển số không thành công. Hủy lưu ảnh và không tạo phiên.", "ParkingLaneService");
+                DeleteFileSafe(filePlate);
+                DeleteFileSafe(fileOverview);
+                croppedBmp?.Dispose();
+
+                result.PlateNumber = PlateNumber.Unrecognized;
+                result.CroppedPlateImage = null;
+                result.PlateImagePath = null;
+                result.OverviewImagePath = null;
+                result.Success = false;
+                result.ErrorMessage = "Nhận diện biển số không thành công.";
+                return result;
+            }
+
             result.PlateNumber = detectedPlate;
             result.CroppedPlateImage = croppedBmp;
             result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
@@ -203,6 +218,9 @@ namespace HPParkingSystem.Services.Parking
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
 
+            // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
+            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
+
             var session = ParkingSession.CheckIn(
                 inLaneName: inLaneName,
                 plateNumber: detectedPlate,
@@ -280,9 +298,6 @@ namespace HPParkingSystem.Services.Parking
             result.PlateImagePath = plateOk ? filePlate : null;
             result.OverviewImagePath = ovwOk ? fileOverview : null;
 
-            // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
-            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
-
             // 3. Nhận diện biển số (ANPR)
             string detectedPlate = PlateNumber.Unrecognized;
             Bitmap? croppedBmp = null;
@@ -303,6 +318,24 @@ namespace HPParkingSystem.Services.Parking
                     AppLogger.Error(ex, $"[LÀN RA] Lỗi trong quá trình nhận diện ANPR: {ex.Message}", "ParkingLaneService");
                 }
             }
+
+            // Nếu nhận diện không thành công: Không lưu ảnh, không lưu DB, trả về thất bại
+            if (PlateNumber.IsUnrecognized(detectedPlate) || string.IsNullOrWhiteSpace(detectedPlate))
+            {
+                AppLogger.Information($"[LÀN RA] Nhận diện biển số không thành công. Hủy lưu ảnh và không tạo phiên.", "ParkingLaneService");
+                DeleteFileSafe(filePlate);
+                DeleteFileSafe(fileOverview);
+                croppedBmp?.Dispose();
+
+                result.PlateNumber = PlateNumber.Unrecognized;
+                result.CroppedPlateImage = null;
+                result.PlateImagePath = null;
+                result.OverviewImagePath = null;
+                result.Success = false;
+                result.ErrorMessage = "Nhận diện biển số không thành công.";
+                return result;
+            }
+
             result.PlateNumber = detectedPlate;
             result.CroppedPlateImage = croppedBmp;
             result.PlateCropImagePath = null; // Không lưu ảnh biển số từ nhận diện xuống đĩa
@@ -358,6 +391,9 @@ namespace HPParkingSystem.Services.Parking
             if (!plateOk && !ovwOk) note = "Cả 2 camera mất kết nối hoặc lỗi lúc chụp";
             else if (!plateOk) note = "Camera biển số lỗi/mất kết nối lúc chụp";
             else if (!ovwOk) note = "Camera toàn cảnh lỗi/mất kết nối lúc chụp";
+
+            // Xếp hàng tác vụ copy ảnh offline lên server nếu đang chạy chế độ ngoại tuyến
+            QueueOfflineImageSync(isLocalFallback, plateOk, ovwOk, filePlate, fileOverview, dateFolder, fileNamePlate, fileNameOvw);
 
             if (activeSession != null)
             {

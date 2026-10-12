@@ -191,7 +191,7 @@ export function DashboardPage() {
       {/* 4 KPI Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Active Vehicles Card */}
-        <Card className="border-blue-200/50 dark:border-blue-900/30 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent">
+        <Card className="border-blue-200/50 dark:border-blue-900/30 bg-linear-to-br from-blue-500/5 via-transparent to-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Xe Đang Trong Bãi
@@ -211,7 +211,7 @@ export function DashboardPage() {
         </Card>
 
         {/* Period In Card */}
-        <Card className="border-emerald-200/50 dark:border-emerald-900/30 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent">
+        <Card className="border-emerald-200/50 dark:border-emerald-900/30 bg-linear-to-br from-emerald-500/5 via-transparent to-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
               Lượt Vào {getPeriodDisplayTitle()}
@@ -231,7 +231,7 @@ export function DashboardPage() {
         </Card>
 
         {/* Period Out Card */}
-        <Card className="border-indigo-200/50 dark:border-indigo-900/30 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent">
+        <Card className="border-indigo-200/50 dark:border-indigo-900/30 bg-linear-to-br from-indigo-500/5 via-transparent to-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
               Lượt Ra {getPeriodDisplayTitle()}
@@ -251,7 +251,7 @@ export function DashboardPage() {
         </Card>
 
         {/* Period Unmatched Out Warnings Card */}
-        <Card className="border-amber-200/50 dark:border-amber-900/30 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent">
+        <Card className="border-amber-200/50 dark:border-amber-900/30 bg-linear-to-br from-amber-500/5 via-transparent to-transparent">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider truncate">
               Cảnh Báo Ra Không Vào

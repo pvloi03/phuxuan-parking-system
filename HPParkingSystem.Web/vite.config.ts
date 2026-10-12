@@ -19,7 +19,7 @@ export default defineConfig({
     include: ['react', 'react-dom', 'react-router-dom', 'zustand', '@tanstack/react-query'],
   },
   server: {
-    port: 5173,
+    port: 5174,
     proxy: {
       '/api': {
         target: 'http://localhost:5005',

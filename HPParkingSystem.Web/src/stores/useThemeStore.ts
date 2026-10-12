@@ -6,8 +6,9 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set) => {
-  const savedTheme = localStorage.getItem('hpparking_theme')
-  const initialDark = savedTheme ? savedTheme === 'dark' : true
+  const isLogin = typeof window !== 'undefined' && window.location.pathname.startsWith('/login')
+  const savedTheme = typeof localStorage !== 'undefined' ? localStorage.getItem('hpparking_theme') : null
+  const initialDark = isLogin ? false : (savedTheme ? savedTheme === 'dark' : false)
 
   if (initialDark) {
     document.documentElement.classList.add('dark')

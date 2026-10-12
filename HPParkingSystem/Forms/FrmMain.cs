@@ -1,15 +1,16 @@
-using Microsoft.Extensions.DependencyInjection;
 using HPParkingSystem.Licensing;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Repositories;
 using HPParkingSystem.Services.Anpr;
+using HPParkingSystem.Services.Background;
 using HPParkingSystem.Services.Devices.Config;
 using HPParkingSystem.Services.Devices.Health;
 using HPParkingSystem.Services.License;
 using HPParkingSystem.Services.Logging;
 using HPParkingSystem.Services.Offline;
 using HPParkingSystem.Services.Parking;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -36,6 +37,7 @@ namespace HPParkingSystem.Forms
         private readonly IDeviceAdapterFactory _adapterFactory;
         private readonly LicenseManager _licenseManager;
         private readonly IParkingLaneService _laneService;
+        private readonly OfflineSyncBackgroundWorker? _syncWorker;
 
         // ── Quản lý Thiết bị & Camera Slots động (Mở rộng cho N thiết bị/làn) ──
         private readonly Dictionary<string, Device> _activeDevices = new();
@@ -61,6 +63,7 @@ namespace HPParkingSystem.Forms
 
             if (Program.ServiceProvider != null)
             {
+                _syncWorker = Program.ServiceProvider.GetService<OfflineSyncBackgroundWorker>();
                 _anprService = Program.ServiceProvider.GetService<IPlateRecognitionService>() ?? new SimpleLprAnprService();
                 _deviceRepo = Program.ServiceProvider.GetService<IRepository<Device>>() ?? new MongoRepository<Device>();
                 _laneRepo = Program.ServiceProvider.GetService<IRepository<Lane>>() ?? new MongoRepository<Lane>();
@@ -88,6 +91,7 @@ namespace HPParkingSystem.Forms
             }
             else
             {
+                _syncWorker = null;
                 _anprService = new SimpleLprAnprService();
                 _deviceRepo = new MongoRepository<Device>();
                 _laneRepo = new MongoRepository<Lane>();
@@ -106,6 +110,8 @@ namespace HPParkingSystem.Forms
                     ServerHealthTracker.Instance);
             }
 
+            _syncWorker?.SyncStatusChanged += SyncWorker_SyncStatusChanged;
+
             // Đăng ký sự kiện khi cấu hình thay đổi (Web Admin sửa IP, etc.)
             _deviceConfigService.OnConfigChanged += DeviceConfigService_OnConfigChanged;
 
@@ -121,9 +127,13 @@ namespace HPParkingSystem.Forms
             IRepository<Lane>? laneRepo = null,
             IDeviceHealthMonitorService? deviceHealthService = null,
             IDeviceAdapterFactory? adapterFactory = null,
-            IParkingLaneService? laneService = null)
+            IParkingLaneService? laneService = null,
+            OfflineSyncBackgroundWorker? syncWorker = null)
         {
             InitializeComponent();
+
+            _syncWorker = syncWorker ?? Program.ServiceProvider?.GetService<OfflineSyncBackgroundWorker>();
+            _syncWorker?.SyncStatusChanged += SyncWorker_SyncStatusChanged;
 
             _licenseManager = new LicenseManager(new MongoRepository<LicenseInfo>());
             _anprService = anprService ?? new SimpleLprAnprService();
@@ -157,7 +167,7 @@ namespace HPParkingSystem.Forms
                 var lane1 = cfg?.Lane1;
                 if (lane1 == null)
                 {
-                    SetFooterStatus("Cột 1 chưa được gán làn xe.");
+                    AppLogger.Warning("[CỘT 1] Chưa được gán làn xe.", "LaneControl");
                     return;
                 }
                 var dir1 = lane1.Direction;
@@ -171,7 +181,7 @@ namespace HPParkingSystem.Forms
                 var lane2 = cfg?.Lane2;
                 if (lane2 == null)
                 {
-                    SetFooterStatus("Cột 2 chưa được gán làn xe.");
+                    AppLogger.Warning("[CỘT 2] Chưa được gán làn xe.", "LaneControl");
                     return;
                 }
                 var dir2 = lane2.Direction;
@@ -183,6 +193,8 @@ namespace HPParkingSystem.Forms
         private void FrmMain_Load(object sender, EventArgs e)
         {
             lblFooterMachineCode.Text = $"Mã Máy: {HardwareFingerprint.GetMachineCode()}";
+            lblFooterServerStatus.Text = "⚪ Máy chủ: Đang kiểm tra...";
+            lblFooterServerStatus.ForeColor = Color.FromArgb(100, 116, 139);
 
             // Hiệu ứng Hover, Click và đổi màu/con trỏ chuột cho thanh Header System Status
             Color headerOriginalColor = lblSystemStatus.ForeColor;
@@ -365,9 +377,6 @@ namespace HPParkingSystem.Forms
 
                 panel.Invalidate();
             }
-
-            // Cập nhật header & footer status từ DeviceHealthService
-            UpdateHeaderStatusFromAllStates();
         }
 
         /// <summary>
@@ -396,53 +405,6 @@ namespace HPParkingSystem.Forms
             catch (Exception ex)
             {
                 AppLogger.Warning($"[FrmMain] Lỗi đăng ký device adapters: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Cập nhật header và footer status dựa trên trạng thái của tất cả cameras và Controller
-        /// </summary>
-        private void UpdateHeaderStatusFromAllStates()
-        {
-            // Tự động kiểm tra trạng thái tất cả thiết bị từ _activeDevices
-            var disconnected = new List<string>();
-            foreach (var kvp in _activeDevices)
-            {
-                var devId = kvp.Key;
-                var dev = kvp.Value;
-                if (_deviceIdToSlotMap.TryGetValue(devId, out var slot))
-                {
-                    if (_slotStates.TryGetValue(slot, out var state) && state != DeviceStatus.Streaming && state != DeviceStatus.Connected)
-                    {
-                        disconnected.Add(dev.Name);
-                    }
-                }
-                else if (dev.Type == DeviceType.Controller && !_controller.IsConnected)
-                {
-                    disconnected.Add(dev.Name);
-                }
-            }
-
-            if (_activeDevices.Count > 0)
-            {
-                if (disconnected.Count == 0)
-                {
-                    SetFooterStatus("Hệ thống sẵn sàng và hoạt động bình thường.", isError: false);
-                }
-                else
-                {
-                    string detail = disconnected.Count switch
-                    {
-                        1 => $"{disconnected[0]} mất kết nối",
-                        2 => $"{disconnected[0]}, {disconnected[1]} mất kết nối",
-                        _ => $"Có {disconnected.Count} thiết bị mất kết nối"
-                    };
-                    SetFooterStatus($"⚠️ {detail} (Nhấn để xem chi tiết)", isError: true);
-                }
-            }
-            else
-            {
-                SetFooterStatus("Chưa có thiết bị nào được cấu hình trong hệ thống.", isError: false);
             }
         }
 
@@ -484,8 +446,6 @@ namespace HPParkingSystem.Forms
             }
 
             AppLogger.Warning($"[FrmMain] Phát hiện thay đổi cấu hình từ Web Admin: {string.Join(", ", e.ChangedDevices)}");
-
-            SetHeaderStatus("⚠️ Đang cập nhật thiết bị thay đổi...");
             await ApplyDifferentialConfigAsync(e.OldConfig, e.NewConfig);
         }
 
@@ -511,30 +471,12 @@ namespace HPParkingSystem.Forms
             OpenDeviceMonitor();
         }
 
-        private void SetHeaderStatus(string message)
-        {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => SetHeaderStatus(message)));
-                return;
-            }
-
-            // Dòng trạng thái Header đã được ẩn; chuyển tiếp thông báo hữu ích xuống Footer
-            if (!string.IsNullOrWhiteSpace(message))
-            {
-                SetFooterStatus(message);
-            }
-        }
-
-        private void SetFooterStatus(string message, bool isError = false)
-        {
-            // lblFooterStatus đã bị loại bỏ khỏi giao diện
-        }
-
         private void FrmMain_FormClosing(object sender, FormClosingEventArgs e)
         {
             try
             {
+                _syncWorker?.SyncStatusChanged -= SyncWorker_SyncStatusChanged;
+
                 // Dừng và giải phóng Camera & GDI+ Cache
                 CleanupCameras();
 
@@ -547,6 +489,37 @@ namespace HPParkingSystem.Forms
             catch (Exception ex)
             {
                 AppLogger.Error(ex, $"[FormClosing Error] {ex.Message}", "FrmMain");
+            }
+        }
+
+        private void SyncWorker_SyncStatusChanged(object? sender, SyncStatusEventArgs e)
+        {
+            if (IsDisposed || Disposing) return;
+            if (InvokeRequired)
+            {
+                try { BeginInvoke(new Action(() => UpdateServerStatusUi(e))); } catch { }
+                return;
+            }
+            UpdateServerStatusUi(e);
+        }
+
+        private void UpdateServerStatusUi(SyncStatusEventArgs e)
+        {
+            if (lblFooterServerStatus == null || IsDisposed || Disposing) return;
+
+            lblFooterServerStatus.Text = e.StatusMessage;
+
+            if (!e.IsServerOnline)
+            {
+                lblFooterServerStatus.ForeColor = Color.DarkOrange;
+            }
+            else if (e.PendingRecordCount > 0 || e.PendingImageCount > 0)
+            {
+                lblFooterServerStatus.ForeColor = Color.DodgerBlue;
+            }
+            else
+            {
+                lblFooterServerStatus.ForeColor = Color.FromArgb(16, 185, 129);
             }
         }
     }

@@ -1,18 +1,13 @@
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
-using HPParkingSystem.Services.Devices;
 using HPParkingSystem.Services.Devices.Camera;
 using HPParkingSystem.Services.Devices.Config;
-using HPParkingSystem.Services.Devices.Health;
-using HPParkingSystem.Services.Devices.Controller;
 using HPParkingSystem.Services.Logging;
-using HPParkingSystem.Services.Notification;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -85,11 +80,11 @@ namespace HPParkingSystem.Forms
                     Directory.CreateDirectory(_captureDir);
                 }
 
-                SetFooterStatus("Khởi tạo hệ thống thành công. Đang tải cấu hình thiết bị từ CSDL MongoDB...");
+                AppLogger.Information("Khởi tạo hệ thống thành công. Đang tải cấu hình thiết bị từ CSDL MongoDB...");
             }
             catch (Exception ex)
             {
-                SetFooterStatus($"Lỗi khởi tạo thư mục lưu ảnh: {ex.Message}");
+                AppLogger.Error(ex, $"Lỗi khởi tạo thư mục lưu ảnh: {ex.Message}");
             }
         }
 
@@ -246,10 +241,6 @@ namespace HPParkingSystem.Forms
 
             InvalidateCameraPanels();
 
-            AppNotificationService.NotifyInfo(NotificationCategory.System, "Khởi động hệ thống", "Đang tự động kết nối Camera và Controller...");
-            SetHeaderStatus("Đang tự động kết nối Camera và Controller...");
-            SetFooterStatus("Đang khởi chạy luồng kết nối song song...");
-
             try
             {
                 var inPltTask = !string.IsNullOrEmpty(_inPlateCam.Config.Ip) ? _inPlateCam.LoginAsync() : Task.FromResult(false);
@@ -283,7 +274,6 @@ namespace HPParkingSystem.Forms
                 ApplySlotResult(CameraSlot.OutOverview, outOvwTask, pnlOutOverviewVideo, _outOverviewCam);
 
                 InvalidateCameraPanels();
-                UpdateHeaderStatusFromAllStates();
             }
             catch (Exception ex)
             {
@@ -293,8 +283,7 @@ namespace HPParkingSystem.Forms
                 }
                 InvalidateCameraPanels();
 
-                SetHeaderStatus($"Lỗi kết nối: {ex.Message}");
-                SetFooterStatus($"⚠️ Lỗi kết nối thiết bị: {ex.Message} (Nhấn để kiểm tra)", isError: true);
+                AppLogger.Error(ex, $"Lỗi kết nối thiết bị: {ex.Message}");
             }
         }
 
@@ -483,7 +472,6 @@ namespace HPParkingSystem.Forms
             }
 
             InvalidateCameraPanels();
-            UpdateHeaderStatusFromAllStates();
         }
 
         private static bool IsSameDevice(Device? dev1, Device? dev2)

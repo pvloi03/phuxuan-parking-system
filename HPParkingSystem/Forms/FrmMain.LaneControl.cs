@@ -73,7 +73,6 @@ namespace HPParkingSystem.Forms
                     {
                         lblInStatusVal.Text = dir1 == LaneDirection.In ? "🟢 Phát hiện xe vào - Đang xử lý..." : "🔴 Phát hiện xe ra - Đang xử lý...";
                         lblInStatusVal.ForeColor = Color.SeaGreen;
-                        lblInTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
 
                         // Kích hoạt luồng chụp ảnh, ANPR và ghi nhận phiên ngầm theo Direction
                         _ = Task.Run(async () => await HandleLaneSlotAsync(1, dir1, "RADAR"));
@@ -132,7 +131,6 @@ namespace HPParkingSystem.Forms
                     {
                         lblOutStatusVal.Text = dir2 == LaneDirection.In ? "🟢 Phát hiện xe vào - Đang xử lý..." : "🔴 Phát hiện xe ra - Đang xử lý...";
                         lblOutStatusVal.ForeColor = Color.SeaGreen;
-                        lblOutTimeVal.Text = e.TriggerTime.ToString("dd/MM/yyyy HH:mm:ss");
 
                         // Kích hoạt luồng chụp ảnh, ANPR và ghi nhận phiên ngầm theo Direction
                         _ = Task.Run(async () => await HandleLaneSlotAsync(2, dir2, "RADAR"));
@@ -156,19 +154,6 @@ namespace HPParkingSystem.Forms
                     });
                 }
             }
-
-            SetFooterStatus($"[RADAR] 📡 {e.LaneName} (Aux {e.AuxPort}): {(e.IsActive ? "CÓ XE VÀO VÙNG QUÉT" : "HẾT XE")} lúc {e.TriggerTime:HH:mm:ss}");
-        }
-
-        private void Controller_OnStatusChanged(bool success, string message)
-        {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action(() => Controller_OnStatusChanged(success, message)));
-                return;
-            }
-
-            SetFooterStatus($"[Access Controller] {message}");
         }
 
         #endregion
@@ -185,7 +170,6 @@ namespace HPParkingSystem.Forms
             if (lane == null)
             {
                 AppLogger.Warning($"[CỘT {slot}] Chưa được gán làn xe. Bỏ qua xử lý.", "LaneControl");
-                SetFooterStatus($"Cột {slot} chưa được gán làn xe.");
                 return;
             }
             string laneName = lane.Name;
@@ -226,6 +210,29 @@ namespace HPParkingSystem.Forms
                     );
                 }
 
+                // Nếu nhận diện không thành công: không hiện WinForms, không thông báo Footer
+                if (PlateNumber.IsUnrecognized(res.PlateNumber))
+                {
+                    AppLogger.Information($"[CỘT {slot}] Bỏ qua cập nhật giao diện do nhận diện biển số không thành công ({laneName}).", "LaneControl");
+                    void ResetStatusUi()
+                    {
+                        if (slot == 1)
+                        {
+                            lblInStatusVal.Text = "⚪ Sẵn sàng";
+                            lblInStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
+                        }
+                        else
+                        {
+                            lblOutStatusVal.Text = "⚪ Sẵn sàng";
+                            lblOutStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
+                        }
+                    }
+
+                    if (InvokeRequired) BeginInvoke(new Action(ResetStatusUi));
+                    else ResetStatusUi();
+                    return;
+                }
+
                 // Cập nhật UI theo đúng Cột (Slot 1 = Cột Trái, Slot 2 = Cột Phải)
                 void UpdateSlotUi()
                 {
@@ -245,17 +252,16 @@ namespace HPParkingSystem.Forms
                 string plateDisp = PlateNumber.IsUnrecognized(res.PlateNumber) ? PlateNumber.UnrecognizedDisplay : res.PlateNumber;
                 if (direction == LaneDirection.In && res.IsAlreadyInLot)
                 {
-                    SetFooterStatus($"⚠️ [CẢNH BÁO {laneName}] Xe [{plateDisp}] ĐANG Ở TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})!", isError: true);
+                    AppLogger.Warning($"⚠️ [CẢNH BÁO {laneName}] Xe [{plateDisp}] ĐANG Ở TRONG BÃI (Vào lúc {res.Session?.InTime:HH:mm:ss})!", "LaneControl");
                 }
                 else
                 {
-                    SetFooterStatus($"📸 {laneName} ({triggerSource}): Biển [{plateDisp}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}");
+                    AppLogger.Information($"📸 {laneName} ({triggerSource}): Biển [{plateDisp}] - {res.PersonName ?? "Khách"} lúc {DateTime.Now:HH:mm:ss}", "LaneControl");
                 }
             }
             catch (Exception ex)
             {
                 AppLogger.Error(ex, $"Lỗi xử lý {laneName}: {ex.Message}", "LaneControl");
-                SetFooterStatus($"Lỗi xử lý {laneName}: {ex.Message}", isError: true);
             }
         }
 

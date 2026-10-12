@@ -30,7 +30,7 @@ namespace HPParkingSystem.Forms
         {
             this.components = new System.ComponentModel.Container();
             this.pnlHeader = new System.Windows.Forms.Panel();
-            this.btnDeviceMonitor = new System.Windows.Forms.Button();
+            this.panel1 = new System.Windows.Forms.Panel();
             this.lblClock = new System.Windows.Forms.Label();
             this.lblSystemStatus = new System.Windows.Forms.Label();
             this.lblAppTitle = new System.Windows.Forms.Label();
@@ -76,12 +76,14 @@ namespace HPParkingSystem.Forms
             this.lblOutStatusTag = new System.Windows.Forms.Label();
             this.lblOutStatusVal = new System.Windows.Forms.Label();
             this.statusStrip = new System.Windows.Forms.StatusStrip();
+            this.lblFooterServerStatus = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterLicenseSpring = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterMachineCode = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblFooterLicense = new System.Windows.Forms.ToolStripStatusLabel();
             this.timerClock = new System.Windows.Forms.Timer(this.components);
-            this.panel1 = new System.Windows.Forms.Panel();
+            this.btnDeviceMonitor = new System.Windows.Forms.Button();
             this.pnlHeader.SuspendLayout();
+            this.panel1.SuspendLayout();
             this.tblMainLayout.SuspendLayout();
             this.grpInLane.SuspendLayout();
             this.tblInCameras.SuspendLayout();
@@ -96,7 +98,6 @@ namespace HPParkingSystem.Forms
             this.grpOutInfo.SuspendLayout();
             this.tblOutInfo.SuspendLayout();
             this.statusStrip.SuspendLayout();
-            this.panel1.SuspendLayout();
             this.SuspendLayout();
             // 
             // pnlHeader
@@ -112,22 +113,16 @@ namespace HPParkingSystem.Forms
             this.pnlHeader.Size = new System.Drawing.Size(1400, 48);
             this.pnlHeader.TabIndex = 0;
             // 
-            // btnDeviceMonitor
+            // panel1
             // 
-            this.btnDeviceMonitor.BackColor = System.Drawing.Color.Coral;
-            this.btnDeviceMonitor.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnDeviceMonitor.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnDeviceMonitor.FlatAppearance.BorderSize = 0;
-            this.btnDeviceMonitor.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnDeviceMonitor.Font = new System.Drawing.Font("Segoe UI Semibold", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnDeviceMonitor.ForeColor = System.Drawing.Color.White;
-            this.btnDeviceMonitor.Location = new System.Drawing.Point(10, 10);
-            this.btnDeviceMonitor.Name = "btnDeviceMonitor";
-            this.btnDeviceMonitor.Size = new System.Drawing.Size(180, 28);
-            this.btnDeviceMonitor.TabIndex = 3;
-            this.btnDeviceMonitor.Text = "📡 Giám Sát Thiết Bị";
-            this.btnDeviceMonitor.UseVisualStyleBackColor = false;
-            this.btnDeviceMonitor.Click += new System.EventHandler(this.BtnDeviceMonitor_Click);
+            this.panel1.Controls.Add(this.btnDeviceMonitor);
+            this.panel1.Dock = System.Windows.Forms.DockStyle.Right;
+            this.panel1.Location = new System.Drawing.Point(962, 0);
+            this.panel1.Margin = new System.Windows.Forms.Padding(0);
+            this.panel1.Name = "panel1";
+            this.panel1.Padding = new System.Windows.Forms.Padding(10);
+            this.panel1.Size = new System.Drawing.Size(200, 48);
+            this.panel1.TabIndex = 4;
             // 
             // lblClock
             // 
@@ -153,7 +148,6 @@ namespace HPParkingSystem.Forms
             this.lblSystemStatus.Padding = new System.Windows.Forms.Padding(10, 0, 0, 0);
             this.lblSystemStatus.Size = new System.Drawing.Size(752, 48);
             this.lblSystemStatus.TabIndex = 1;
-            this.lblSystemStatus.Text = "";
             this.lblSystemStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.lblSystemStatus.Visible = false;
             // 
@@ -186,7 +180,7 @@ namespace HPParkingSystem.Forms
             this.tblMainLayout.RowCount = 2;
             this.tblMainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 70F));
             this.tblMainLayout.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 30F));
-            this.tblMainLayout.Size = new System.Drawing.Size(1400, 781);
+            this.tblMainLayout.Size = new System.Drawing.Size(1400, 785);
             this.tblMainLayout.TabIndex = 1;
             // 
             // grpInLane
@@ -198,7 +192,7 @@ namespace HPParkingSystem.Forms
             this.grpInLane.Location = new System.Drawing.Point(7, 7);
             this.grpInLane.Name = "grpInLane";
             this.grpInLane.Padding = new System.Windows.Forms.Padding(6);
-            this.grpInLane.Size = new System.Drawing.Size(690, 535);
+            this.grpInLane.Size = new System.Drawing.Size(690, 537);
             this.grpInLane.TabIndex = 0;
             this.grpInLane.TabStop = false;
             this.grpInLane.Text = "LÀN VÀO (IN-LANE)";
@@ -218,7 +212,7 @@ namespace HPParkingSystem.Forms
             this.tblInCameras.RowCount = 2;
             this.tblInCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 58F));
             this.tblInCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 42F));
-            this.tblInCameras.Size = new System.Drawing.Size(678, 497);
+            this.tblInCameras.Size = new System.Drawing.Size(678, 499);
             this.tblInCameras.TabIndex = 0;
             // 
             // pnlInPlateVideo
@@ -227,7 +221,7 @@ namespace HPParkingSystem.Forms
             this.pnlInPlateVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlInPlateVideo.Location = new System.Drawing.Point(3, 3);
             this.pnlInPlateVideo.Name = "pnlInPlateVideo";
-            this.pnlInPlateVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlInPlateVideo.Size = new System.Drawing.Size(333, 283);
             this.pnlInPlateVideo.TabIndex = 0;
             this.pnlInPlateVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlInPlateVideo_Paint);
             // 
@@ -237,7 +231,7 @@ namespace HPParkingSystem.Forms
             this.pnlInOverviewVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlInOverviewVideo.Location = new System.Drawing.Point(342, 3);
             this.pnlInOverviewVideo.Name = "pnlInOverviewVideo";
-            this.pnlInOverviewVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlInOverviewVideo.Size = new System.Drawing.Size(333, 283);
             this.pnlInOverviewVideo.TabIndex = 1;
             this.pnlInOverviewVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlInOverviewVideo_Paint);
             // 
@@ -246,9 +240,9 @@ namespace HPParkingSystem.Forms
             this.picInPlate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
             this.picInPlate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picInPlate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picInPlate.Location = new System.Drawing.Point(3, 291);
+            this.picInPlate.Location = new System.Drawing.Point(3, 292);
             this.picInPlate.Name = "picInPlate";
-            this.picInPlate.Size = new System.Drawing.Size(333, 203);
+            this.picInPlate.Size = new System.Drawing.Size(333, 204);
             this.picInPlate.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picInPlate.TabIndex = 2;
             this.picInPlate.TabStop = false;
@@ -258,9 +252,9 @@ namespace HPParkingSystem.Forms
             this.picInOverview.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
             this.picInOverview.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picInOverview.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picInOverview.Location = new System.Drawing.Point(342, 291);
+            this.picInOverview.Location = new System.Drawing.Point(342, 292);
             this.picInOverview.Name = "picInOverview";
-            this.picInOverview.Size = new System.Drawing.Size(333, 203);
+            this.picInOverview.Size = new System.Drawing.Size(333, 204);
             this.picInOverview.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picInOverview.TabIndex = 3;
             this.picInOverview.TabStop = false;
@@ -274,7 +268,7 @@ namespace HPParkingSystem.Forms
             this.grpOutLane.Location = new System.Drawing.Point(703, 7);
             this.grpOutLane.Name = "grpOutLane";
             this.grpOutLane.Padding = new System.Windows.Forms.Padding(6);
-            this.grpOutLane.Size = new System.Drawing.Size(690, 535);
+            this.grpOutLane.Size = new System.Drawing.Size(690, 537);
             this.grpOutLane.TabIndex = 1;
             this.grpOutLane.TabStop = false;
             this.grpOutLane.Text = "LÀN RA (OUT-LANE)";
@@ -294,7 +288,7 @@ namespace HPParkingSystem.Forms
             this.tblOutCameras.RowCount = 2;
             this.tblOutCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 58F));
             this.tblOutCameras.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 42F));
-            this.tblOutCameras.Size = new System.Drawing.Size(678, 497);
+            this.tblOutCameras.Size = new System.Drawing.Size(678, 499);
             this.tblOutCameras.TabIndex = 0;
             // 
             // pnlOutPlateVideo
@@ -303,7 +297,7 @@ namespace HPParkingSystem.Forms
             this.pnlOutPlateVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlOutPlateVideo.Location = new System.Drawing.Point(3, 3);
             this.pnlOutPlateVideo.Name = "pnlOutPlateVideo";
-            this.pnlOutPlateVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlOutPlateVideo.Size = new System.Drawing.Size(333, 283);
             this.pnlOutPlateVideo.TabIndex = 0;
             this.pnlOutPlateVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlOutPlateVideo_Paint);
             // 
@@ -313,7 +307,7 @@ namespace HPParkingSystem.Forms
             this.pnlOutOverviewVideo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlOutOverviewVideo.Location = new System.Drawing.Point(342, 3);
             this.pnlOutOverviewVideo.Name = "pnlOutOverviewVideo";
-            this.pnlOutOverviewVideo.Size = new System.Drawing.Size(333, 282);
+            this.pnlOutOverviewVideo.Size = new System.Drawing.Size(333, 283);
             this.pnlOutOverviewVideo.TabIndex = 1;
             this.pnlOutOverviewVideo.Paint += new System.Windows.Forms.PaintEventHandler(this.PnlOutOverviewVideo_Paint);
             // 
@@ -322,9 +316,9 @@ namespace HPParkingSystem.Forms
             this.picOutPlate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
             this.picOutPlate.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picOutPlate.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picOutPlate.Location = new System.Drawing.Point(3, 291);
+            this.picOutPlate.Location = new System.Drawing.Point(3, 292);
             this.picOutPlate.Name = "picOutPlate";
-            this.picOutPlate.Size = new System.Drawing.Size(333, 203);
+            this.picOutPlate.Size = new System.Drawing.Size(333, 204);
             this.picOutPlate.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picOutPlate.TabIndex = 2;
             this.picOutPlate.TabStop = false;
@@ -334,9 +328,9 @@ namespace HPParkingSystem.Forms
             this.picOutOverview.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(235)))), ((int)(((byte)(238)))), ((int)(((byte)(240)))));
             this.picOutOverview.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picOutOverview.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.picOutOverview.Location = new System.Drawing.Point(342, 291);
+            this.picOutOverview.Location = new System.Drawing.Point(342, 292);
             this.picOutOverview.Name = "picOutOverview";
-            this.picOutOverview.Size = new System.Drawing.Size(333, 203);
+            this.picOutOverview.Size = new System.Drawing.Size(333, 204);
             this.picOutOverview.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picOutOverview.TabIndex = 3;
             this.picOutOverview.TabStop = false;
@@ -347,10 +341,10 @@ namespace HPParkingSystem.Forms
             this.grpInInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.grpInInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.grpInInfo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
-            this.grpInInfo.Location = new System.Drawing.Point(7, 548);
+            this.grpInInfo.Location = new System.Drawing.Point(7, 550);
             this.grpInInfo.Name = "grpInInfo";
             this.grpInInfo.Padding = new System.Windows.Forms.Padding(8);
-            this.grpInInfo.Size = new System.Drawing.Size(690, 226);
+            this.grpInInfo.Size = new System.Drawing.Size(690, 228);
             this.grpInInfo.TabIndex = 2;
             this.grpInInfo.TabStop = false;
             this.grpInInfo.Text = "THÔNG TIN XE VÀO";
@@ -381,7 +375,7 @@ namespace HPParkingSystem.Forms
             this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 35F));
             this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 32F));
             this.tblInInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33F));
-            this.tblInInfo.Size = new System.Drawing.Size(674, 184);
+            this.tblInInfo.Size = new System.Drawing.Size(674, 186);
             this.tblInInfo.TabIndex = 0;
             // 
             // lblInPlateTag
@@ -399,13 +393,14 @@ namespace HPParkingSystem.Forms
             // txtInPlate
             // 
             this.txtInPlate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtInPlate.BackColor = System.Drawing.Color.White;
+            this.txtInPlate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(247)))), ((int)(((byte)(249)))));
+            this.txtInPlate.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtInPlate.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.txtInPlate.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(80)))), ((int)(((byte)(160)))));
-            this.txtInPlate.Location = new System.Drawing.Point(108, 12);
+            this.txtInPlate.ForeColor = System.Drawing.Color.Black;
+            this.txtInPlate.Location = new System.Drawing.Point(108, 16);
             this.txtInPlate.Name = "txtInPlate";
             this.txtInPlate.ReadOnly = true;
-            this.txtInPlate.Size = new System.Drawing.Size(226, 39);
+            this.txtInPlate.Size = new System.Drawing.Size(226, 32);
             this.txtInPlate.TabIndex = 1;
             this.txtInPlate.Text = "---";
             this.txtInPlate.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
@@ -416,7 +411,7 @@ namespace HPParkingSystem.Forms
             this.lblInTimeTag.AutoSize = true;
             this.lblInTimeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblInTimeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInTimeTag.Location = new System.Drawing.Point(340, 19);
+            this.lblInTimeTag.Location = new System.Drawing.Point(340, 20);
             this.lblInTimeTag.Name = "lblInTimeTag";
             this.lblInTimeTag.Size = new System.Drawing.Size(93, 25);
             this.lblInTimeTag.TabIndex = 2;
@@ -428,7 +423,7 @@ namespace HPParkingSystem.Forms
             this.lblInTimeVal.AutoSize = true;
             this.lblInTimeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblInTimeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInTimeVal.Location = new System.Drawing.Point(445, 19);
+            this.lblInTimeVal.Location = new System.Drawing.Point(445, 20);
             this.lblInTimeVal.Name = "lblInTimeVal";
             this.lblInTimeVal.Size = new System.Drawing.Size(36, 25);
             this.lblInTimeVal.TabIndex = 3;
@@ -440,7 +435,7 @@ namespace HPParkingSystem.Forms
             this.lblInOwnerTag.AutoSize = true;
             this.lblInOwnerTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblInOwnerTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInOwnerTag.Location = new System.Drawing.Point(3, 80);
+            this.lblInOwnerTag.Location = new System.Drawing.Point(3, 82);
             this.lblInOwnerTag.Name = "lblInOwnerTag";
             this.lblInOwnerTag.Size = new System.Drawing.Size(72, 25);
             this.lblInOwnerTag.TabIndex = 4;
@@ -452,7 +447,7 @@ namespace HPParkingSystem.Forms
             this.lblInOwnerVal.AutoSize = true;
             this.lblInOwnerVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblInOwnerVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInOwnerVal.Location = new System.Drawing.Point(108, 80);
+            this.lblInOwnerVal.Location = new System.Drawing.Point(108, 82);
             this.lblInOwnerVal.Name = "lblInOwnerVal";
             this.lblInOwnerVal.Size = new System.Drawing.Size(36, 25);
             this.lblInOwnerVal.TabIndex = 5;
@@ -464,7 +459,7 @@ namespace HPParkingSystem.Forms
             this.lblInDeptTag.AutoSize = true;
             this.lblInDeptTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblInDeptTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInDeptTag.Location = new System.Drawing.Point(340, 80);
+            this.lblInDeptTag.Location = new System.Drawing.Point(340, 82);
             this.lblInDeptTag.Name = "lblInDeptTag";
             this.lblInDeptTag.Size = new System.Drawing.Size(70, 25);
             this.lblInDeptTag.TabIndex = 6;
@@ -476,7 +471,7 @@ namespace HPParkingSystem.Forms
             this.lblInDeptVal.AutoSize = true;
             this.lblInDeptVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblInDeptVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInDeptVal.Location = new System.Drawing.Point(445, 80);
+            this.lblInDeptVal.Location = new System.Drawing.Point(445, 82);
             this.lblInDeptVal.Name = "lblInDeptVal";
             this.lblInDeptVal.Size = new System.Drawing.Size(36, 25);
             this.lblInDeptVal.TabIndex = 7;
@@ -488,7 +483,7 @@ namespace HPParkingSystem.Forms
             this.lblInTypeTag.AutoSize = true;
             this.lblInTypeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblInTypeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInTypeTag.Location = new System.Drawing.Point(3, 140);
+            this.lblInTypeTag.Location = new System.Drawing.Point(3, 142);
             this.lblInTypeTag.Name = "lblInTypeTag";
             this.lblInTypeTag.Size = new System.Drawing.Size(74, 25);
             this.lblInTypeTag.TabIndex = 8;
@@ -500,7 +495,7 @@ namespace HPParkingSystem.Forms
             this.lblInTypeVal.AutoSize = true;
             this.lblInTypeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblInTypeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblInTypeVal.Location = new System.Drawing.Point(108, 140);
+            this.lblInTypeVal.Location = new System.Drawing.Point(108, 142);
             this.lblInTypeVal.Name = "lblInTypeVal";
             this.lblInTypeVal.Size = new System.Drawing.Size(36, 25);
             this.lblInTypeVal.TabIndex = 9;
@@ -512,7 +507,7 @@ namespace HPParkingSystem.Forms
             this.lblInStatusTag.AutoSize = true;
             this.lblInStatusTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblInStatusTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblInStatusTag.Location = new System.Drawing.Point(340, 140);
+            this.lblInStatusTag.Location = new System.Drawing.Point(340, 142);
             this.lblInStatusTag.Name = "lblInStatusTag";
             this.lblInStatusTag.Size = new System.Drawing.Size(99, 25);
             this.lblInStatusTag.TabIndex = 10;
@@ -524,7 +519,7 @@ namespace HPParkingSystem.Forms
             this.lblInStatusVal.AutoSize = true;
             this.lblInStatusVal.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblInStatusVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(140)))), ((int)(((byte)(70)))));
-            this.lblInStatusVal.Location = new System.Drawing.Point(445, 140);
+            this.lblInStatusVal.Location = new System.Drawing.Point(445, 142);
             this.lblInStatusVal.Name = "lblInStatusVal";
             this.lblInStatusVal.Size = new System.Drawing.Size(36, 25);
             this.lblInStatusVal.TabIndex = 11;
@@ -536,10 +531,10 @@ namespace HPParkingSystem.Forms
             this.grpOutInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.grpOutInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.grpOutInfo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(45)))), ((int)(((byte)(52)))), ((int)(((byte)(58)))));
-            this.grpOutInfo.Location = new System.Drawing.Point(703, 548);
+            this.grpOutInfo.Location = new System.Drawing.Point(703, 550);
             this.grpOutInfo.Name = "grpOutInfo";
             this.grpOutInfo.Padding = new System.Windows.Forms.Padding(8);
-            this.grpOutInfo.Size = new System.Drawing.Size(690, 226);
+            this.grpOutInfo.Size = new System.Drawing.Size(690, 228);
             this.grpOutInfo.TabIndex = 3;
             this.grpOutInfo.TabStop = false;
             this.grpOutInfo.Text = "THÔNG TIN XE RA";
@@ -570,7 +565,7 @@ namespace HPParkingSystem.Forms
             this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 35F));
             this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 32F));
             this.tblOutInfo.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 33F));
-            this.tblOutInfo.Size = new System.Drawing.Size(674, 184);
+            this.tblOutInfo.Size = new System.Drawing.Size(674, 186);
             this.tblOutInfo.TabIndex = 1;
             // 
             // lblOutPlateTag
@@ -588,13 +583,14 @@ namespace HPParkingSystem.Forms
             // txtOutPlate
             // 
             this.txtOutPlate.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtOutPlate.BackColor = System.Drawing.Color.White;
+            this.txtOutPlate.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(247)))), ((int)(((byte)(249)))));
+            this.txtOutPlate.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.txtOutPlate.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.txtOutPlate.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(40)))), ((int)(((byte)(40)))));
-            this.txtOutPlate.Location = new System.Drawing.Point(108, 12);
+            this.txtOutPlate.ForeColor = System.Drawing.Color.Black;
+            this.txtOutPlate.Location = new System.Drawing.Point(108, 16);
             this.txtOutPlate.Name = "txtOutPlate";
             this.txtOutPlate.ReadOnly = true;
-            this.txtOutPlate.Size = new System.Drawing.Size(226, 39);
+            this.txtOutPlate.Size = new System.Drawing.Size(226, 32);
             this.txtOutPlate.TabIndex = 1;
             this.txtOutPlate.Text = "---";
             this.txtOutPlate.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
@@ -605,7 +601,7 @@ namespace HPParkingSystem.Forms
             this.lblOutTimeTag.AutoSize = true;
             this.lblOutTimeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblOutTimeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutTimeTag.Location = new System.Drawing.Point(340, 19);
+            this.lblOutTimeTag.Location = new System.Drawing.Point(340, 20);
             this.lblOutTimeTag.Name = "lblOutTimeTag";
             this.lblOutTimeTag.Size = new System.Drawing.Size(93, 25);
             this.lblOutTimeTag.TabIndex = 2;
@@ -617,7 +613,7 @@ namespace HPParkingSystem.Forms
             this.lblOutTimeVal.AutoSize = true;
             this.lblOutTimeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblOutTimeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutTimeVal.Location = new System.Drawing.Point(445, 19);
+            this.lblOutTimeVal.Location = new System.Drawing.Point(445, 20);
             this.lblOutTimeVal.Name = "lblOutTimeVal";
             this.lblOutTimeVal.Size = new System.Drawing.Size(36, 25);
             this.lblOutTimeVal.TabIndex = 3;
@@ -629,7 +625,7 @@ namespace HPParkingSystem.Forms
             this.lblOutOwnerTag.AutoSize = true;
             this.lblOutOwnerTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblOutOwnerTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutOwnerTag.Location = new System.Drawing.Point(3, 80);
+            this.lblOutOwnerTag.Location = new System.Drawing.Point(3, 82);
             this.lblOutOwnerTag.Name = "lblOutOwnerTag";
             this.lblOutOwnerTag.Size = new System.Drawing.Size(72, 25);
             this.lblOutOwnerTag.TabIndex = 4;
@@ -641,7 +637,7 @@ namespace HPParkingSystem.Forms
             this.lblOutOwnerVal.AutoSize = true;
             this.lblOutOwnerVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblOutOwnerVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutOwnerVal.Location = new System.Drawing.Point(108, 80);
+            this.lblOutOwnerVal.Location = new System.Drawing.Point(108, 82);
             this.lblOutOwnerVal.Name = "lblOutOwnerVal";
             this.lblOutOwnerVal.Size = new System.Drawing.Size(36, 25);
             this.lblOutOwnerVal.TabIndex = 5;
@@ -653,7 +649,7 @@ namespace HPParkingSystem.Forms
             this.lblOutDeptTag.AutoSize = true;
             this.lblOutDeptTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblOutDeptTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutDeptTag.Location = new System.Drawing.Point(340, 80);
+            this.lblOutDeptTag.Location = new System.Drawing.Point(340, 82);
             this.lblOutDeptTag.Name = "lblOutDeptTag";
             this.lblOutDeptTag.Size = new System.Drawing.Size(70, 25);
             this.lblOutDeptTag.TabIndex = 6;
@@ -665,7 +661,7 @@ namespace HPParkingSystem.Forms
             this.lblOutDeptVal.AutoSize = true;
             this.lblOutDeptVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblOutDeptVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutDeptVal.Location = new System.Drawing.Point(445, 80);
+            this.lblOutDeptVal.Location = new System.Drawing.Point(445, 82);
             this.lblOutDeptVal.Name = "lblOutDeptVal";
             this.lblOutDeptVal.Size = new System.Drawing.Size(36, 25);
             this.lblOutDeptVal.TabIndex = 7;
@@ -677,7 +673,7 @@ namespace HPParkingSystem.Forms
             this.lblOutTypeTag.AutoSize = true;
             this.lblOutTypeTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblOutTypeTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutTypeTag.Location = new System.Drawing.Point(3, 140);
+            this.lblOutTypeTag.Location = new System.Drawing.Point(3, 142);
             this.lblOutTypeTag.Name = "lblOutTypeTag";
             this.lblOutTypeTag.Size = new System.Drawing.Size(74, 25);
             this.lblOutTypeTag.TabIndex = 8;
@@ -689,7 +685,7 @@ namespace HPParkingSystem.Forms
             this.lblOutTypeVal.AutoSize = true;
             this.lblOutTypeVal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblOutTypeVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(35)))), ((int)(((byte)(40)))));
-            this.lblOutTypeVal.Location = new System.Drawing.Point(108, 140);
+            this.lblOutTypeVal.Location = new System.Drawing.Point(108, 142);
             this.lblOutTypeVal.Name = "lblOutTypeVal";
             this.lblOutTypeVal.Size = new System.Drawing.Size(36, 25);
             this.lblOutTypeVal.TabIndex = 9;
@@ -701,7 +697,7 @@ namespace HPParkingSystem.Forms
             this.lblOutStatusTag.AutoSize = true;
             this.lblOutStatusTag.Font = new System.Drawing.Font("Segoe UI Semibold", 9F);
             this.lblOutStatusTag.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(100)))));
-            this.lblOutStatusTag.Location = new System.Drawing.Point(340, 140);
+            this.lblOutStatusTag.Location = new System.Drawing.Point(340, 142);
             this.lblOutStatusTag.Name = "lblOutStatusTag";
             this.lblOutStatusTag.Size = new System.Drawing.Size(99, 25);
             this.lblOutStatusTag.TabIndex = 10;
@@ -713,7 +709,7 @@ namespace HPParkingSystem.Forms
             this.lblOutStatusVal.AutoSize = true;
             this.lblOutStatusVal.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblOutStatusVal.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(140)))), ((int)(((byte)(70)))));
-            this.lblOutStatusVal.Location = new System.Drawing.Point(445, 140);
+            this.lblOutStatusVal.Location = new System.Drawing.Point(445, 142);
             this.lblOutStatusVal.Name = "lblOutStatusVal";
             this.lblOutStatusVal.Size = new System.Drawing.Size(36, 25);
             this.lblOutStatusVal.TabIndex = 11;
@@ -725,19 +721,29 @@ namespace HPParkingSystem.Forms
             this.statusStrip.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.statusStrip.ImageScalingSize = new System.Drawing.Size(20, 20);
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.lblFooterServerStatus,
             this.lblFooterLicenseSpring,
             this.lblFooterMachineCode,
             this.lblFooterLicense});
-            this.statusStrip.Location = new System.Drawing.Point(0, 829);
+            this.statusStrip.Location = new System.Drawing.Point(0, 833);
             this.statusStrip.Name = "statusStrip";
-            this.statusStrip.Size = new System.Drawing.Size(1400, 32);
+            this.statusStrip.Size = new System.Drawing.Size(1400, 28);
             this.statusStrip.TabIndex = 2;
             this.statusStrip.Text = "statusStrip1";
+            // 
+            // lblFooterServerStatus
+            // 
+            this.lblFooterServerStatus.Font = new System.Drawing.Font("Segoe UI Semibold", 8.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblFooterServerStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.lblFooterServerStatus.Name = "lblFooterServerStatus";
+            this.lblFooterServerStatus.Size = new System.Drawing.Size(220, 21);
+            this.lblFooterServerStatus.Text = "🟢 Máy chủ: Đang kết nối...";
+            this.lblFooterServerStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // lblFooterLicenseSpring
             // 
             this.lblFooterLicenseSpring.Name = "lblFooterLicenseSpring";
-            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(725, 25);
+            this.lblFooterLicenseSpring.Size = new System.Drawing.Size(685, 21);
             this.lblFooterLicenseSpring.Spring = true;
             // 
             // lblFooterMachineCode
@@ -745,7 +751,7 @@ namespace HPParkingSystem.Forms
             this.lblFooterMachineCode.Font = new System.Drawing.Font("Consolas", 8.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblFooterMachineCode.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblFooterMachineCode.Name = "lblFooterMachineCode";
-            this.lblFooterMachineCode.Size = new System.Drawing.Size(189, 25);
+            this.lblFooterMachineCode.Size = new System.Drawing.Size(189, 21);
             this.lblFooterMachineCode.Text = "Mã Máy: HP-0000-0000";
             // 
             // lblFooterLicense
@@ -753,7 +759,7 @@ namespace HPParkingSystem.Forms
             this.lblFooterLicense.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblFooterLicense.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.lblFooterLicense.Name = "lblFooterLicense";
-            this.lblFooterLicense.Size = new System.Drawing.Size(303, 25);
+            this.lblFooterLicense.Size = new System.Drawing.Size(303, 21);
             this.lblFooterLicense.Text = "🛡️ Thời gian sử dụng: Đang kiểm tra...";
             this.lblFooterLicense.DoubleClick += new System.EventHandler(this.LblFooterLicense_DoubleClick);
             // 
@@ -763,16 +769,22 @@ namespace HPParkingSystem.Forms
             this.timerClock.Interval = 1000;
             this.timerClock.Tick += new System.EventHandler(this.TimerClock_Tick);
             // 
-            // panel1
+            // btnDeviceMonitor
             // 
-            this.panel1.Controls.Add(this.btnDeviceMonitor);
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Right;
-            this.panel1.Location = new System.Drawing.Point(962, 0);
-            this.panel1.Margin = new System.Windows.Forms.Padding(0);
-            this.panel1.Name = "panel1";
-            this.panel1.Padding = new System.Windows.Forms.Padding(10);
-            this.panel1.Size = new System.Drawing.Size(200, 48);
-            this.panel1.TabIndex = 4;
+            this.btnDeviceMonitor.BackColor = System.Drawing.Color.Coral;
+            this.btnDeviceMonitor.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.btnDeviceMonitor.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.btnDeviceMonitor.FlatAppearance.BorderSize = 0;
+            this.btnDeviceMonitor.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnDeviceMonitor.Font = new System.Drawing.Font("Segoe UI Semibold", 8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnDeviceMonitor.ForeColor = System.Drawing.Color.White;
+            this.btnDeviceMonitor.Location = new System.Drawing.Point(10, 10);
+            this.btnDeviceMonitor.Name = "btnDeviceMonitor";
+            this.btnDeviceMonitor.Size = new System.Drawing.Size(180, 28);
+            this.btnDeviceMonitor.TabIndex = 3;
+            this.btnDeviceMonitor.Text = "📡 Giám Sát Thiết Bị";
+            this.btnDeviceMonitor.UseVisualStyleBackColor = false;
+            this.btnDeviceMonitor.Click += new System.EventHandler(this.BtnDeviceMonitor_Click);
             // 
             // FrmMain
             // 
@@ -793,6 +805,7 @@ namespace HPParkingSystem.Forms
             this.Load += new System.EventHandler(this.FrmMain_Load);
             this.Shown += new System.EventHandler(this.FrmMain_Shown);
             this.pnlHeader.ResumeLayout(false);
+            this.panel1.ResumeLayout(false);
             this.tblMainLayout.ResumeLayout(false);
             this.grpInLane.ResumeLayout(false);
             this.tblInCameras.ResumeLayout(false);
@@ -810,7 +823,6 @@ namespace HPParkingSystem.Forms
             this.tblOutInfo.PerformLayout();
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
-            this.panel1.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -864,11 +876,12 @@ namespace HPParkingSystem.Forms
         private System.Windows.Forms.Label lblOutStatusTag;
         private System.Windows.Forms.Label lblOutStatusVal;
         private System.Windows.Forms.StatusStrip statusStrip;
+        private System.Windows.Forms.ToolStripStatusLabel lblFooterServerStatus;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterLicenseSpring;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterMachineCode;
         private System.Windows.Forms.ToolStripStatusLabel lblFooterLicense;
         private System.Windows.Forms.Timer timerClock;
-        private System.Windows.Forms.Button btnDeviceMonitor;
         private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Button btnDeviceMonitor;
     }
 }
