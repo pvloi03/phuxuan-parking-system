@@ -54,6 +54,8 @@ namespace HPParkingSystem.Forms
         private string _controllerIp = "";
         private int _controllerPort = 0;
         private readonly object _lockDebounce = new();
+        private bool _hasServerIncident = false;
+        private string _currentIncidentDetails = string.Empty;
 
         public FrmMain()
         {
@@ -195,6 +197,15 @@ namespace HPParkingSystem.Forms
             lblFooterMachineCode.Text = $"Mã Máy: {HardwareFingerprint.GetMachineCode()}";
             lblFooterServerStatus.Text = "⚪ Máy chủ: Đang kiểm tra...";
             lblFooterServerStatus.ForeColor = Color.FromArgb(100, 116, 139);
+            lblFooterServerStatus.MouseEnter += (s, ev) =>
+            {
+                lblFooterServerStatus.Owner?.Cursor = Cursors.Hand;
+            };
+            lblFooterServerStatus.MouseLeave += (s, ev) =>
+            {
+                lblFooterServerStatus.Owner?.Cursor = Cursors.Default;
+            };
+            lblFooterServerStatus.Click += LblFooterServerStatus_Click;
 
             // Hiệu ứng Hover, Click và đổi màu/con trỏ chuột cho thanh Header System Status
             Color headerOriginalColor = lblSystemStatus.ForeColor;
@@ -476,6 +487,7 @@ namespace HPParkingSystem.Forms
             try
             {
                 _syncWorker?.SyncStatusChanged -= SyncWorker_SyncStatusChanged;
+                lblFooterServerStatus.Click -= LblFooterServerStatus_Click;
 
                 // Dừng và giải phóng Camera & GDI+ Cache
                 CleanupCameras();
@@ -508,8 +520,10 @@ namespace HPParkingSystem.Forms
             if (lblFooterServerStatus == null || IsDisposed || Disposing) return;
 
             lblFooterServerStatus.Text = e.StatusMessage;
+            _hasServerIncident = e.HasIncident || !e.IsServerOnline;
+            _currentIncidentDetails = e.IncidentDetails;
 
-            if (!e.IsServerOnline)
+            if (_hasServerIncident)
             {
                 lblFooterServerStatus.ForeColor = Color.DarkOrange;
             }
@@ -521,6 +535,25 @@ namespace HPParkingSystem.Forms
             {
                 lblFooterServerStatus.ForeColor = Color.FromArgb(16, 185, 129);
             }
+        }
+
+        private void LblFooterServerStatus_Click(object? sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(_currentIncidentDetails))
+            {
+                MessageBox.Show(
+                    "Máy chủ và hệ thống lưu trữ đang hoạt động trực tuyến bình thường.",
+                    "Trạng thái máy chủ",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            MessageBox.Show(
+                _currentIncidentDetails,
+                _hasServerIncident ? "Chi tiết sự cố máy chủ & Trạng thái lưu trữ" : "Trạng thái máy chủ & Hệ thống lưu trữ",
+                MessageBoxButtons.OK,
+                _hasServerIncident ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
         }
     }
 }

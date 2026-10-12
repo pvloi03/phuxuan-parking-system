@@ -1,4 +1,4 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Models.Entities;
@@ -16,6 +16,11 @@ namespace HPParkingSystem.Tests.Services
     public class MockServerHealthTracker : IServerHealthTracker
     {
         public bool IsServerOnline { get; set; } = false;
+        public bool IsImageShareOnline { get; set; } = true;
+        public string? LastMongoError { get; set; } = null;
+        public string? LastImageShareError { get; set; } = null;
+        public bool HasIncident => !IsServerOnline || !IsImageShareOnline || !string.IsNullOrEmpty(LastMongoError) || !string.IsNullOrEmpty(LastImageShareError);
+
         public int ConsecutiveSuccesses { get; set; } = 0;
         public int ConsecutiveFailures { get; set; } = 0;
 
@@ -24,13 +29,27 @@ namespace HPParkingSystem.Tests.Services
         public void MarkOffline(string? reason = null)
         {
             IsServerOnline = false;
+            LastMongoError = reason;
             ServerStatusChanged?.Invoke(this, false);
         }
 
         public void MarkOnline()
         {
             IsServerOnline = true;
+            LastMongoError = null;
             ServerStatusChanged?.Invoke(this, true);
+        }
+
+        public void MarkImageShareStatus(bool isOk, string? error = null)
+        {
+            IsImageShareOnline = isOk;
+            LastImageShareError = isOk ? null : error;
+            ServerStatusChanged?.Invoke(this, IsServerOnline && IsImageShareOnline);
+        }
+
+        public string GetIncidentSummary(int pendingRecords, int pendingImages)
+        {
+            return $"Mock Incident: Online={IsServerOnline}, Share={IsImageShareOnline}, Records={pendingRecords}, Images={pendingImages}";
         }
 
         public Task<bool> CheckHealthAsync(System.Threading.CancellationToken cancellationToken = default)

@@ -1,4 +1,4 @@
-﻿using MongoDB.Driver;
+using MongoDB.Driver;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Services.Logging;
@@ -18,6 +18,8 @@ namespace HPParkingSystem.Services.Background
         public int PendingRecordCount { get; set; }
         public int PendingImageCount { get; set; }
         public string StatusMessage { get; set; } = string.Empty;
+        public bool HasIncident { get; set; }
+        public string IncidentDetails { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -228,19 +230,31 @@ namespace HPParkingSystem.Services.Background
                 int pendingRecords = _liteDb.GetSyncTasks().Count(t => !t.IsSynced);
                 int pendingImages = _liteDb.GetImageSyncTasks().Count(t => !t.IsSynced);
                 bool isOnline = _healthTracker.IsServerOnline;
+                bool hasIncident = _healthTracker.HasIncident || !isOnline;
+                string incidentDetails = _healthTracker.GetIncidentSummary(pendingRecords, pendingImages);
 
                 string msg;
-                if (isOnline)
+                if (!isOnline)
                 {
                     msg = pendingRecords > 0
-                        ? $"🔵 Đang đồng bộ... (còn {pendingRecords} lượt xe, {pendingImages} ảnh)"
-                        : "🟢 Máy chủ: Trực tuyến (MongoDB)";
+                        ? $"🟠 Sự cố máy chủ (Ngoại tuyến: {pendingRecords} xe chờ đồng bộ)"
+                        : "🟠 Sự cố máy chủ (Mất kết nối MongoDB)";
+                }
+                else if (_isSyncing)
+                {
+                    msg = $"🔵 Đang đồng bộ... (còn {pendingRecords} lượt xe, {pendingImages} ảnh)";
+                }
+                else if (_healthTracker.HasIncident)
+                {
+                    msg = "🟠 Sự cố máy chủ";
+                }
+                else if (pendingRecords > 0 || pendingImages > 0)
+                {
+                    msg = $"🔵 Đang đồng bộ... (còn {pendingRecords} lượt xe, {pendingImages} ảnh)";
                 }
                 else
                 {
-                    msg = pendingRecords > 0
-                        ? $"🟠 Ngoại tuyến (LiteDB): {pendingRecords} lượt xe chờ đồng bộ"
-                        : "🟠 Ngoại tuyến (LiteDB): Đang lưu cục bộ";
+                    msg = "🟢 Máy chủ: Trực tuyến (MongoDB)";
                 }
 
                 SyncStatusChanged?.Invoke(this, new SyncStatusEventArgs
@@ -248,7 +262,9 @@ namespace HPParkingSystem.Services.Background
                     IsServerOnline = isOnline,
                     PendingRecordCount = pendingRecords,
                     PendingImageCount = pendingImages,
-                    StatusMessage = msg
+                    StatusMessage = msg,
+                    HasIncident = hasIncident,
+                    IncidentDetails = incidentDetails
                 });
             }
             catch { }

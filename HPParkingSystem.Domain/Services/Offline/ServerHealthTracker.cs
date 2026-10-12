@@ -1,13 +1,14 @@
-﻿using HPParkingSystem.Models.Data;
+using HPParkingSystem.Models.Data;
 using System;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace HPParkingSystem.Services.Offline
 {
     /// <summary>
-    /// Triển khai giám sát kết nối máy chủ MongoDB theo cơ chế Hysteresis / Circuit Breaker
+    /// Triển khai giám sát kết nối máy chủ MongoDB và Thư mục ảnh theo cơ chế Hysteresis / Circuit Breaker
     /// Lớp 1: Socket TCP Ping cổng 27017 (< 100ms)
     /// Lớp 2: Mongo Driver Command Ping
     /// </summary>
@@ -22,6 +23,10 @@ namespace HPParkingSystem.Services.Offline
         private readonly object _lockObj = new();
 
         private volatile bool _isServerOnline = true;
+        private volatile bool _isImageShareOnline = true;
+        private volatile string? _lastMongoError = null;
+        private volatile string? _lastImageShareError = null;
+
         private int _consecutiveSuccesses = 0;
         private int _consecutiveFailures = 0;
 
@@ -29,6 +34,12 @@ namespace HPParkingSystem.Services.Offline
         private const int REQUIRED_FAILURE_COUNT = 2; // Cần 2 lần thất bại liên tiếp để xác nhận Offline
 
         public bool IsServerOnline => _isServerOnline;
+        public bool IsImageShareOnline => _isImageShareOnline;
+        public string? LastMongoError => _lastMongoError;
+        public string? LastImageShareError => _lastImageShareError;
+
+        public bool HasIncident => !_isServerOnline || !_isImageShareOnline || !string.IsNullOrEmpty(_lastMongoError) || !string.IsNullOrEmpty(_lastImageShareError);
+
         public int ConsecutiveSuccesses => _consecutiveSuccesses;
         public int ConsecutiveFailures => _consecutiveFailures;
 
@@ -46,6 +57,7 @@ namespace HPParkingSystem.Services.Offline
             bool statusChanged = false;
             lock (_lockObj)
             {
+                _lastMongoError = reason;
                 _consecutiveSuccesses = 0;
                 _consecutiveFailures = REQUIRED_FAILURE_COUNT;
                 if (_isServerOnline)
@@ -66,6 +78,7 @@ namespace HPParkingSystem.Services.Offline
             bool statusChanged = false;
             lock (_lockObj)
             {
+                _lastMongoError = null;
                 _consecutiveFailures = 0;
                 _consecutiveSuccesses = REQUIRED_SUCCESS_COUNT;
                 if (!_isServerOnline)
@@ -79,6 +92,77 @@ namespace HPParkingSystem.Services.Offline
             {
                 ServerStatusChanged?.Invoke(this, true);
             }
+        }
+
+        public void MarkImageShareStatus(bool isOk, string? error = null)
+        {
+            bool statusChanged = false;
+            lock (_lockObj)
+            {
+                if (_isImageShareOnline != isOk || _lastImageShareError != error)
+                {
+                    _isImageShareOnline = isOk;
+                    _lastImageShareError = isOk ? null : error;
+                    statusChanged = true;
+                }
+            }
+
+            if (statusChanged)
+            {
+                ServerStatusChanged?.Invoke(this, _isServerOnline && _isImageShareOnline);
+            }
+        }
+
+        public string GetIncidentSummary(int pendingRecords, int pendingImages)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("CHI TIẾT TRẠNG THÁI MÁY CHỦ:");
+            sb.AppendLine("──────────────────────────────────────────────────");
+
+            // 1. Cơ sở dữ liệu
+            if (!_isServerOnline)
+            {
+                sb.AppendLine("• Cơ sở dữ liệu (MongoDB): ❌ MẤT KẾT NỐI");
+                if (!string.IsNullOrEmpty(_lastMongoError))
+                {
+                    sb.AppendLine($"  -> Lý do: {_lastMongoError}");
+                }
+            }
+            else if (!string.IsNullOrEmpty(_lastMongoError))
+            {
+                sb.AppendLine("• Cơ sở dữ liệu (MongoDB): ⚠️ KẾT NỐI NHƯNG LỖI GHI DỮ LIỆU");
+                sb.AppendLine($"  -> Lý do: {_lastMongoError}");
+            }
+            else
+            {
+                sb.AppendLine("• Cơ sở dữ liệu (MongoDB): 🟢 Trực tuyến bình thường");
+            }
+
+            // 2. Thư mục chia sẻ ảnh
+            if (!_isImageShareOnline)
+            {
+                sb.AppendLine("• Thư mục ảnh máy chủ (Captures): ❌ KHÔNG THỂ LƯU ẢNH");
+                if (!string.IsNullOrEmpty(_lastImageShareError))
+                {
+                    sb.AppendLine($"  -> Lý do: {_lastImageShareError}");
+                }
+            }
+            else
+            {
+                sb.AppendLine("• Thư mục ảnh máy chủ (Captures): 🟢 Trực tuyến bình thường");
+            }
+
+            // 3. Dữ liệu đang lưu tạm
+            sb.AppendLine();
+            sb.AppendLine("• Dữ liệu đang lưu tạm trên máy bốt:");
+            sb.AppendLine($"  -> {pendingRecords} lượt xe (lưu trong LiteDB cục bộ)");
+            sb.AppendLine($"  -> {pendingImages} file ảnh (lưu trong OfflineCaptures cục bộ)");
+
+            sb.AppendLine("──────────────────────────────────────────────────");
+            sb.AppendLine("💡 Hướng dẫn: Kiểm tra dây mạng LAN, kiểm tra máy chủ hoặc dung lượng ổ đĩa.");
+            sb.AppendLine("Hệ thống sẽ tự động đồng bộ lại ngay khi máy chủ hoạt động bình thường.");
+
+            return sb.ToString();
         }
 
         public async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
@@ -114,6 +198,7 @@ namespace HPParkingSystem.Services.Offline
                     if (!_isServerOnline && _consecutiveSuccesses >= REQUIRED_SUCCESS_COUNT)
                     {
                         _isServerOnline = true;
+                        _lastMongoError = null;
                         newStatus = true;
                         statusChanged = true;
                     }
@@ -146,20 +231,20 @@ namespace HPParkingSystem.Services.Offline
             {
                 using var client = new TcpClient();
                 var connectTask = client.ConnectAsync(host, port);
-                var timeoutTask = Task.Delay(timeoutMs, cancellationToken);
+                var delayTask = Task.Delay(timeoutMs, cancellationToken);
 
-                var completedTask = await Task.WhenAny(connectTask, timeoutTask).ConfigureAwait(false);
-                if (completedTask == connectTask && client.Connected)
+                var completed = await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false);
+                if (completed == connectTask && client.Connected)
                 {
                     return true;
                 }
+
+                return false;
             }
             catch
             {
-                // Bỏ qua lỗi kết nối socket để trả về false
+                return false;
             }
-
-            return false;
         }
     }
 }
