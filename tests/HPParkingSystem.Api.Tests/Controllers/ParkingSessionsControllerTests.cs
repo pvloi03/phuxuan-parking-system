@@ -405,7 +405,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
         }
 
         [Fact]
-        public async Task ExportExcel_FilteredByPersonType_ShouldPassFilterAndContainCategory()
+        public async Task ExportExcel_FilteredByPersonType_ShouldContainPersonCategoryColumnAndCorrectColumnCount()
         {
             // Arrange
             var empSession = new ParkingSession
@@ -438,12 +438,22 @@ namespace HPParkingSystem.Api.Tests.Controllers
             using var stream = new MemoryStream(fileResult.FileContents);
             using var package = new ExcelPackage(stream);
 
+            // 1. Kiểm tra Sheet 1: Thống Kê Số Lượt Từng Xe
             var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
             ws1.Should().NotBeNull();
+            ws1.Dimension.End.Column.Should().Be(13);
+            ws1.Cells[4, 4].Value.Should().Be("Đối Tượng");
+            ws1.Cells[4, 13].Value.Should().Be("Lần Ra Mới Nhất");
+            ws1.Cells[4, 14].Value.Should().BeNull();
             ws1.Cells[5, 4].Value.Should().Be("Cán bộ / Nhân viên");
 
+            // 2. Kiểm tra Sheet 2: Lịch Sử Chi Tiết
             var ws2 = package.Workbook.Worksheets["Lịch Sử Chi Tiết"];
             ws2.Should().NotBeNull();
+            ws2.Dimension.End.Column.Should().Be(10);
+            ws2.Cells[3, 4].Value.Should().Be("Đối Tượng");
+            ws2.Cells[3, 10].Value.Should().Be("Trạng Thái");
+            ws2.Cells[3, 11].Value.Should().BeNull();
             ws2.Cells[4, 4].Value.Should().Be("Cán bộ / Nhân viên");
         }
 
