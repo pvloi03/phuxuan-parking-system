@@ -693,7 +693,7 @@ export function HistoryPage() {
                               {session.personName}
                             </span>
                           ) : (
-                            <span className="text-slate-500 font-medium">Khách vãng lai</span>
+                            <span className="text-slate-500 font-medium">Xe vãng lai</span>
                           )}
                           <PersonTypeBadge type={session.personType} short />
                         </div>
