@@ -548,11 +548,7 @@ namespace HPParkingSystem.Api.Controllers
             {
                 return fb.Eq(s => s.PersonType, PersonType.Guest) |
                        fb.Eq(s => s.PersonType, null) |
-                       fb.Eq(s => s.PersonType, PersonType.Other) |
-                       fb.Eq(s => s.PersonId, null) |
-                       fb.Eq(s => s.PersonId, "") |
-                       fb.Eq(s => s.PersonName, null) |
-                       fb.Eq(s => s.PersonName, "");
+                       fb.Eq(s => s.PersonType, PersonType.Other);
             }
 
             return fb.Eq(s => s.PersonType, personType.Value);

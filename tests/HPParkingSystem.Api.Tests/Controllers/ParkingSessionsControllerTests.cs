@@ -405,6 +405,36 @@ namespace HPParkingSystem.Api.Tests.Controllers
         }
 
         [Fact]
+        public async Task GetList_FilteredByGuest_ShouldPassFilterStrictlyForGuestOrNullOrOther()
+        {
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            var result = await _controller.GetList(personType: PersonType.Guest);
+
+            result.Should().BeOfType<OkObjectResult>();
+            _sessionRepoMock.Verify(r => r.FindAsync(
+                It.IsAny<FilterDefinition<ParkingSession>>(),
+                It.IsAny<SortDefinition<ParkingSession>>(),
+                0,
+                15,
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
         public async Task ExportExcel_FilteredByPersonType_ShouldContainPersonCategoryColumnAndCorrectColumnCount()
         {
             // Arrange
