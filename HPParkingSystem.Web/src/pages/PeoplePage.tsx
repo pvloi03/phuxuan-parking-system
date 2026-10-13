@@ -35,6 +35,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { PersonTypeBadge } from '@/components/common/PersonTypeBadge'
 import { exportToExcel } from '@/lib/excelHelper'
 import { useCrossImport } from '@/hooks/useCrossImport'
 
@@ -306,21 +307,7 @@ export function PeoplePage() {
   }
 
   // Badges
-  const getPersonTypeBadge = (type: PersonType) => {
-    const label = getPersonTypeLabel(type)
-    switch (type) {
-      case 'Employee':
-        return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-[11px] px-2 py-0.5 font-medium">{label}</Badge>
-      case 'Contractor':
-        return <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-[11px] px-2 py-0.5 font-medium">{label}</Badge>
-      case 'VIP':
-        return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-[11px] px-2 py-0.5 font-medium">{label}</Badge>
-      case 'Visitor':
-        return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[11px] px-2 py-0.5 font-medium">{label}</Badge>
-      default:
-        return <Badge variant="secondary" className="text-[11px] px-2 py-0.5">{label}</Badge>
-    }
-  }
+  const getPersonTypeBadge = (type: PersonType) => <PersonTypeBadge type={type} />
 
   // Render Form Fields for Create / Edit
   const renderFormFields = () => (

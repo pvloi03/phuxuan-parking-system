@@ -213,12 +213,23 @@ export interface DashboardMetrics {
 }
 
 // --- VIETNAMESE LOCALIZATION HELPERS ---
+const PERSON_TYPE_LABELS: Record<string, string> = {
+  Employee: 'Cán bộ / Nhân viên',
+  '1': 'Cán bộ / Nhân viên',
+  Contractor: 'Đối tác / Nhà thầu',
+  '2': 'Đối tác / Nhà thầu',
+  Visitor: 'Khách thăm',
+  '3': 'Khách thăm',
+  VIP: 'Khách VIP',
+  '4': 'Khách VIP',
+  Guest: 'Khách vãng lai',
+  '5': 'Khách vãng lai',
+  Other: 'Khác',
+}
+
 export const getPersonTypeLabel = (type?: PersonType | number | string) => {
-  if (type === 'Employee' || type === 1 || type === '1') return 'Cán bộ / Nhân viên'
-  if (type === 'Contractor' || type === 2 || type === '2') return 'Đối tác / Nhà thầu'
-  if (type === 'Visitor' || type === 3 || type === '3') return 'Khách thăm'
-  if (type === 'VIP' || type === 4 || type === '4') return 'Khách VIP'
-  return 'Khách vãng lai'
+  if (type === undefined || type === null) return 'Khách vãng lai'
+  return PERSON_TYPE_LABELS[String(type)] ?? 'Khách vãng lai'
 }
 
 export const getVehicleTypeLabel = (type?: VehicleType | number | string) => {

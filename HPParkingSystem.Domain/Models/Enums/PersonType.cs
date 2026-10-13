@@ -9,4 +9,26 @@ namespace HPParkingSystem.Models.Enums
         Guest = 5,        // Khách vãng lai (chưa đăng ký hồ sơ)
         Other = 99        // Khác
     }
+
+    public static class PersonTypeExtensions
+    {
+        public static string ToDisplayName(this PersonType pt) => pt switch
+        {
+            PersonType.Employee => "Cán bộ / Nhân viên",
+            PersonType.Contractor => "Đối tác / Nhà thầu",
+            PersonType.Visitor => "Khách thăm",
+            PersonType.VIP => "Khách VIP",
+            PersonType.Guest => "Khách vãng lai",
+            _ => "Khác"
+        };
+
+        public static string ToDisplayName(this PersonType? pt, string? personName = null)
+        {
+            if (pt.HasValue)
+            {
+                return pt.Value.ToDisplayName();
+            }
+            return !string.IsNullOrWhiteSpace(personName) ? "Xe đăng ký" : "Khách vãng lai";
+        }
+    }
 }

@@ -37,6 +37,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import { PersonTypeBadge } from '@/components/common/PersonTypeBadge'
 
 function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: string | number) {
   if (!inTimeStr) return '--'
@@ -272,45 +273,6 @@ export function HistoryPage() {
     }
     return <Badge variant="secondary" className="text-[11px] px-2 py-0.5">Khác</Badge>
   }
-
-  const renderPersonTypeBadge = (session: ParkingSession) => {
-    const type = session.personType
-    if (type === 'Employee') {
-      return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
-          Cán bộ / NV
-        </Badge>
-      )
-    }
-    if (type === 'Contractor') {
-      return (
-        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
-          Đối tác / NT
-        </Badge>
-      )
-    }
-    if (type === 'VIP') {
-      return (
-        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
-          Khách VIP
-        </Badge>
-      )
-    }
-    if (type === 'Visitor') {
-      return (
-        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
-          Khách thăm
-        </Badge>
-      )
-    }
-    return (
-      <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] px-1.5 py-0 font-normal">
-        Khách vãng lai
-      </Badge>
-    )
-  }
-
-
 
   const formatImageUrl = (input?: string | ImageStoragePathDto | null) => {
     if (!input) return ''
@@ -733,7 +695,7 @@ export function HistoryPage() {
                           ) : (
                             <span className="text-slate-500 font-medium">Khách vãng lai</span>
                           )}
-                          {renderPersonTypeBadge(session)}
+                          <PersonTypeBadge type={session.personType} short />
                         </div>
                       </td>
                       <td className="p-3.5 text-center">

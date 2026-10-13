@@ -243,7 +243,7 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 1].Value = sumStt++;
                 wsSummary.Cells[sumRow, 2].Value = g.Key;
                 wsSummary.Cells[sumRow, 3].Value = first.PersonName ?? "Xe vãng lai";
-                wsSummary.Cells[sumRow, 4].Value = GetPersonCategoryLabel(first);
+                wsSummary.Cells[sumRow, 4].Value = first.PersonType.ToDisplayName(first.PersonName);
                 wsSummary.Cells[sumRow, 5].Value = first.VehicleType.ToDisplayName();
                 if (vehicleWeight.HasValue && vehicleWeight.Value > 0)
                 {
@@ -354,7 +354,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 1].Value = stt++;
                 ws.Cells[row, 2].Value = s.PlateNumber;
                 ws.Cells[row, 3].Value = s.PersonName ?? "Xe vãng lai";
-                ws.Cells[row, 4].Value = GetPersonCategoryLabel(s);
+                ws.Cells[row, 4].Value = s.PersonType.ToDisplayName(s.PersonName);
                 ws.Cells[row, 5].Value = s.VehicleType.ToDisplayName();
                 if (s.Weight.HasValue && s.Weight.Value > 0)
                 {
@@ -552,23 +552,6 @@ namespace HPParkingSystem.Api.Controllers
             }
 
             return fb.Eq(s => s.PersonType, personType.Value);
-        }
-
-        private static string GetPersonCategoryLabel(ParkingSession s)
-        {
-            if (s.PersonType.HasValue)
-            {
-                return s.PersonType.Value switch
-                {
-                    PersonType.Employee => "Cán bộ / Nhân viên",
-                    PersonType.Contractor => "Đối tác / Nhà thầu",
-                    PersonType.VIP => "Khách VIP",
-                    PersonType.Visitor => "Khách thăm",
-                    PersonType.Guest => "Khách vãng lai",
-                    _ => "Khách vãng lai"
-                };
-            }
-            return !string.IsNullOrWhiteSpace(s.PersonName) ? "Xe đăng ký" : "Khách vãng lai";
         }
     }
 }

@@ -456,5 +456,32 @@ namespace HPParkingSystem.Api.Tests.Controllers
             act.Should().Throw<ArgumentOutOfRangeException>()
                .WithMessage("*Khối lượng không thể nhỏ hơn 0*");
         }
+
+        [Theory]
+        [InlineData(PersonType.Employee, "Cán bộ / Nhân viên")]
+        [InlineData(PersonType.Contractor, "Đối tác / Nhà thầu")]
+        [InlineData(PersonType.Visitor, "Khách thăm")]
+        [InlineData(PersonType.VIP, "Khách VIP")]
+        [InlineData(PersonType.Guest, "Khách vãng lai")]
+        [InlineData(PersonType.Other, "Khác")]
+        public void PersonType_ToDisplayName_ShouldReturnExpectedDisplayName(PersonType type, string expected)
+        {
+            type.ToDisplayName().Should().Be(expected);
+        }
+
+        [Fact]
+        public void NullablePersonType_ToDisplayName_WithRegisteredName_ShouldReturnXeDangKy()
+        {
+            PersonType? nullType = null;
+            nullType.ToDisplayName("Nguyễn Văn A").Should().Be("Xe đăng ký");
+        }
+
+        [Fact]
+        public void NullablePersonType_ToDisplayName_WithoutName_ShouldReturnKhachVangLai()
+        {
+            PersonType? nullType = null;
+            nullType.ToDisplayName(null).Should().Be("Khách vãng lai");
+            nullType.ToDisplayName("   ").Should().Be("Khách vãng lai");
+        }
     }
 }
