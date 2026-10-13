@@ -23,7 +23,7 @@ namespace HPParkingSystem.Services.Parking
         public string? CompanyName { get; set; }
         public VehicleType VehicleType { get; set; } = VehicleType.Car;
         public double? Weight { get; set; }
-        public PersonType PersonType { get; set; } = PersonType.Visitor;
+        public PersonType PersonType { get; set; } = PersonType.Guest;
         public byte[]? OverviewImageBytes { get; set; }
         public bool IsRegisteredVehicle { get; set; }
         public bool IsCrossLaneIgnored { get; set; }

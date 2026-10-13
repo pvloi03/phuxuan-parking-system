@@ -686,16 +686,18 @@ export function HistoryPage() {
                       <td className="p-3.5">
                         <div className="flex flex-col items-start gap-1">
                           {session.personName ? (
-                            <span
-                              className="max-w-30 sm:max-w-37.5 truncate block font-medium text-slate-800 dark:text-slate-200 cursor-help"
-                              title={session.personName}
-                            >
-                              {session.personName}
-                            </span>
+                            <>
+                              <span
+                                className="max-w-30 sm:max-w-37.5 truncate block font-medium text-slate-800 dark:text-slate-200 cursor-help"
+                                title={session.personName}
+                              >
+                                {session.personName}
+                              </span>
+                              <PersonTypeBadge type={session.personType} short />
+                            </>
                           ) : (
-                            <span className="text-slate-500 font-medium">Xe vãng lai</span>
+                            <PersonTypeBadge type={session.personType ?? 'Guest'} short />
                           )}
-                          <PersonTypeBadge type={session.personType} short />
                         </div>
                       </td>
                       <td className="p-3.5 text-center">
@@ -1103,15 +1105,8 @@ export function HistoryPage() {
                           </span>
                         </div>
                         <div>
-                          <span className="text-slate-400 block text-[11px]">Phân loại đối tượng:</span>
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">
-                            {selectedSession.personType
-                              ? (selectedSession.personType === 'Employee' ? 'Cán bộ / Nhân viên' :
-                                selectedSession.personType === 'Contractor' ? 'Đối tác / Nhà thầu' :
-                                  selectedSession.personType === 'Visitor' ? 'Khách thăm' :
-                                    selectedSession.personType === 'VIP' ? 'Khách VIP' : 'Khách vãng lai')
-                              : (selectedSession.personName ? 'Xe đăng ký' : 'Khách vãng lai')}
-                          </span>
+                          <span className="text-slate-400 block text-[11px] mb-0.5">Phân loại đối tượng:</span>
+                          <PersonTypeBadge type={selectedSession.personType} />
                         </div>
                         {selectedSession.companyName && (
                           <div>

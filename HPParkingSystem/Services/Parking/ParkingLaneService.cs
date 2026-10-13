@@ -621,14 +621,15 @@ namespace HPParkingSystem.Services.Parking
                     string? personName = null;
                     string? deptName = null;
                     string? compName = null;
-                    string? personId = vehicle.OwnerPersonId;
-                    PersonType personType = PersonType.Visitor;
+                    string? personId = null;
+                    PersonType personType = PersonType.Guest;
 
                     if (!string.IsNullOrEmpty(vehicle.OwnerPersonId))
                     {
                         var person = await _personRepo.GetByIdAsync(vehicle.OwnerPersonId!);
                         if (person != null && !person.IsDeleted)
                         {
+                            personId = person.Id;
                             personName = person.FullName;
                             personType = person.Type;
 
