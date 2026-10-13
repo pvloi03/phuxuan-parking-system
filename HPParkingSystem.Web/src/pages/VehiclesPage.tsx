@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Car,
@@ -24,7 +24,7 @@ import {
   Tag,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
-import type { PagedResult, Vehicle, VehicleType, Person, ApiResponse, CrossImportResult, VehiclePersonCrossImportItem } from '@/types'
+import type { PagedResult, Vehicle, VehicleType, Person } from '@/types'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { exportToExcel, parseExcelFile, downloadCrossImportTemplate, parseCrossImportExcel } from '@/lib/excelHelper'
+import { exportToExcel } from '@/lib/excelHelper'
+import { useCrossImport } from '@/hooks/useCrossImport'
 
 export function cleanPlateNumber(plate?: string): string {
   if (!plate) return ''
@@ -76,7 +77,13 @@ function getVehicleTypeBadge(type?: VehicleType | string) {
 
 export function VehiclesPage() {
   const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    fileInputRef,
+    isImporting,
+    handleDownloadTemplate,
+    handleFileChange,
+    triggerFileInput,
+  } = useCrossImport({ target: 'vehicles' })
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -224,24 +231,6 @@ export function VehiclesPage() {
     },
   })
 
-  const batchImportMutation = useMutation({
-    mutationFn: async (items: VehiclePersonCrossImportItem[]) => {
-      const res = await apiClient.post<ApiResponse<CrossImportResult>>('/vehicles/cross-import', items)
-      return res.data.data
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
-      queryClient.invalidateQueries({ queryKey: ['people-all-lookup'] })
-      queryClient.invalidateQueries({ queryKey: ['people-list'] })
-      notify.success(data?.summaryMessage || 'Nhập dữ liệu từ file Excel thành công!')
-      if (data?.errors && data.errors.length > 0) {
-        notify.warning(`Có ${data.errors.length} cảnh báo: ${data.errors.slice(0, 3).join('; ')}`)
-      }
-    },
-    onError: (err: any) => {
-      notify.error('Nhập file Excel thất bại', err)
-    },
-  })
 
   // ======================== Helpers ========================
   const resetForm = () => {
@@ -305,36 +294,6 @@ export function VehiclesPage() {
     })
 
     exportToExcel(exportData, `Danh_Sach_Phuong_Tien_${new Date().toISOString().slice(0, 10)}.xlsx`, 'PhuongTien')
-  }
-
-  const handleDownloadTemplate = () => {
-    downloadCrossImportTemplate('Mau_Nhap_PhuongTien_NhanSu.xlsx')
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    try {
-      const rawData = await parseExcelFile<any>(file)
-      if (!rawData?.length) {
-        notify.warning('File Excel không có dữ liệu.')
-        return
-      }
-
-      const formattedData = parseCrossImportExcel(rawData)
-
-      if (!formattedData.length) {
-        notify.warning('Không tìm thấy bản ghi hợp lệ (Cần có Biển số xe hoặc Mã nhân sự / Họ tên).')
-        return
-      }
-
-      batchImportMutation.mutate(formattedData)
-    } catch (err: any) {
-      notify.error('Lỗi đọc file Excel', err)
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
   }
 
   // ======================== Form JSX ========================
@@ -436,9 +395,9 @@ export function VehiclesPage() {
         {/* Action Buttons - Cố định 100% không bao giờ bị xê dịch */}
         <div className="flex items-center gap-2 shrink-0 flex-nowrap">
           <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".xlsx,.xls,.csv" className="hidden" />
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}
+          <Button variant="outline" size="sm" onClick={triggerFileInput} disabled={isImporting}
             className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap">
-            <Upload className="h-3.5 w-3.5 text-emerald-600" /> Nhập Excel
+            <Upload className="h-3.5 w-3.5 text-emerald-600" /> {isImporting ? 'Đang Nhập...' : 'Nhập Excel'}
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadTemplate}
             className="gap-1.5 text-xs text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap" title="Tải file mẫu Excel">

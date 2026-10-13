@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Search,
@@ -26,7 +26,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
-import type { PagedResult, Person, PersonType, Department, Company, Contractor, ApiResponse, CrossImportResult, VehiclePersonCrossImportItem } from '@/types'
+import type { PagedResult, Person, PersonType, Department, Company, Contractor } from '@/types'
 import { getPersonTypeLabel } from '@/types'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
@@ -35,11 +35,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { exportToExcel, parseExcelFile, downloadCrossImportTemplate, parseCrossImportExcel } from '@/lib/excelHelper'
+import { exportToExcel } from '@/lib/excelHelper'
+import { useCrossImport } from '@/hooks/useCrossImport'
 
 export function PeoplePage() {
   const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    fileInputRef,
+    isImporting,
+    handleDownloadTemplate,
+    handleFileChange,
+    triggerFileInput,
+  } = useCrossImport({ target: 'people' })
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('')
@@ -219,24 +226,6 @@ export function PeoplePage() {
     },
   })
 
-  const batchImportMutation = useMutation({
-    mutationFn: async (items: VehiclePersonCrossImportItem[]) => {
-      const res = await apiClient.post<ApiResponse<CrossImportResult>>('/people/cross-import', items)
-      return res.data.data
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['people-list'] })
-      queryClient.invalidateQueries({ queryKey: ['people-all-lookup'] })
-      queryClient.invalidateQueries({ queryKey: ['vehicles-list'] })
-      notify.success(data?.summaryMessage || 'Nhập dữ liệu từ file Excel thành công!')
-      if (data?.errors && data.errors.length > 0) {
-        notify.warning(`Có ${data.errors.length} cảnh báo: ${data.errors.slice(0, 3).join('; ')}`)
-      }
-    },
-    onError: (err: any) => {
-      notify.error('Nhập file Excel thất bại', err)
-    },
-  })
 
   // Helpers
   const resetForm = () => {
@@ -314,36 +303,6 @@ export function PeoplePage() {
     })
 
     exportToExcel(exportData, `Danh_Sach_Nhan_Su_${new Date().toISOString().slice(0, 10)}.xlsx`, 'NhanSu')
-  }
-
-  const handleDownloadTemplate = () => {
-    downloadCrossImportTemplate('Mau_Nhap_NhanSu_PhuongTien.xlsx')
-  }
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    try {
-      const rawData = await parseExcelFile<any>(file)
-      if (!rawData || rawData.length === 0) {
-        notify.warning('File Excel không có dữ liệu.')
-        return
-      }
-
-      const formattedData = parseCrossImportExcel(rawData)
-
-      if (!formattedData.length) {
-        notify.warning('Không tìm thấy bản ghi hợp lệ trong file Excel (Cần có Mã nhân sự / Họ tên hoặc Biển số xe).')
-        return
-      }
-
-      batchImportMutation.mutate(formattedData)
-    } catch (err: any) {
-      notify.error('Lỗi đọc file Excel', err)
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
   }
 
   // Badges
@@ -516,11 +475,12 @@ export function PeoplePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={triggerFileInput}
+            disabled={isImporting}
             className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
             <Upload className="h-3.5 w-3.5 text-emerald-600" />
-            Nhập Excel
+            {isImporting ? 'Đang Nhập...' : 'Nhập Excel'}
           </Button>
 
           {/* Download Template */}
