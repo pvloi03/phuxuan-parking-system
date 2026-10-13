@@ -1,0 +1,673 @@
+using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Enums;
+using HPParkingSystem.Services.Devices.Camera;
+using HPParkingSystem.Services.Devices.Config;
+using HPParkingSystem.Services.Logging;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Drawing;
+using System.IO;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace HPParkingSystem.Forms
+{
+    /// <summary>
+    /// Vị trí / Vai trò Camera trên màn hình giám sát WinForms
+    /// </summary>
+    public enum CameraSlot
+    {
+        InPlate,
+        InOverview,
+        OutPlate,
+        OutOverview
+    }
+
+    public partial class FrmMain
+    {
+        // ── 4 Camera Services (2 Làn Vào, 2 Làn Ra) ──────────────────────────
+        private readonly PlateCameraService _inPlateCam = new();
+        private readonly OverviewCameraService _inOverviewCam = new();
+        private readonly PlateCameraService _outPlateCam = new();
+        private readonly OverviewCameraService _outOverviewCam = new();
+
+        // ── Bộ nhớ Cache GDI+ (Tránh cấp phát lại liên tục trong sự kiện Paint) ──
+        private readonly Font _fontBoldStatus = new("Segoe UI", 10.5F, FontStyle.Bold);
+        private readonly Font _fontSubStatus = new("Segoe UI", 9F, FontStyle.Regular);
+        private readonly Pen _penNormalBorder = new(Color.FromArgb(50, 55, 60), 1);
+        private readonly Pen _penConnectingBorder = new(Color.FromArgb(0, 123, 255), 2);
+        private readonly Pen _penErrorBorder = new(Color.FromArgb(220, 53, 69), 3);
+        private readonly Pen _penStreamingBorder = new(Color.FromArgb(40, 167, 69), 2); // Green
+        private readonly SolidBrush _brushConnectingBg = new(Color.FromArgb(26, 30, 35));
+        private readonly SolidBrush _brushConnectingText = new(Color.FromArgb(100, 180, 255));
+        private readonly SolidBrush _brushErrorBg = new(Color.FromArgb(20, 22, 25));
+        private readonly SolidBrush _brushErrorText = new(Color.FromArgb(235, 75, 75));
+        private readonly SolidBrush _brushSubText = new(Color.FromArgb(180, 190, 200));
+        private readonly SolidBrush _brushStreamingText = new(Color.FromArgb(40, 167, 69)); // Green
+
+        private ICameraService GetCameraService(CameraSlot slot) => slot switch
+        {
+            CameraSlot.InPlate => _inPlateCam,
+            CameraSlot.InOverview => _inOverviewCam,
+            CameraSlot.OutPlate => _outPlateCam,
+            CameraSlot.OutOverview => _outOverviewCam,
+            _ => throw new ArgumentOutOfRangeException(nameof(slot))
+        };
+
+        private Panel GetCameraPanel(CameraSlot slot) => slot switch
+        {
+            CameraSlot.InPlate => pnlInPlateVideo,
+            CameraSlot.InOverview => pnlInOverviewVideo,
+            CameraSlot.OutPlate => pnlOutPlateVideo,
+            CameraSlot.OutOverview => pnlOutOverviewVideo,
+            _ => throw new ArgumentOutOfRangeException(nameof(slot))
+        };
+
+        private void LoadConfigurations()
+        {
+            try
+            {
+                // Thư mục lưu trữ ảnh chụp biển số & toàn cảnh (Đọc từ App.config, hỗ trợ đường dẫn cục bộ hoặc UNC mạng \\server\share)
+                string rawPath = ConfigurationManager.AppSettings["CaptureSavePath"];
+                if (string.IsNullOrWhiteSpace(rawPath))
+                {
+                    rawPath = "Captures";
+                }
+                _captureDir = Path.IsPathRooted(rawPath) ? rawPath : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, rawPath);
+                if (!Directory.Exists(_captureDir))
+                {
+                    Directory.CreateDirectory(_captureDir);
+                }
+
+                AppLogger.Information("Khởi tạo hệ thống thành công. Đang tải cấu hình thiết bị từ CSDL MongoDB...");
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, $"Lỗi khởi tạo thư mục lưu ảnh: {ex.Message}");
+            }
+        }
+
+        private async Task LoadConfigurationsFromDbAsync()
+        {
+            try
+            {
+                // Sử dụng DeviceConfigService - đã có Cache + Hash để detect thay đổi
+                var result = await _deviceConfigService.LoadConfigAsync();
+
+                if (!result.Success)
+                {
+                    AppLogger.Warning("[Hardware Sync] Nạp cấu hình từ CSDL thất bại.");
+                    return;
+                }
+
+                _activeDevices.Clear();
+                _deviceIdToSlotMap.Clear();
+
+                void BindSlot(CameraSlot slot, Device? dev, ICameraService cam)
+                {
+                    if (dev != null && dev.IsActive)
+                    {
+                        ApplyDeviceToConfig(cam.Config, dev);
+                        _activeDevices[dev.Id] = dev;
+                        _deviceIdToSlotMap[dev.Id] = slot;
+                    }
+                    else
+                    {
+                        cam.Config.Ip = string.Empty;
+                        _slotStates[slot] = DeviceStatus.Disconnected;
+                    }
+                }
+
+                var slot1Plate = result.Lane1PlateCamera;
+                var slot1Ovw = result.Lane1OverviewCamera;
+                var slot2Plate = result.Lane2PlateCamera;
+                var slot2Ovw = result.Lane2OverviewCamera;
+
+                BindSlot(CameraSlot.InPlate, slot1Plate, _inPlateCam);
+                BindSlot(CameraSlot.InOverview, slot1Ovw, _inOverviewCam);
+                BindSlot(CameraSlot.OutPlate, slot2Plate, _outPlateCam);
+                BindSlot(CameraSlot.OutOverview, slot2Ovw, _outOverviewCam);
+
+                // Cập nhật tiêu đề hiển thị động theo cấu hình 2 làn
+                UpdateLaneTitles(result.Lane1, result.Lane2);
+
+                if (result.Controller != null && result.Controller.IsActive && !string.IsNullOrEmpty(result.ControllerIp))
+                {
+                    _controllerIp = result.ControllerIp!;
+                    _controllerPort = result.ControllerPort > 0 ? result.ControllerPort : 4370;
+                    _activeDevices[result.Controller.Id] = result.Controller;
+                }
+                else
+                {
+                    _controllerIp = string.Empty;
+                    _controllerPort = 0;
+                }
+
+                // Log chi tiết cấu hình
+                AppLogger.Information(
+                    $"[Hardware Sync] Nạp cấu hình thành công {_activeDevices.Count} thiết bị trong {result.LoadTime.TotalMilliseconds:F0}ms " +
+                    $"(InPlate: {_inPlateCam.Config.Ip}, InOvw: {_inOverviewCam.Config.Ip}, " +
+                    $"OutPlt: {_outPlateCam.Config.Ip}, OutOvw: {_outOverviewCam.Config.Ip}, " +
+                    $"Ctrl: {_controllerIp}:{_controllerPort}).");
+
+                // Log warnings nếu có
+                foreach (var warning in result.Warnings)
+                {
+                    AppLogger.Warning($"[Hardware Sync] Cảnh báo: {warning}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error(ex, $"[Hardware Sync] Lỗi nạp cấu hình: {ex.Message}");
+            }
+        }
+
+        private static void ApplyDeviceToConfig(CameraConfig config, Device dev)
+        {
+            if (config == null || dev == null) return;
+            config.Ip = dev.IpAddress;
+            config.Port = (ushort)dev.Port;
+            if (!string.IsNullOrEmpty(dev.UserName)) config.UserName = dev.UserName!;
+            if (!string.IsNullOrEmpty(dev.Password)) config.Password = dev.Password!;
+        }
+
+        private void DisconnectAllCamerasAndClearPanels()
+        {
+            foreach (var slot in (CameraSlot[])Enum.GetValues(typeof(CameraSlot)))
+            {
+                var cam = GetCameraService(slot);
+                try
+                {
+                    cam.StopPreview();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"[FrmMain] Lỗi StopPreview cho slot {slot}: {ex.Message}");
+                }
+
+                try
+                {
+                    cam.Logout();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"[FrmMain] Lỗi Logout cho slot {slot}: {ex.Message}");
+                }
+
+                _slotStates[slot] = DeviceStatus.Disconnected;
+            }
+
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    pnlInPlateVideo.Invalidate();
+                    pnlInPlateVideo.Update();
+                    pnlInOverviewVideo.Invalidate();
+                    pnlInOverviewVideo.Update();
+                    pnlOutPlateVideo.Invalidate();
+                    pnlOutPlateVideo.Update();
+                    pnlOutOverviewVideo.Invalidate();
+                    pnlOutOverviewVideo.Update();
+                }));
+            }
+            else
+            {
+                pnlInPlateVideo.Invalidate();
+                pnlInPlateVideo.Update();
+                pnlInOverviewVideo.Invalidate();
+                pnlInOverviewVideo.Update();
+                pnlOutPlateVideo.Invalidate();
+                pnlOutPlateVideo.Update();
+                pnlOutOverviewVideo.Invalidate();
+                pnlOutOverviewVideo.Update();
+            }
+        }
+
+        private async Task AutoConnectAllAsync()
+        {
+            DisconnectAllCamerasAndClearPanels();
+
+            await LoadConfigurationsFromDbAsync();
+
+            RegisterDeviceAdapters();
+
+            foreach (var slot in (CameraSlot[])Enum.GetValues(typeof(CameraSlot)))
+            {
+                var cam = GetCameraService(slot);
+                _slotStates[slot] = !string.IsNullOrEmpty(cam.Config.Ip) ? DeviceStatus.Connecting : DeviceStatus.Disconnected;
+            }
+
+            InvalidateCameraPanels();
+
+            try
+            {
+                var inPltTask = !string.IsNullOrEmpty(_inPlateCam.Config.Ip) ? _inPlateCam.LoginAsync() : Task.FromResult(false);
+                var inOvwTask = !string.IsNullOrEmpty(_inOverviewCam.Config.Ip) ? _inOverviewCam.LoginAsync() : Task.FromResult(false);
+                var outPltTask = !string.IsNullOrEmpty(_outPlateCam.Config.Ip) ? _outPlateCam.LoginAsync() : Task.FromResult(false);
+                var outOvwTask = !string.IsNullOrEmpty(_outOverviewCam.Config.Ip) ? _outOverviewCam.LoginAsync() : Task.FromResult(false);
+                var ctrlTask = !string.IsNullOrEmpty(_controllerIp) ? _controller.ConnectAsync(_controllerIp, _controllerPort) : Task.FromResult(false);
+
+                await Task.WhenAll(inPltTask, inOvwTask, outPltTask, outOvwTask, ctrlTask);
+
+                void ApplySlotResult(CameraSlot slot, Task<bool> task, Panel pnl, ICameraService cam)
+                {
+                    if (string.IsNullOrEmpty(cam.Config.Ip))
+                    {
+                        _slotStates[slot] = DeviceStatus.Disconnected;
+                    }
+                    else if (task.Result)
+                    {
+                        _slotStates[slot] = DeviceStatus.Streaming;
+                        cam.StartPreview(pnl.Handle);
+                    }
+                    else
+                    {
+                        _slotStates[slot] = DeviceStatus.Error;
+                    }
+                }
+
+                ApplySlotResult(CameraSlot.InPlate, inPltTask, pnlInPlateVideo, _inPlateCam);
+                ApplySlotResult(CameraSlot.InOverview, inOvwTask, pnlInOverviewVideo, _inOverviewCam);
+                ApplySlotResult(CameraSlot.OutPlate, outPltTask, pnlOutPlateVideo, _outPlateCam);
+                ApplySlotResult(CameraSlot.OutOverview, outOvwTask, pnlOutOverviewVideo, _outOverviewCam);
+
+                InvalidateCameraPanels();
+            }
+            catch (Exception ex)
+            {
+                foreach (var slot in (CameraSlot[])Enum.GetValues(typeof(CameraSlot)))
+                {
+                    _slotStates[slot] = DeviceStatus.Error;
+                }
+                InvalidateCameraPanels();
+
+                AppLogger.Error(ex, $"Lỗi kết nối thiết bị: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Nạp lại cấu hình phân sai (Differential Hot-Reload): Chỉ ngắt và kết nối lại đúng thiết bị thay đổi, giữ nguyên các thiết bị khác đang hoạt động.
+        /// </summary>
+        private async Task ApplyDifferentialConfigAsync(DeviceConfigResult oldConfig, DeviceConfigResult newConfig)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(async () => await ApplyDifferentialConfigAsync(oldConfig, newConfig)));
+                return;
+            }
+
+            var changedSlots = new List<CameraSlot>();
+
+            var oldSlot1Plate = oldConfig.Lane1PlateCamera;
+            var newSlot1Plate = newConfig.Lane1PlateCamera;
+            if (!IsSameDevice(oldSlot1Plate, newSlot1Plate))
+                changedSlots.Add(CameraSlot.InPlate);
+
+            var oldSlot1Ovw = oldConfig.Lane1OverviewCamera;
+            var newSlot1Ovw = newConfig.Lane1OverviewCamera;
+            if (!IsSameDevice(oldSlot1Ovw, newSlot1Ovw))
+                changedSlots.Add(CameraSlot.InOverview);
+
+            var oldSlot2Plate = oldConfig.Lane2PlateCamera;
+            var newSlot2Plate = newConfig.Lane2PlateCamera;
+            if (!IsSameDevice(oldSlot2Plate, newSlot2Plate))
+                changedSlots.Add(CameraSlot.OutPlate);
+
+            var oldSlot2Ovw = oldConfig.Lane2OverviewCamera;
+            var newSlot2Ovw = newConfig.Lane2OverviewCamera;
+            if (!IsSameDevice(oldSlot2Ovw, newSlot2Ovw))
+                changedSlots.Add(CameraSlot.OutOverview);
+
+            bool controllerChanged = !IsSameDevice(oldConfig.Controller, newConfig.Controller)
+                || oldConfig.ControllerIp != newConfig.ControllerIp
+                || oldConfig.ControllerPort != newConfig.ControllerPort;
+
+            if (changedSlots.Count == 0 && !controllerChanged)
+            {
+                AppLogger.Information("[Hardware Sync] Cấu hình không có thay đổi thực tế đối với thiết bị.");
+                return;
+            }
+
+            AppLogger.Information($"[Hardware Sync] Hot-Reload: Chỉ thay đổi {changedSlots.Count} camera [{string.Join(", ", changedSlots)}], Controller: {controllerChanged}");
+
+            // Dừng và xóa panel CHỈ cho các camera bị thay đổi
+            foreach (var slot in changedSlots)
+            {
+                var cam = GetCameraService(slot);
+                var pnl = GetCameraPanel(slot);
+                try
+                {
+                    cam.StopPreview();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"[FrmMain] Lỗi StopPreview {slot}: {ex.Message}");
+                }
+
+                try
+                {
+                    cam.Logout();
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"[FrmMain] Lỗi Logout {slot}: {ex.Message}");
+                }
+
+                _slotStates[slot] = DeviceStatus.Disconnected;
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action(() => { pnl.Invalidate(); pnl.Update(); }));
+                }
+                else
+                {
+                    pnl.Invalidate();
+                    pnl.Update();
+                }
+            }
+
+            // Cập nhật lại _activeDevices và _deviceIdToSlotMap
+            _activeDevices.Clear();
+            _deviceIdToSlotMap.Clear();
+
+            void BindSlot(CameraSlot slot, Device? dev, ICameraService cam)
+            {
+                if (dev != null && dev.IsActive)
+                {
+                    ApplyDeviceToConfig(cam.Config, dev);
+                    _activeDevices[dev.Id] = dev;
+                    _deviceIdToSlotMap[dev.Id] = slot;
+                }
+                else
+                {
+                    cam.Config.Ip = string.Empty;
+                    _slotStates[slot] = DeviceStatus.Disconnected;
+                }
+            }
+
+            var newSlot1PlateDev = newConfig.Lane1PlateCamera;
+            var newSlot1OvwDev = newConfig.Lane1OverviewCamera;
+            var newSlot2PlateDev = newConfig.Lane2PlateCamera;
+            var newSlot2OvwDev = newConfig.Lane2OverviewCamera;
+
+            BindSlot(CameraSlot.InPlate, newSlot1PlateDev, _inPlateCam);
+            BindSlot(CameraSlot.InOverview, newSlot1OvwDev, _inOverviewCam);
+            BindSlot(CameraSlot.OutPlate, newSlot2PlateDev, _outPlateCam);
+            BindSlot(CameraSlot.OutOverview, newSlot2OvwDev, _outOverviewCam);
+
+            // Cập nhật lại tiêu đề 2 làn khi cấu hình thay đổi
+            UpdateLaneTitles(newConfig.Lane1, newConfig.Lane2);
+
+            if (newConfig.Controller != null && newConfig.Controller.IsActive && !string.IsNullOrEmpty(newConfig.ControllerIp))
+            {
+                _controllerIp = newConfig.ControllerIp!;
+                _controllerPort = newConfig.ControllerPort > 0 ? newConfig.ControllerPort : 4370;
+                _activeDevices[newConfig.Controller.Id] = newConfig.Controller;
+            }
+            else
+            {
+                _controllerIp = string.Empty;
+                _controllerPort = 0;
+            }
+
+            // Đồng bộ Adapters
+            RegisterDeviceAdapters();
+
+            // Kết nối lại CHỈ các camera bị thay đổi
+            var tasks = new List<Task>();
+            foreach (var slot in changedSlots)
+            {
+                var slotCapture = slot;
+                var cam = GetCameraService(slotCapture);
+                var pnl = GetCameraPanel(slotCapture);
+                IntPtr pnlHandle = pnl.Handle;
+
+                if (!string.IsNullOrEmpty(cam.Config.Ip))
+                {
+                    _slotStates[slotCapture] = DeviceStatus.Connecting;
+                    pnl.Invalidate();
+
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        bool loginOk = await cam.LoginAsync();
+                        if (loginOk)
+                        {
+                            _slotStates[slotCapture] = DeviceStatus.Streaming;
+                            if (pnlHandle != IntPtr.Zero)
+                            {
+                                cam.StartPreview(pnlHandle);
+                            }
+                        }
+                        else
+                        {
+                            _slotStates[slotCapture] = DeviceStatus.Error;
+                        }
+
+                        if (InvokeRequired)
+                        {
+                            BeginInvoke(new Action(() => pnl.Invalidate()));
+                        }
+                        else
+                        {
+                            pnl.Invalidate();
+                        }
+                    }));
+                }
+                else
+                {
+                    _slotStates[slotCapture] = DeviceStatus.Disconnected;
+                    pnl.Invalidate();
+                }
+            }
+
+            if (controllerChanged && !string.IsNullOrEmpty(_controllerIp))
+            {
+                tasks.Add(_controller.ConnectAsync(_controllerIp!, _controllerPort));
+            }
+
+            if (tasks.Count > 0)
+            {
+                await Task.WhenAll(tasks);
+            }
+
+            InvalidateCameraPanels();
+        }
+
+        private static bool IsSameDevice(Device? dev1, Device? dev2)
+        {
+            if (dev1 == null && dev2 == null) return true;
+            if (dev1 == null || dev2 == null) return false;
+            return dev1.Id == dev2.Id
+                && dev1.IpAddress == dev2.IpAddress
+                && dev1.Port == dev2.Port
+                && dev1.UserName == dev2.UserName
+                && dev1.Password == dev2.Password
+                && dev1.IsActive == dev2.IsActive;
+        }
+
+        private void InvalidateCameraPanels()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(InvalidateCameraPanels));
+                return;
+            }
+
+            pnlInPlateVideo.Invalidate();
+            pnlInOverviewVideo.Invalidate();
+            pnlOutPlateVideo.Invalidate();
+            pnlOutOverviewVideo.Invalidate();
+        }
+
+        private void PnlInPlateVideo_Paint(object sender, PaintEventArgs e)
+        {
+            DrawCameraSlot(pnlInPlateVideo, CameraSlot.InPlate, "Camera Biển Số Vào", e);
+        }
+
+        private void PnlInOverviewVideo_Paint(object sender, PaintEventArgs e)
+        {
+            DrawCameraSlot(pnlInOverviewVideo, CameraSlot.InOverview, "Camera Toàn Cảnh Vào", e);
+        }
+
+        private void PnlOutPlateVideo_Paint(object sender, PaintEventArgs e)
+        {
+            DrawCameraSlot(pnlOutPlateVideo, CameraSlot.OutPlate, "Camera Biển Số Ra", e);
+        }
+
+        private void PnlOutOverviewVideo_Paint(object sender, PaintEventArgs e)
+        {
+            DrawCameraSlot(pnlOutOverviewVideo, CameraSlot.OutOverview, "Camera Toàn Cảnh Ra", e);
+        }
+
+        private void DrawCameraSlot(Panel pnl, CameraSlot slot, string defaultTitle, PaintEventArgs e)
+        {
+            var state = _slotStates.TryGetValue(slot, out var s) ? s : DeviceStatus.Disconnected;
+            var cam = GetCameraService(slot);
+            DrawVideoPanelStatus(pnl, state, defaultTitle, cam.Config.Ip, e);
+        }
+
+        private void DrawVideoPanelStatus(Panel pnl, DeviceStatus state, string camTitle, string? ip, PaintEventArgs e)
+        {
+            string subtitle = $"{camTitle} ({ip ?? "IP trống"})";
+
+            switch (state)
+            {
+                case DeviceStatus.Disconnected:
+                    // Clear panel - vẽ xóa nền sạch sẽ
+                    e.Graphics.FillRectangle(_brushConnectingBg, 0, 0, pnl.Width, pnl.Height);
+                    e.Graphics.DrawRectangle(_penNormalBorder, 0, 0, pnl.Width - 1, pnl.Height - 1);
+                    return;
+
+                case DeviceStatus.Connecting:
+                    DrawConnectingStatus(pnl, subtitle, e);
+                    return;
+
+                case DeviceStatus.Connected:
+                    // Border nhẹ - đã kết nối nhưng chưa streaming
+                    e.Graphics.DrawRectangle(_penNormalBorder, 0, 0, pnl.Width - 1, pnl.Height - 1);
+                    return;
+
+                case DeviceStatus.Streaming:
+                    // Border xanh + chỉ báo đang streaming
+                    e.Graphics.DrawRectangle(_penStreamingBorder, 0, 0, pnl.Width - 1, pnl.Height - 1);
+                    DrawStreamingIndicator(pnl, subtitle, e);
+                    return;
+
+                case DeviceStatus.Error:
+                case DeviceStatus.Maintenance:
+                    DrawErrorStatus(pnl, subtitle, e);
+                    return;
+            }
+        }
+
+        private void DrawConnectingStatus(Panel pnl, string subtitle, PaintEventArgs e)
+        {
+            e.Graphics.FillRectangle(_brushConnectingBg, 0, 0, pnl.Width, pnl.Height);
+            e.Graphics.DrawRectangle(_penConnectingBorder, 1, 1, pnl.Width - 3, pnl.Height - 3);
+
+            string title = "🔄 ĐANG KẾT NỐI...";
+            var szTitle = e.Graphics.MeasureString(title, _fontBoldStatus);
+            var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+
+            float startY = (pnl.Height - (szTitle.Height + szSub.Height + 6)) / 2;
+            float xTitle = (pnl.Width - szTitle.Width) / 2;
+            float xSub = (pnl.Width - szSub.Width) / 2;
+
+            e.Graphics.DrawString(title, _fontBoldStatus, _brushConnectingText, xTitle, startY);
+            e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, startY + szTitle.Height + 6);
+        }
+
+        private void DrawStreamingIndicator(Panel pnl, string subtitle, PaintEventArgs e)
+        {
+            // Small green dot + "LIVE" text in corner
+            string title = "● LIVE";
+            var szTitle = e.Graphics.MeasureString(title, _fontSubStatus);
+            e.Graphics.DrawString(title, _fontSubStatus, _brushStreamingText, 8, 8);
+
+            // Small subtitle at bottom
+            var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+            float xSub = (pnl.Width - szSub.Width) / 2;
+            float ySub = pnl.Height - szSub.Height - 8;
+            e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, ySub);
+        }
+
+        private void DrawErrorStatus(Panel pnl, string subtitle, PaintEventArgs e)
+        {
+            e.Graphics.FillRectangle(_brushErrorBg, 0, 0, pnl.Width, pnl.Height);
+            e.Graphics.DrawRectangle(_penErrorBorder, 1, 1, pnl.Width - 3, pnl.Height - 3);
+
+            string title = "❌ MẤT KẾT NỐI";
+            var szTitle = e.Graphics.MeasureString(title, _fontBoldStatus);
+            var szSub = e.Graphics.MeasureString(subtitle, _fontSubStatus);
+
+            float startY = (pnl.Height - (szTitle.Height + szSub.Height + 6)) / 2;
+            float xTitle = (pnl.Width - szTitle.Width) / 2;
+            float xSub = (pnl.Width - szSub.Width) / 2;
+
+            e.Graphics.DrawString(title, _fontBoldStatus, _brushErrorText, xTitle, startY);
+            e.Graphics.DrawString(subtitle, _fontSubStatus, _brushSubText, xSub, startY + szTitle.Height + 6);
+        }
+
+        private void CleanupCameras()
+        {
+            _inPlateCam.Dispose();
+            _inOverviewCam.Dispose();
+            _outPlateCam.Dispose();
+            _outOverviewCam.Dispose();
+            PlateCameraService.CleanupSdk();
+            OverviewCameraService.CleanupSdk();
+
+            _fontBoldStatus.Dispose();
+            _fontSubStatus.Dispose();
+            _penNormalBorder.Dispose();
+            _penConnectingBorder.Dispose();
+            _penErrorBorder.Dispose();
+            _penStreamingBorder.Dispose();
+            _brushConnectingBg.Dispose();
+            _brushConnectingText.Dispose();
+            _brushErrorBg.Dispose();
+            _brushErrorText.Dispose();
+            _brushSubText.Dispose();
+            _brushStreamingText.Dispose();
+        }
+
+        /// <summary>
+        /// Cập nhật tiêu đề hiển thị động theo hướng và tên của từng làn
+        /// </summary>
+        public void UpdateLaneTitles(Lane? lane1, Lane? lane2)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => UpdateLaneTitles(lane1, lane2)));
+                return;
+            }
+
+            // Cột 1 (Slot 1 - Trái - TriggerAuxPort = 1)
+            if (lane1 != null)
+            {
+                string dirText = lane1.Direction == LaneDirection.In ? "LÀN VÀO" : "LÀN RA";
+                grpInLane.Text = $"{dirText} 1 ({lane1.Name.ToUpper()}) - [F1]";
+                grpInInfo.Text = $"THÔNG TIN XE {(lane1.Direction == LaneDirection.In ? "VÀO" : "RA")} - {lane1.Name}";
+            }
+            else
+            {
+                grpInLane.Text = "CỘT 1 (CHƯA GÁN LÀN) - [F1]";
+                grpInInfo.Text = "THÔNG TIN CỘT 1";
+            }
+
+            // Cột 2 (Slot 2 - Phải - TriggerAuxPort = 2)
+            if (lane2 != null)
+            {
+                string dirText = lane2.Direction == LaneDirection.In ? "LÀN VÀO" : "LÀN RA";
+                grpOutLane.Text = $"{dirText} 2 ({lane2.Name.ToUpper()}) - [F2]";
+                grpOutInfo.Text = $"THÔNG TIN XE {(lane2.Direction == LaneDirection.In ? "VÀO" : "RA")} - {lane2.Name}";
+            }
+            else
+            {
+                grpOutLane.Text = "CỘT 2 (CHƯA GÁN LÀN) - [F2]";
+                grpOutInfo.Text = "THÔNG TIN CỘT 2";
+            }
+        }
+    }
+}

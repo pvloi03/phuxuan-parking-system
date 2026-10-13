@@ -1,4 +1,5 @@
 *.claude
+
 database_seed/
 publish/
 wwwroot/
@@ -8,7 +9,6 @@ scripts/
 *CLAUDE.md
 *CONTEXT.md
 .scratch/
-tests/
 
 ## Configuration & Environment Secrets
 appsettings.json*

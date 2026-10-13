@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bản Mẫu Thử Nghiệm: Mô Hình Đồng Bộ & Tự Phục Hồi LiteDB</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.5;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      max-width: 960px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    header {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px 24px;
+    }
+    h1 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .question-box {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
+      margin-top: 10px;
+    }
+
+    /* Grid layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 768px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Status Badges */
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-open { background: #064e3b; color: #34d399; border: 1px solid #059669; }
+    .badge-busy { background: #451a03; color: #fbbf24; border: 1px solid #d97706; }
+    .badge-disposed { background: #450a0a; color: #f87171; border: 1px solid #dc2626; }
+    .badge-direct { background: #1e3a8a; color: #60a5fa; border: 1px solid #2563eb; }
+    .badge-shared { background: #581c87; color: #c084fc; border: 1px solid #9333ea; }
+
+    /* Key Value Grid */
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    .kv-item {
+      background: #0f172a80;
+      border: 1px solid #33415560;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    .kv-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+    .kv-val { font-size: 0.95rem; font-weight: 600; margin-top: 2px; }
+
+    /* Logs & Terminal */
+    .log-box {
+      background: #090d16;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      min-height: 130px;
+      max-height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+    }
+    .log-entry { display: flex; gap: 8px; }
+    .log-time { color: #64748b; }
+    .log-info { color: #38bdf8; }
+    .log-warn { color: #fbbf24; }
+    .log-err { color: #f87171; font-weight: bold; }
+    .log-succ { color: #4ade80; }
+
+    /* Tabs & Scenarios */
+    .tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px; }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-btn.active {
+      background: #334155;
+      color: #fff;
+    }
+    .tab-btn:hover:not(.active) { color: #e2e8f0; }
+
+    .scenario-desc {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      background: #0f172a60;
+      padding: 12px;
+      border-radius: 8px;
+      border-left: 3px solid var(--warning);
+    }
+
+    /* Buttons */
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    button.btn {
+      background: #334155;
+      color: #fff;
+      border: 1px solid #475569;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    button.btn:hover:not(:disabled) { background: #475569; }
+    button.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    button.btn-primary {
+      background: var(--primary);
+      border-color: #2563eb;
+    }
+    button.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+
+    button.btn-danger {
+      background: #991b1b;
+      border-color: #b91c1c;
+    }
+    button.btn-danger:hover:not(:disabled) { background: #b91c1c; }
+
+    button.btn-success {
+      background: #065f46;
+      border-color: #059669;
+    }
+    button.btn-success:hover:not(:disabled) { background: #059669; }
+
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 1. State the Question -->
+  <header>
+    <h1>🧪 Prototype: Mô Hình Khắc Phục Lỗi Đồng Bộ & Tự Phục Hồi LiteDB</h1>
+    <div class="question-box">
+      <strong>Câu hỏi cần trả lời:</strong> Việc chuyển đổi từ <code>ConnectionType.Shared</code> sang <code>ConnectionType.Direct</code> kết hợp nạp trước dữ liệu (<code>.ToList()</code>), cơ chế tự phục hồi (<code>Self-Healing</code>) và phòng thủ ngoại lệ khi Check-Out có ngăn chặn dứt điểm hiện tượng sập engine và nghẽn làn bốt xe khi gặp Thread Hop hay không?
+    </div>
+  </header>
+
+  <!-- 2. State & Metrics -->
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">
+        <span>Trạng Thái CSDL LiteDB</span>
+        <span id="badgeEngine" class="badge badge-open">OPEN</span>
+      </div>
+
+      <div class="kv-grid">
+        <div class="kv-item">
+          <div class="kv-label">Chế độ kết nối</div>
+          <div class="kv-val" id="valMode">Direct Mode</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Cơ chế nạp dữ liệu</div>
+          <div class="kv-val" id="valToList">.ToList() (An toàn)</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Con trỏ đọc (Cursor)</div>
+          <div class="kv-val" id="valCursor">Đóng (Không giữ khóa)</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Thread sở hữu khóa</div>
+          <div class="kv-val" id="valThread">Không có</div>
+        </div>
+      </div>
+
+      <div class="card-title" style="margin-top: 6px;">
+        <span>Tiến Trình Chạy Ngầm (Worker)</span>
+        <span id="badgeWorker" class="badge badge-busy">IDLE</span>
+      </div>
+      <div class="kv-grid">
+        <div class="kv-item">
+          <div class="kv-label">Ảnh chờ đồng bộ</div>
+          <div class="kv-val" id="valPendingImgs">5 ảnh</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Phiên xe chờ đồng bộ</div>
+          <div class="kv-val" id="valPendingSessions">3 phiên</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Tự phục hồi (Self-Healing)</div>
+          <div class="kv-val" id="valSelfHealing" style="color: #4ade80;">BẬT</div>
+        </div>
+        <div class="kv-item">
+          <div class="kv-label">Phòng thủ Check-Out</div>
+          <div class="kv-val" id="valCheckOutProt" style="color: #4ade80;">BẬT</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nhật ký & Kết quả nghiệp vụ -->
+    <div class="card">
+      <div class="card-title">
+        <span>Nhật Ký Thực Thi (Log Stream)</span>
+        <span style="font-size: 0.8rem; color: #94a3b8;">Thời gian thực</span>
+      </div>
+      <div class="log-box" id="logBox">
+        <!-- Logs render here -->
+      </div>
+
+      <div class="card-title" style="margin-top: 6px;">
+        <span>Kiểm Tra Nghiệp Vụ Làn Ra (Check-Out)</span>
+      </div>
+      <div id="checkOutStatus" style="font-size: 0.9rem; padding: 10px; border-radius: 8px; background: #0f172a;">
+        Chưa có lượt xe ra nào được kích hoạt.
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Guided Walkthroughs -->
+  <div class="card">
+    <div class="card-title">Kịch Bản Hướng Dẫn (Guided Walkthroughs)</div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="selectScenario(0)">1. Hiện Trạng Lỗi (Bug Reproduction)</button>
+      <button class="tab-btn" onclick="selectScenario(1)">2. Giải Pháp Mới (Happy Path Fix)</button>
+      <button class="tab-btn" onclick="selectScenario(2)">3. Tự Phục Hồi Khi Có Lỗi (Self-Healing)</button>
+    </div>
+
+    <div class="scenario-desc" id="scenarioDesc">
+      Mô tả kịch bản...
+    </div>
+
+    <div class="step-indicator" id="stepInfo">
+      Bước 1/4: Chuẩn bị...
+    </div>
+
+    <div class="btn-group" id="scenarioButtons">
+      <!-- Buttons for active scenario step -->
+    </div>
+  </div>
+
+  <!-- 4. Free-Play Action Buttons -->
+  <div class="card">
+    <div class="card-title">Bàn Điều Khiển Tự Do (Free-Play Buttons)</div>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: -8px;">
+      Thử nghiệm bấm bất kỳ hành động nào theo ý muốn để kiểm tra độ bền của mô hình trạng thái:
+    </p>
+
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="sim.startSync()">Bắt đầu Đồng Bộ (Sync Cycle)</button>
+      <button class="btn" onclick="sim.triggerThreadHop()">Giả lập Thread Hop (await CopyToAsync)</button>
+      <button class="btn btn-success" onclick="sim.simulateVehicleCheckOut()">Kích hoạt Xe Ra (Check-Out)</button>
+      <button class="btn btn-danger" onclick="sim.forceCrashEngine()">Cưỡng bức Làm Hỏng Engine</button>
+      <button class="btn" onclick="sim.runSelfHealing()">Kích hoạt Tự Phục Hồi (EnsureOpen)</button>
+      <button class="btn" onclick="sim.toggleMode()">Đổi Chế Độ (Shared ⇋ Direct)</button>
+      <button class="btn" onclick="sim.toggleToList()">Đổi Nạp (Deferred ⇋ .ToList())</button>
+      <button class="btn" onclick="sim.reset()">Khôi phục Mặc định</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- 2. Pure Portable Logic Module (No DOM dependencies)      -->
+<!-- ======================================================== -->
+<script>
+class LiteDbSyncSimulator {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.state = {
+      mode: 'DIRECT',               // 'SHARED' hoặc 'DIRECT'
+      useToList: true,              // true: .ToList(), false: IEnumerable deferred
+      hasSelfHealing: true,         // Cơ chế tự khởi tạo lại khi disposed
+      hasCheckOutProtection: true,  // try-catch phòng thủ khi CheckOut
+
+      engineStatus: 'OPEN',         // 'OPEN', 'BUSY', 'DISPOSED'
+      cursorActive: false,          // Đang giữ cursor đọc mở
+      cursorOwnerThread: null,      // Thread ID tạo cursor
+      currentExecutingThread: 14,   // Thread ID hiện tại
+
+      workerState: 'IDLE',          // 'IDLE', 'READING', 'UPLOADING', 'UPDATING', 'ERROR_DELAY'
+      pendingImages: 5,
+      pendingSessions: 3,
+      syncedImages: 0,
+      syncedSessions: 0,
+
+      logs: [],
+      checkOutResult: null
+    };
+    this.log('Khởi tạo mô phỏng. Sẵn sàng thử nghiệm.', 'info');
+  }
+
+  log(message, type = 'info') {
+    const time = new Date().toLocaleTimeString();
+    this.state.logs.unshift({ time, message, type });
+    if (this.state.logs.length > 30) this.state.logs.pop();
+  }
+
+  // Chuyển đổi cấu hình
+  toggleMode() {
+    this.state.mode = this.state.mode === 'DIRECT' ? 'SHARED' : 'DIRECT';
+    this.log(`Đã đổi chế độ LiteDB sang: ConnectionType.${this.state.mode}`, 'info');
+  }
+
+  toggleToList() {
+    this.state.useToList = !this.state.useToList;
+    const desc = this.state.useToList ? 'Bật .ToList() (Nạp vào RAM ngay)' : 'Tắt .ToList() (Duyệt hoãn lại IEnumerable Cursor)';
+    this.log(`Cơ chế nạp dữ liệu: ${desc}`, 'info');
+  }
+
+  // 1. Bắt đầu chu kỳ đồng bộ
+  startSync() {
+    if (this.state.engineStatus === 'DISPOSED') {
+      if (this.state.hasSelfHealing) {
+        this.log('[Self-Healing] Engine đã Disposed! Tự động khởi tạo kết nối mới qua EnsureOpen()...', 'warn');
+        this.state.engineStatus = 'OPEN';
+        this.log('[Self-Healing] Khởi tạo kết nối LiteDB mới thành công! Tiếp tục đồng bộ.', 'succ');
+      } else {
+        this.log('Lỗi trong vòng lặp Background Sync: This engine instance already disposed.', 'err');
+        return false;
+      }
+    }
+
+    this.state.workerState = 'READING';
+    this.state.currentExecutingThread = 14;
+
+    if (this.state.useToList) {
+      // GIẢI PHÁP MỚI: .ToList() nạp ngay vào RAM và đóng Cursor ngay lập tức
+      this.state.cursorActive = false;
+      this.state.cursorOwnerThread = null;
+      this.log(`[Thread:${this.state.currentExecutingThread}] LiteDB.Find(t => !t.IsSynced).ToList() đã đọc ${this.state.pendingImages} task vào bộ nhớ. Cursor đóng an toàn.`, 'succ');
+    } else {
+      // HIỆN TRẠNG LỖI: Trả về IEnumerable, Cursor giữ khóa
+      this.state.cursorActive = true;
+      this.state.cursorOwnerThread = 14;
+      this.log(`[Thread:${this.state.currentExecutingThread}] LiteDB.Find() mở Cursor đọc trên Thread:14. Khóa Mutex/Monitor đang được giữ.`, 'warn');
+    }
+
+    return true;
+  }
+
+  // 2. Mô phỏng Thread Hop qua await CopyToAsync
+  triggerThreadHop() {
+    if (this.state.workerState === 'IDLE') {
+      this.startSync();
+    }
+
+    this.log('[I/O] Đang thực thi: await sourceStream.CopyToAsync(destStream).ConfigureAwait(false)...', 'info');
+    
+    // I/O hoàn tất -> Chuyển sang Thread khác từ ThreadPool (Thread 30)
+    this.state.currentExecutingThread = 30;
+    this.log(`[Thread Hop] I/O hoàn tất. Tiếp tục vòng lặp trên Thread mới: ${this.state.currentExecutingThread}`, 'info');
+
+    // Kiểm tra xem Cursor có đang mở từ thread cũ không
+    if (this.state.cursorActive) {
+      if (this.state.mode === 'SHARED') {
+        // Lỗi vi phạm Thread Affinity của OS Mutex!
+        this.state.engineStatus = 'DISPOSED';
+        this.state.cursorActive = false;
+        this.state.workerState = 'ERROR_DELAY';
+        this.log(`[Thread:${this.state.currentExecutingThread}] System.Threading.SynchronizationLockException: Object synchronization method was called from an unsynchronized block of code (Khóa mở bởi Thread:${this.state.cursorOwnerThread}, giải phóng bởi Thread:${this.state.currentExecutingThread}).`, 'err');
+        this.log('[LiteEngine] Ngoại lệ luồng không an toàn -> Engine tự động chuyển sang trạng thái DISPOSED!', 'err');
+        return false;
+      } else {
+        // Direct Mode: Sử dụng in-memory ReaderWriterLockSlim, ít rủi ro hơn nhưng vẫn được khuyến khích dùng ToList
+        this.log(`[Thread:${this.state.currentExecutingThread}] Direct Mode: Khóa in-memory cho phép chuyển luồng, nhưng vẫn có nguy cơ tranh chấp nếu truy vấn lồng nhau.`, 'warn');
+      }
+    }
+
+    // Nếu dùng .ToList(), không còn cursor mở
+    if (this.state.useToList && this.state.engineStatus === 'OPEN') {
+      if (this.state.pendingImages > 0) {
+        this.state.pendingImages--;
+        this.state.syncedImages++;
+        this.log(`[Thread:${this.state.currentExecutingThread}] Đã tải lên và cập nhật thành công 1 ảnh lên Server. Còn ${this.state.pendingImages} ảnh.`, 'succ');
+      }
+      this.state.workerState = 'IDLE';
+      return true;
+    }
+
+    return false;
+  }
+
+  // 3. Mô phỏng Xe ra Check-Out tại bốt
+  simulateVehicleCheckOut() {
+    const plate = '29A-88888';
+    this.log(`[Làn Ra] Xe ${plate} đến cổng kiểm soát. Đang thực hiện CheckOutAsync...`, 'info');
+
+    if (this.state.engineStatus === 'DISPOSED') {
+      if (this.state.hasCheckOutProtection) {
+        // GIẢI PHÁP MỚI: Có try-catch phòng thủ
+        this.log(`[HybridRepo] CẢNH BÁO: LiteDB không sẵn sàng (Disposed). Phòng thủ try-catch kích hoạt -> Bỏ qua LiteDB, xử lý trực tiếp lên MongoDB.`, 'warn');
+        this.log(`[Làn Ra] Check-out thành công cho xe ${plate}! Barrier tự động mở. Không bị nghẽn làn!`, 'succ');
+        this.state.checkOutResult = { success: true, message: `✅ Check-out thành công (Bảo vệ bởi Fallback, Barrier mở)` };
+        return true;
+      } else {
+        // HIỆN TRẠNG LỖI: Không có try-catch, ném ngoại lệ lên giao diện
+        this.log(`[Làn Ra] LỖI NGHIÊM TRỌNG: LiteDB.LiteException: This engine instance already disposed! Ngoại lệ không được bắt.`, 'err');
+        this.log(`[Làn Ra] ❌ Check-out thất bại! Barrier không mở, làn xe bị nghẽn!`, 'err');
+        this.state.checkOutResult = { success: false, message: `❌ LỖI NGHẼN LÀN: This engine instance already disposed (Xe kẹt tại bốt)` };
+        return false;
+      }
+    } else {
+      // Engine OPEN bình thường
+      this.log(`[HybridRepo] Kiểm tra LiteDB cục bộ: OK (< 1ms). Cập nhật phiên xe lên MongoDB: OK.`, 'succ');
+      this.log(`[Làn Ra] Check-out hoàn tất cho xe ${plate}. Barrier mở.`, 'succ');
+      this.state.checkOutResult = { success: true, message: `✅ Check-out bình thường (< 2ms, Barrier mở)` };
+      return true;
+    }
+  }
+
+  // 4. Cưỡng bức làm hỏng engine
+  forceCrashEngine() {
+    this.state.engineStatus = 'DISPOSED';
+    this.state.cursorActive = false;
+    this.log('[SIMULATOR] Đã cưỡng bức Engine LiteDB chuyển sang trạng thái DISPOSED!', 'err');
+  }
+
+  // 5. Tự phục hồi
+  runSelfHealing() {
+    this.log('[Self-Healing] Đang thực thi EnsureOpen(). Kiểm tra trạng thái Engine...', 'info');
+    if (this.state.engineStatus === 'DISPOSED') {
+      this.state.engineStatus = 'OPEN';
+      this.log('[Self-Healing] Tái tạo thành công instance LiteDatabase mới. Index đã được kiểm tra.', 'succ');
+    } else {
+      this.log('[Self-Healing] Engine đang ở trạng thái OPEN bình thường, không cần tạo lại.', 'info');
+    }
+  }
+}
+</script>
+
+<!-- ======================================================== -->
+<!-- 3. UI Wiring & Scenario Control                          -->
+<!-- ======================================================== -->
+<script>
+const sim = new LiteDbSyncSimulator();
+
+// Scenarios definition
+const scenarios = [
+  {
+    title: "1. Hiện Trạng Lỗi (Bug Reproduction)",
+    desc: "Tái hiện chính xác chuỗi lỗi trong log thực tế: Cấu hình Shared Mode + không dùng .ToList(). Khi chạy vòng lặp sao chép ảnh có await CopyToAsync, Thread Hop xảy ra làm văng SynchronizationLockException. Ngay sau đó Engine bị Disposed vĩnh viễn và khiến xe ra tại bốt bị nghẽn làn.",
+    steps: [
+      {
+        name: "Bước 1: Thiết lập cấu hình cũ (Shared Mode, Không .ToList)",
+        action: () => {
+          sim.state.mode = 'SHARED';
+          sim.state.useToList = false;
+          sim.state.hasSelfHealing = false;
+          sim.state.hasCheckOutProtection = false;
+          sim.state.engineStatus = 'OPEN';
+          sim.log('Đã áp dụng cấu hình hiện trạng: Connection=Shared, Không dùng .ToList(), Không tự hồi phục.', 'warn');
+        }
+      },
+      {
+        name: "Bước 2: Mở Cursor đọc dữ liệu trên Thread 14",
+        action: () => {
+          sim.startSync();
+        }
+      },
+      {
+        name: "Bước 3: Chạy await CopyToAsync và kích hoạt Thread Hop (-> Thread 30)",
+        action: () => {
+          sim.triggerThreadHop();
+        }
+      },
+      {
+        name: "Bước 4: Xe ra đến bốt -> Gọi Check-Out khi Engine đã Disposed",
+        action: () => {
+          sim.simulateVehicleCheckOut();
+        }
+      },
+      {
+        name: "Bước 5: Chu kỳ Background Sync kế tiếp chạy sau 5 giây",
+        action: () => {
+          sim.startSync();
+        }
+      }
+    ]
+  },
+  {
+    title: "2. Giải Pháp Mới (Happy Path Fix)",
+    desc: "Kiểm chứng giải pháp khắc phục: Chuyển sang Direct Mode + dùng .ToList(). Con trỏ LiteDB được giải phóng ngay lập tức trong RAM trước khi chạy I/O bất đồng bộ. Dù Thread Hop xảy ra, mọi tác vụ đồng bộ và xe ra Check-Out đều diễn ra trơn tru mà không có lỗi nào.",
+    steps: [
+      {
+        name: "Bước 1: Áp dụng giải pháp mới (Direct Mode, .ToList, Phòng thủ)",
+        action: () => {
+          sim.state.mode = 'DIRECT';
+          sim.state.useToList = true;
+          sim.state.hasSelfHealing = true;
+          sim.state.hasCheckOutProtection = true;
+          sim.state.engineStatus = 'OPEN';
+          sim.log('Đã áp dụng giải pháp mới: Connection=Direct, .ToList() trước async, Bật Self-Healing.', 'succ');
+        }
+      },
+      {
+        name: "Bước 2: Nạp nhanh toàn bộ task vào RAM bằng .ToList()",
+        action: () => {
+          sim.startSync();
+        }
+      },
+      {
+        name: "Bước 3: Sao chép ảnh bất đồng bộ với await CopyToAsync",
+        action: () => {
+          sim.triggerThreadHop();
+        }
+      },
+      {
+        name: "Bước 4: Xe ra cổng -> Check-Out hoàn tất an toàn (< 2ms)",
+        action: () => {
+          sim.simulateVehicleCheckOut();
+        }
+      }
+    ]
+  },
+  {
+    title: "3. Tự Phục Hồi Khi Có Sự Cố (Self-Healing)",
+    desc: "Kiểm tra cơ chế phòng thủ chuyên sâu: Giả lập trường hợp Engine LiteDB bị lỗi bất thường. Hệ thống kích hoạt phòng thủ try-catch giúp bốt xe không bị gián đoạn, và chu kỳ sync tiếp theo tự động kích hoạt Self-Healing để tái lập kết nối CSDL sạch sẽ.",
+    steps: [
+      {
+        name: "Bước 1: Bật chế độ phòng thủ & Tự hồi phục",
+        action: () => {
+          sim.state.mode = 'DIRECT';
+          sim.state.useToList = true;
+          sim.state.hasSelfHealing = true;
+          sim.state.hasCheckOutProtection = true;
+          sim.log('Hệ thống đã cấu hình phòng vệ nhiều lớp.', 'info');
+        }
+      },
+      {
+        name: "Bước 2: Giả lập Engine LiteDB bị sự cố đột xuất (Disposed)",
+        action: () => {
+          sim.forceCrashEngine();
+        }
+      },
+      {
+        name: "Bước 3: Xe ra đến bốt -> Phòng thủ Check-Out cứu nguy, mở barrier",
+        action: () => {
+          sim.simulateVehicleCheckOut();
+        }
+      },
+      {
+        name: "Bước 4: Chu kỳ Background Sync tự động kích hoạt Self-Healing",
+        action: () => {
+          sim.startSync();
+        }
+      }
+    ]
+  }
+];
+
+let currentScenarioIndex = 0;
+let currentStepIndex = 0;
+
+function selectScenario(index) {
+  currentScenarioIndex = index;
+  currentStepIndex = 0;
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === index);
+  });
+  renderScenario();
+}
+
+function renderScenario() {
+  const sc = scenarios[currentScenarioIndex];
+  document.getElementById('scenarioDesc').textContent = sc.desc;
+  
+  const stepInfo = document.getElementById('stepInfo');
+  stepInfo.textContent = `Bước ${currentStepIndex + 1} / ${sc.steps.length}: ${sc.steps[currentStepIndex].name}`;
+
+  const btnContainer = document.getElementById('scenarioButtons');
+  btnContainer.innerHTML = '';
+
+  const step = sc.steps[currentStepIndex];
+  const actionBtn = document.createElement('button');
+  actionBtn.className = 'btn btn-primary';
+  actionBtn.textContent = `▶ Thực hiện: ${step.name}`;
+  actionBtn.onclick = () => {
+    step.action();
+    if (currentStepIndex < sc.steps.length - 1) {
+      currentStepIndex++;
+    } else {
+      currentStepIndex = 0; // lặp lại
+    }
+    renderUI();
+    renderScenario();
+  };
+  btnContainer.appendChild(actionBtn);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'btn';
+  resetBtn.textContent = '↺ Đặt lại Kịch bản';
+  resetBtn.onclick = () => {
+    currentStepIndex = 0;
+    sim.reset();
+    renderUI();
+    renderScenario();
+  };
+  btnContainer.appendChild(resetBtn);
+}
+
+function renderUI() {
+  const s = sim.state;
+
+  // Engine badge
+  const bEngine = document.getElementById('badgeEngine');
+  bEngine.textContent = s.engineStatus;
+  bEngine.className = 'badge ' + (s.engineStatus === 'OPEN' ? 'badge-open' : (s.engineStatus === 'BUSY' ? 'badge-busy' : 'badge-disposed'));
+
+  // Metrics
+  document.getElementById('valMode').textContent = s.mode === 'DIRECT' ? 'Direct (In-Memory Locks)' : 'Shared (OS Mutexes)';
+  document.getElementById('valToList').textContent = s.useToList ? '.ToList() (Nạp vào RAM)' : 'Deferred (Cursor mở)';
+  document.getElementById('valCursor').textContent = s.cursorActive ? `MỞ (Giữ bởi Thread:${s.cursorOwnerThread})` : 'ĐÓNG (An toàn)';
+  document.getElementById('valThread').textContent = s.currentExecutingThread ? `Thread ID: ${s.currentExecutingThread}` : 'Không';
+
+  // Worker badge
+  const bWorker = document.getElementById('badgeWorker');
+  bWorker.textContent = s.workerState;
+  bWorker.className = 'badge ' + (s.workerState === 'IDLE' ? 'badge-busy' : (s.workerState === 'ERROR_DELAY' ? 'badge-disposed' : 'badge-open'));
+
+  document.getElementById('valPendingImgs').textContent = `${s.pendingImages} ảnh (Đã sync: ${s.syncedImages})`;
+  document.getElementById('valPendingSessions').textContent = `${s.pendingSessions} phiên`;
+  document.getElementById('valSelfHealing').textContent = s.hasSelfHealing ? 'BẬT' : 'TẮT';
+  document.getElementById('valSelfHealing').style.color = s.hasSelfHealing ? '#4ade80' : '#f87171';
+  document.getElementById('valCheckOutProt').textContent = s.hasCheckOutProtection ? 'BẬT' : 'TẮT';
+  document.getElementById('valCheckOutProt').style.color = s.hasCheckOutProtection ? '#4ade80' : '#f87171';
+
+  // CheckOut Status
+  const coDiv = document.getElementById('checkOutStatus');
+  if (s.checkOutResult) {
+    coDiv.textContent = s.checkOutResult.message;
+    coDiv.style.color = s.checkOutResult.success ? '#4ade80' : '#f87171';
+    coDiv.style.border = s.checkOutResult.success ? '1px solid #059669' : '1px solid #dc2626';
+  } else {
+    coDiv.textContent = 'Chưa có lượt xe ra nào được kích hoạt.';
+    coDiv.style.color = '#94a3b8';
+    coDiv.style.border = 'none';
+  }
+
+  // Logs
+  const logBox = document.getElementById('logBox');
+  logBox.innerHTML = s.logs.map(l => {
+    let cls = 'log-info';
+    if (l.type === 'warn') cls = 'log-warn';
+    else if (l.type === 'err') cls = 'log-err';
+    else if (l.type === 'succ') cls = 'log-succ';
+    return `<div class="log-entry"><span class="log-time">[${l.time}]</span> <span class="${cls}">${l.message}</span></div>`;
+  }).join('');
+}
+
+// Khởi chạy ban đầu
+window.onload = () => {
+  renderUI();
+  renderScenario();
+};
+
+// Wrap simulator actions for free-play to update UI
+const origStartSync = sim.startSync.bind(sim);
+sim.startSync = () => { const res = origStartSync(); renderUI(); return res; };
+const origThreadHop = sim.triggerThreadHop.bind(sim);
+sim.triggerThreadHop = () => { const res = origThreadHop(); renderUI(); return res; };
+const origCheckOut = sim.simulateVehicleCheckOut.bind(sim);
+sim.simulateVehicleCheckOut = () => { const res = origCheckOut(); renderUI(); return res; };
+const origCrash = sim.forceCrashEngine.bind(sim);
+sim.forceCrashEngine = () => { origCrash(); renderUI(); };
+const origSelfHeal = sim.runSelfHealing.bind(sim);
+sim.runSelfHealing = () => { origSelfHeal(); renderUI(); };
+const origToggleMode = sim.toggleMode.bind(sim);
+sim.toggleMode = () => { origToggleMode(); renderUI(); };
+const origToggleToList = sim.toggleToList.bind(sim);
+sim.toggleToList = () => { origToggleToList(); renderUI(); };
+const origReset = sim.reset.bind(sim);
+sim.reset = () => { origReset(); renderUI(); };
+</script>
+
+</body>
+</html>

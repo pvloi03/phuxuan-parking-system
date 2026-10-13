@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PhuXuanParkingSystem.Domain\PhuXuanParkingSystem.Domain.csproj" />
+    <ProjectReference Include="..\HPParkingSystem.Domain\HPParkingSystem.Domain.csproj" />
   </ItemGroup>
 
 </Project>

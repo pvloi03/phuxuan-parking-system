@@ -1,4 +1,4 @@
-using PhuXuanParkingSystem.Licensing;
+﻿using HPParkingSystem.Licensing;
 
 namespace HPLicenseTool
 {
