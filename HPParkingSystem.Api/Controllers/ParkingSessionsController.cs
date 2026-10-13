@@ -35,42 +35,15 @@ namespace HPParkingSystem.Api.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 15)
         {
-            var filter = MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
-
-            if (!string.IsNullOrWhiteSpace(plateNumber))
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Regex(
-                    s => s.PlateNumber,
-                    new MongoDB.Bson.BsonRegularExpression(plateNumber.Trim(), "i"));
-            }
-
-            if (status.HasValue)
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.Status, status.Value);
-            }
-
-            if (vehicleType.HasValue)
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, vehicleType.Value);
-            }
-
-            var personTypeFilter = BuildPersonTypeFilter(personType);
-            if (personTypeFilter != null)
-            {
-                filter &= personTypeFilter;
-            }
-
-            var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
-            if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
-            {
-                filter &= timeFilter;
-            }
-
-            if (!string.IsNullOrWhiteSpace(laneName))
-            {
-                filter &= (MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.InLaneName, laneName) |
-                           MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.OutLaneName, laneName));
-            }
+            var filter = BuildSessionFilter(
+                plateNumber: plateNumber,
+                status: status,
+                vehicleType: vehicleType,
+                personType: personType,
+                fromDate: fromDate,
+                toDate: toDate,
+                hour: hour,
+                laneName: laneName);
 
             var totalCount = (int)await _sessionRepo.CountAsync(filter);
             var skip = (pageNumber - 1) * pageSize;
@@ -123,34 +96,14 @@ namespace HPParkingSystem.Api.Controllers
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
-            var filter = MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.IsDeleted, false);
-
-            if (!string.IsNullOrWhiteSpace(plateNumber))
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Regex(s => s.PlateNumber, new MongoDB.Bson.BsonRegularExpression(plateNumber.Trim(), "i"));
-            }
-
-            if (status.HasValue)
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.Status, status.Value);
-            }
-
-            if (vehicleType.HasValue)
-            {
-                filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, vehicleType.Value);
-            }
-
-            var personTypeFilter = BuildPersonTypeFilter(personType);
-            if (personTypeFilter != null)
-            {
-                filter &= personTypeFilter;
-            }
-
-            var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
-            if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
-            {
-                filter &= timeFilter;
-            }
+            var filter = BuildSessionFilter(
+                plateNumber: plateNumber,
+                status: status,
+                vehicleType: vehicleType,
+                personType: personType,
+                fromDate: fromDate,
+                toDate: toDate,
+                hour: hour);
 
             var sort = MongoDB.Driver.Builders<ParkingSession>.Sort.Descending(s => s.CreatedAt);
             var sessions = await _sessionRepo.FindAsync(filter, sort, 0, 5000);
@@ -529,6 +482,57 @@ namespace HPParkingSystem.Api.Controllers
             if (hourFilter != fb.Empty) return hourFilter;
 
             return fb.Empty;
+        }
+
+        private static MongoDB.Driver.FilterDefinition<ParkingSession> BuildSessionFilter(
+            string? plateNumber = null,
+            ParkingSessionStatus? status = null,
+            VehicleType? vehicleType = null,
+            PersonType? personType = null,
+            DateTime? fromDate = null,
+            DateTime? toDate = null,
+            int? hour = null,
+            string? laneName = null)
+        {
+            var fb = MongoDB.Driver.Builders<ParkingSession>.Filter;
+            var filter = fb.Eq(s => s.IsDeleted, false);
+
+            if (!string.IsNullOrWhiteSpace(plateNumber))
+            {
+                filter &= fb.Regex(
+                    s => s.PlateNumber,
+                    new MongoDB.Bson.BsonRegularExpression(plateNumber.Trim(), "i"));
+            }
+
+            if (status.HasValue)
+            {
+                filter &= fb.Eq(s => s.Status, status.Value);
+            }
+
+            if (vehicleType.HasValue)
+            {
+                filter &= fb.Eq(s => s.VehicleType, vehicleType.Value);
+            }
+
+            var personTypeFilter = BuildPersonTypeFilter(personType);
+            if (personTypeFilter != null)
+            {
+                filter &= personTypeFilter;
+            }
+
+            var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
+            if (timeFilter != fb.Empty)
+            {
+                filter &= timeFilter;
+            }
+
+            if (!string.IsNullOrWhiteSpace(laneName))
+            {
+                filter &= (fb.Eq(s => s.InLaneName, laneName) |
+                           fb.Eq(s => s.OutLaneName, laneName));
+            }
+
+            return filter;
         }
 
         private static MongoDB.Driver.FilterDefinition<ParkingSession>? BuildPersonTypeFilter(PersonType? personType)
