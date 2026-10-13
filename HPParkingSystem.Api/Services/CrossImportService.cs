@@ -17,24 +17,18 @@ namespace HPParkingSystem.Api.Services
     {
         private readonly IRepository<Person> _personRepo;
         private readonly IRepository<Vehicle> _vehicleRepo;
-        private readonly IRepository<Department> _deptRepo;
-        private readonly IRepository<Company> _companyRepo;
-        private readonly IRepository<Contractor> _contractorRepo;
+        private readonly IOrganizationLookupService _orgLookupService;
         private readonly IAuditLogQueue _auditQueue;
 
         public CrossImportService(
             IRepository<Person> personRepo,
             IRepository<Vehicle> vehicleRepo,
-            IRepository<Department> deptRepo,
-            IRepository<Company> companyRepo,
-            IRepository<Contractor> contractorRepo,
+            IOrganizationLookupService orgLookupService,
             IAuditLogQueue auditQueue)
         {
             _personRepo = personRepo;
             _vehicleRepo = vehicleRepo;
-            _deptRepo = deptRepo;
-            _companyRepo = companyRepo;
-            _contractorRepo = contractorRepo;
+            _orgLookupService = orgLookupService;
             _auditQueue = auditQueue;
         }
 
@@ -53,34 +47,8 @@ namespace HPParkingSystem.Api.Services
                 return result;
             }
 
-            // 1. Tải danh mục tra cứu phòng ban, công ty, nhà thầu
-            var departments = await _deptRepo.FindAsync(d => !d.IsDeleted);
-            var companies = await _companyRepo.FindAsync(c => !c.IsDeleted);
-            var contractors = await _contractorRepo.FindAsync(c => !c.IsDeleted);
-
-            var deptMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var d in departments)
-            {
-                deptMap[d.Id] = d.Id;
-                if (!string.IsNullOrWhiteSpace(d.Name)) deptMap[d.Name.Trim()] = d.Id;
-                if (!string.IsNullOrWhiteSpace(d.Code)) deptMap[d.Code.Trim()] = d.Id;
-            }
-
-            var compMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var c in companies)
-            {
-                compMap[c.Id] = c.Id;
-                if (!string.IsNullOrWhiteSpace(c.Name)) compMap[c.Name.Trim()] = c.Id;
-                if (!string.IsNullOrWhiteSpace(c.Code)) compMap[c.Code.Trim()] = c.Id;
-            }
-
-            var contrMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var c in contractors)
-            {
-                contrMap[c.Id] = c.Id;
-                if (!string.IsNullOrWhiteSpace(c.Name)) contrMap[c.Name.Trim()] = c.Id;
-                if (!string.IsNullOrWhiteSpace(c.Code)) contrMap[c.Code.Trim()] = c.Id;
-            }
+            // 1. Tải danh mục tra cứu phòng ban, công ty, nhà thầu qua lookup service chuyên trách
+            var orgCatalog = await _orgLookupService.LoadCatalogAsync();
 
             // 2. Xử lý từng dòng dữ liệu
             for (int i = 0; i < items.Count; i++)
@@ -126,24 +94,10 @@ namespace HPParkingSystem.Api.Services
                         currentPerson = await _personRepo.FindOneAsync(p => p.Code == cleanCode && !p.IsDeleted);
                     }
 
-                    // Xác định phòng ban, công ty, nhà thầu
-                    string? resolvedDeptId = null;
-                    if (!string.IsNullOrWhiteSpace(row.DepartmentId) && deptMap.TryGetValue(row.DepartmentId.Trim(), out var dId1))
-                        resolvedDeptId = dId1;
-                    else if (!string.IsNullOrWhiteSpace(row.DepartmentName) && deptMap.TryGetValue(row.DepartmentName.Trim(), out var dId2))
-                        resolvedDeptId = dId2;
-
-                    string? resolvedCompId = null;
-                    if (!string.IsNullOrWhiteSpace(row.CompanyId) && compMap.TryGetValue(row.CompanyId.Trim(), out var cId1))
-                        resolvedCompId = cId1;
-                    else if (!string.IsNullOrWhiteSpace(row.CompanyName) && compMap.TryGetValue(row.CompanyName.Trim(), out var cId2))
-                        resolvedCompId = cId2;
-
-                    string? resolvedContrId = null;
-                    if (!string.IsNullOrWhiteSpace(row.ContractorId) && contrMap.TryGetValue(row.ContractorId.Trim(), out var contrId1))
-                        resolvedContrId = contrId1;
-                    else if (!string.IsNullOrWhiteSpace(row.ContractorName) && contrMap.TryGetValue(row.ContractorName.Trim(), out var contrId2))
-                        resolvedContrId = contrId2;
+                    // Xác định phòng ban, công ty, nhà thầu qua catalog
+                    var resolvedDeptId = orgCatalog.ResolveDepartmentId(row.DepartmentId, row.DepartmentName);
+                    var resolvedCompId = orgCatalog.ResolveCompanyId(row.CompanyId, row.CompanyName);
+                    var resolvedContrId = orgCatalog.ResolveContractorId(row.ContractorId, row.ContractorName);
 
                     if (currentPerson == null && !string.IsNullOrWhiteSpace(cleanCode) && !string.IsNullOrWhiteSpace(cleanFullName))
                     {

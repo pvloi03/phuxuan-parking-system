@@ -67,6 +67,7 @@ builder.Services.AddHostedService<AuditLogBackgroundWorker>();
 builder.Services.AddHostedService<CapturesCleanupBackgroundWorker>();
 
 // 1.3. Cấu hình Service xử lý Nhập chéo Nhân sự & Phương tiện từ Excel
+builder.Services.AddScoped<IOrganizationLookupService, OrganizationLookupService>();
 builder.Services.AddScoped<ICrossImportService, CrossImportService>();
 
 // 2. Cấu hình JWT Authentication

@@ -109,12 +109,15 @@ namespace HPParkingSystem.Api.Tests.Services
 
         private ICrossImportService CreateService()
         {
+            var orgLookup = new OrganizationLookupService(
+                _deptRepoMock.Object,
+                _companyRepoMock.Object,
+                _contractorRepoMock.Object);
+
             return new CrossImportService(
                 _personRepoMock.Object,
                 _vehicleRepoMock.Object,
-                _deptRepoMock.Object,
-                _companyRepoMock.Object,
-                _contractorRepoMock.Object,
+                orgLookup,
                 _auditQueueMock.Object);
         }
 
