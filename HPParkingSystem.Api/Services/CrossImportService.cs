@@ -198,6 +198,18 @@ namespace HPParkingSystem.Api.Services
                         }
                     }
 
+                    // Kiểm tra tính nguyên tử của dòng dữ liệu (Row-level Atomicity):
+                    // Nếu dòng có thông tin nhân sự nhưng không thể lưu/hợp lệ, hủy bỏ xử lý phương tiện
+                    // trên dòng đó để tránh tạo xe mồ côi hoặc giữ sai chủ xe cũ.
+                    if (hasPersonInfo && currentPerson == null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(validCleanPlate))
+                        {
+                            result.Errors.Add($"Dòng {rowIndex}: Hủy bỏ thao tác với phương tiện '{validCleanPlate}' do thông tin nhân sự đi kèm không hợp lệ (Row-level Atomicity).");
+                        }
+                        continue;
+                    }
+
                     // --- BƯỚC B: XỬ LÝ PHƯƠNG TIỆN ---
                     if (!string.IsNullOrWhiteSpace(validCleanPlate))
                     {

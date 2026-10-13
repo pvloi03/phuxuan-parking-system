@@ -454,7 +454,7 @@ namespace HPParkingSystem.Api.Tests.Services
         }
 
         [Fact]
-        public async Task ImportAsync_WhenPersonHasErrorButVehicleIsValid_CreatesVehicleAndReportsPersonError()
+        public async Task ImportAsync_WhenPersonHasErrorAndRowHasNewVehicle_AbortsVehicleOperationAndEnforcesRowLevelAtomicity()
         {
             // Arrange
             var service = CreateService();
@@ -474,14 +474,49 @@ namespace HPParkingSystem.Api.Tests.Services
             // Assert
             result.TotalRows.Should().Be(1);
             result.PeopleCreated.Should().Be(0);
-            result.VehiclesCreated.Should().Be(1);
+            result.VehiclesCreated.Should().Be(0);
             result.LinksCreated.Should().Be(0);
-            result.Errors.Should().HaveCount(1);
-            result.Errors[0].Should().Contain("thiếu mã định danh bắt buộc (PersonCode)");
+            result.Errors.Should().HaveCount(2);
+            result.Errors.Should().Contain(e => e.Contains("thiếu mã định danh bắt buộc (PersonCode)"));
+            result.Errors.Should().Contain(e => e.Contains("Row-level Atomicity"));
 
-            _vehiclesInDb.Should().HaveCount(1);
-            _vehiclesInDb[0].PlateNumber.Should().Be("29A11111");
-            _vehiclesInDb[0].OwnerPersonId.Should().BeNull();
+            _vehiclesInDb.Should().BeEmpty();
+            _peopleInDb.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ImportAsync_WhenPersonHasErrorAndRowHasExistingVehicle_DoesNotModifyVehicleOwnerOrAttributes()
+        {
+            // Arrange
+            var existingVehicle = Vehicle.Create("30E99999", VehicleType.Car, "owner-original", 1.5, true);
+            existingVehicle.Id = "v-orig-1";
+            _vehiclesInDb.Add(existingVehicle);
+
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    PersonCode = "NS_NO_NAME_NEW", // Thiếu FullName, chưa có trong DB
+                    PlateNumber = "30E99999",
+                    Weight = 9.9
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.TotalRows.Should().Be(1);
+            result.PeopleCreated.Should().Be(0);
+            result.VehiclesUpdated.Should().Be(0);
+            result.Errors.Should().HaveCount(2);
+            result.Errors.Should().Contain(e => e.Contains("thiếu họ và tên bắt buộc (FullName)"));
+            result.Errors.Should().Contain(e => e.Contains("Row-level Atomicity"));
+
+            // Vehicle trong DB phải giữ nguyên 100% dữ liệu gốc
+            existingVehicle.Weight.Should().Be(1.5);
+            existingVehicle.OwnerPersonId.Should().Be("owner-original");
         }
     }
 }
