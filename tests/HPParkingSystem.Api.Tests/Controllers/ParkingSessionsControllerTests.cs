@@ -167,8 +167,8 @@ namespace HPParkingSystem.Api.Tests.Controllers
         public async Task ExportExcel_ShouldGenerateWorkbookWithExpectedHeadersAndEqualTotalWeights()
         {
             // Arrange:
-            // Xe 1 (29C-10001, Xe tải 10 tấn): 2 lượt ra đã hoàn thành -> Tổng = 20 tấn
-            // Xe 2 (29C-20002, Xe tải 5 tấn): 1 lượt vào đang trong bãi (Active, chưa ra) -> 0 lượt ra
+            // Xe 1 (29C-10001, Xe tải 10 m3): 2 lượt ra đã hoàn thành -> Tổng = 20 m3
+            // Xe 2 (29C-20002, Xe tải 5 m3): 1 lượt vào đang trong bãi (Active, chưa ra) -> 0 lượt ra
             var session1 = new ParkingSession
             {
                 Id = "s_01",
@@ -234,8 +234,8 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws1.Cells[4, 3].Value.Should().Be("Chủ Xe");
             ws1.Cells[4, 4].Value.Should().Be("Đối Tượng");
             ws1.Cells[4, 5].Value.Should().Be("Loại Xe");
-            ws1.Cells[4, 6].Value.Should().Be("Khối Lượng Xe (Tấn)");
-            ws1.Cells[4, 9].Value.Should().Be("Tổng Khối Lượng (Tấn)");
+            ws1.Cells[4, 6].Value.Should().Be("Khối Lượng Xe (m3)");
+            ws1.Cells[4, 9].Value.Should().Be("Tổng Khối Lượng (m3)");
 
             // Hàng dữ liệu đầu tiên (29C-10001, 2 lượt):
             // Row 5: 29C-10001 | Xe vãng lai | Khách vãng lai | Xe tải | 10 | in:2 | out:2 | totalWeight: 20
@@ -264,7 +264,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws1.Cells[7, 7].Value.Should().Be(3); // Tổng lượt vào: 2 + 1 = 3
             ws1.Cells[7, 8].Value.Should().Be(2); // Tổng lượt ra: 2 + 0 = 2
             double grandTotalSheet1 = Convert.ToDouble(ws1.Cells[7, 9].Value);
-            grandTotalSheet1.Should().Be(20.0); // 20.0 tấn
+            grandTotalSheet1.Should().Be(20.0); // 20.0 m3
             ws1.Cells[7, 9].Style.Numberformat.Format.Should().Be("#,##0");
 
             // 2. Kiểm tra Sheet 2: Lịch Sử Chi Tiết
@@ -273,7 +273,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws2.Cells[3, 3].Value.Should().Be("Chủ Xe");
             ws2.Cells[3, 4].Value.Should().Be("Đối Tượng");
             ws2.Cells[3, 5].Value.Should().Be("Loại Xe");
-            ws2.Cells[3, 6].Value.Should().Be("Khối Lượng (Tấn)");
+            ws2.Cells[3, 6].Value.Should().Be("Khối Lượng (m3)");
 
             // Dòng dữ liệu chi tiết
             ws2.Cells[4, 2].Value.Should().Be("29C-10001");
@@ -295,7 +295,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws2.Cells[7, 1].Value.Should().Be("TỔNG CỘNG KHỐI LƯỢNG (LƯỢT ĐÃ RA)");
             double grandTotalSheet2 = Convert.ToDouble(ws2.Cells[7, 6].Value);
 
-            // Khối lượng Sheet 2 chỉ tính lượt đã ra (10 + 10 = 20), loại trừ xe đang trong bãi (5 tấn)
+            // Khối lượng Sheet 2 chỉ tính lượt đã ra (10 + 10 = 20), loại trừ xe đang trong bãi (5 m3)
             grandTotalSheet2.Should().Be(20.0);
             ws2.Cells[7, 6].Style.Numberformat.Format.Should().Be("#,##0");
 
