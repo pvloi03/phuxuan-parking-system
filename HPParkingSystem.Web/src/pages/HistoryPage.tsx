@@ -22,7 +22,6 @@ import {
   Trash2,
   Calendar,
   Scale,
-  Truck,
 } from 'lucide-react'
 import { parkingService } from '@/services/parkingService'
 import type { ImageStoragePathDto, ParkingSession, ParkingSessionStatus, VehicleType } from '@/types'
@@ -39,11 +38,35 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
+function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: string | number) {
+  if (!inTimeStr) return '--'
+  const inTime = new Date(inTimeStr).getTime()
+  const outTime = outTimeStr ? new Date(outTimeStr).getTime() : Date.now()
+  const diffMs = outTime - inTime
+  if (diffMs <= 0) return 'Dưới 1 phút'
+  const totalMinutes = Math.floor(diffMs / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  const days = Math.floor(hours / 24)
+  const remHours = hours % 24
+
+  let text = ''
+  if (days > 0) text += `${days} ngày `
+  if (remHours > 0 || days > 0) text += `${remHours} giờ `
+  text += `${minutes} phút`
+
+  if (!outTimeStr && (statusVal === 'Active' || statusVal === 1)) {
+    return `${text} (đang đỗ)`
+  }
+  return text
+}
+
 export function HistoryPage() {
   const queryClient = useQueryClient()
   const [plateNumber, setPlateNumber] = useState('')
   const [status, setStatus] = useState<string>('')
   const [vehicleType, setVehicleType] = useState<string>('')
+  const [personType, setPersonType] = useState<string>('')
   const [hour, setHour] = useState<string>('')
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
@@ -63,12 +86,13 @@ export function HistoryPage() {
   }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parking-history', plateNumber, status, vehicleType, hour, fromDate, toDate, page, pageSize],
+    queryKey: ['parking-history', plateNumber, status, vehicleType, personType, hour, fromDate, toDate, page, pageSize],
     queryFn: () =>
       parkingService.getSessions({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
+        personType: personType || undefined,
         hour: hour !== '' ? parseInt(hour, 10) : undefined,
         fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate: toDate ? `${toDate}T23:59:59` : undefined,
@@ -168,6 +192,7 @@ export function HistoryPage() {
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
+        personType: personType || undefined,
         hour: hour !== '' ? parseInt(hour, 10) : undefined,
         fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
         toDate: toDate ? `${toDate}T23:59:59` : undefined,
@@ -248,28 +273,44 @@ export function HistoryPage() {
     return <Badge variant="secondary" className="text-[11px] px-2 py-0.5">Khác</Badge>
   }
 
-  const formatDuration = (inTimeStr?: string, outTimeStr?: string, statusVal?: string | number) => {
-    if (!inTimeStr) return '--'
-    const inTime = new Date(inTimeStr).getTime()
-    const outTime = outTimeStr ? new Date(outTimeStr).getTime() : Date.now()
-    const diffMs = outTime - inTime
-    if (diffMs <= 0) return 'Dưới 1 phút'
-    const totalMinutes = Math.floor(diffMs / 60000)
-    const hours = Math.floor(totalMinutes / 60)
-    const minutes = totalMinutes % 60
-    const days = Math.floor(hours / 24)
-    const remHours = hours % 24
-
-    let text = ''
-    if (days > 0) text += `${days} ngày `
-    if (remHours > 0 || days > 0) text += `${remHours} giờ `
-    text += `${minutes} phút`
-
-    if (!outTimeStr && (statusVal === 'Active' || statusVal === 1)) {
-      return `${text} (đang đỗ)`
+  const renderPersonTypeBadge = (session: ParkingSession) => {
+    const type = session.personType
+    if (type === 'Employee') {
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
+          Cán bộ / NV
+        </Badge>
+      )
     }
-    return text
+    if (type === 'Contractor') {
+      return (
+        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
+          Đối tác / NT
+        </Badge>
+      )
+    }
+    if (type === 'VIP') {
+      return (
+        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
+          Khách VIP
+        </Badge>
+      )
+    }
+    if (type === 'Visitor') {
+      return (
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[10px] px-1.5 py-0 font-medium shadow-2xs">
+          Khách thăm
+        </Badge>
+      )
+    }
+    return (
+      <Badge variant="secondary" className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-[10px] px-1.5 py-0 font-normal">
+        Khách vãng lai
+      </Badge>
+    )
   }
+
+
 
   const formatImageUrl = (input?: string | ImageStoragePathDto | null) => {
     if (!input) return ''
@@ -396,14 +437,6 @@ export function HistoryPage() {
 
   const totalPages = data?.totalPages || 1
   const totalCount = data?.totalCount || 0
-  const currentPageItems = data?.items || []
-  const totalWeight = data?.totalWeight ?? currentPageItems.reduce((acc, curr) => acc + (curr.weight || 0), 0)
-  const truckSessionsCount = data?.totalTruckCount ?? currentPageItems.filter(
-    (i) => i.vehicleType === 'Truck'
-  ).length
-  const activeSessionsCount = data?.totalActiveCount ?? currentPageItems.filter(
-    (i) => i.status === 'Active'
-  ).length
   const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1
   const endItem = Math.min(page * pageSize, totalCount)
 
@@ -433,61 +466,10 @@ export function HistoryPage() {
         </div>
       </div>
 
-      {/* Summary Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="p-3.5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Tổng Lượt Xe</span>
-            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
-              {totalCount.toLocaleString('vi-VN')}
-            </span>
-          </div>
-          <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-            <Car className="h-5 w-5" />
-          </div>
-        </Card>
-
-        <Card className="p-3.5 shadow-xs flex items-center justify-between border-blue-100 dark:border-blue-900/50 bg-blue-50/20 dark:bg-blue-950/10">
-          <div>
-            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 block">Tổng Khối Lượng</span>
-            <span className="text-xl font-bold font-mono text-blue-700 dark:text-blue-300">
-              {totalWeight.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} <span className="text-xs font-normal">tấn</span>
-            </span>
-          </div>
-          <div className="h-9 w-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-            <Scale className="h-5 w-5" />
-          </div>
-        </Card>
-
-        <Card className="p-3.5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Lượt Xe Tải</span>
-            <span className="text-xl font-bold font-mono text-purple-600 dark:text-purple-400">
-              {truckSessionsCount.toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">lượt</span>
-            </span>
-          </div>
-          <div className="h-9 w-9 rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-            <Truck className="h-5 w-5" />
-          </div>
-        </Card>
-
-        <Card className="p-3.5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Đang Trong Bãi</span>
-            <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
-              {activeSessionsCount.toLocaleString('vi-VN')} <span className="text-xs font-normal text-slate-400">xe</span>
-            </span>
-          </div>
-          <div className="h-9 w-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <Clock className="h-5 w-5" />
-          </div>
-        </Card>
-      </div>
-
       {/* Filters Bar & Quick Date Selector */}
       <Card className="p-4 shadow-xs space-y-3">
         {/* Hàng 1: Các trường lọc chính */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
           {/* 1. Tìm theo biển số */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -510,7 +492,7 @@ export function HistoryPage() {
                 setStatus(e.target.value)
                 setPage(1)
               }}
-              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200"
+              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer"
             >
               <option value="">-- Tất cả trạng thái --</option>
               <option value="Active">Đang trong bãi (Active)</option>
@@ -519,7 +501,26 @@ export function HistoryPage() {
             </select>
           </div>
 
-          {/* 3. Lọc loại xe */}
+          {/* 3. Lọc đối tượng */}
+          <div>
+            <select
+              value={personType}
+              onChange={(e) => {
+                setPersonType(e.target.value)
+                setPage(1)
+              }}
+              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer"
+            >
+              <option value="">-- Tất cả đối tượng --</option>
+              <option value="Employee">Cán bộ / Nhân viên</option>
+              <option value="Contractor">Đối tác / Nhà thầu</option>
+              <option value="VIP">Khách VIP</option>
+              <option value="Visitor">Khách thăm</option>
+              <option value="Guest">Khách vãng lai</option>
+            </select>
+          </div>
+
+          {/* 4. Lọc loại xe */}
           <div>
             <select
               value={vehicleType}
@@ -655,6 +656,7 @@ export function HistoryPage() {
               setPlateNumber('')
               setStatus('')
               setVehicleType('')
+              setPersonType('')
               setHour('')
               setFromDate('')
               setToDate('')
@@ -720,16 +722,19 @@ export function HistoryPage() {
                         {session.plateNumber}
                       </td>
                       <td className="p-3.5">
-                        {session.personName ? (
-                          <span
-                            className="max-w-30 sm:max-w-37.5 truncate block font-medium text-slate-800 dark:text-slate-200 cursor-help"
-                            title={session.personName}
-                          >
-                            {session.personName}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Xe vãng lai</span>
-                        )}
+                        <div className="flex flex-col items-start gap-1">
+                          {session.personName ? (
+                            <span
+                              className="max-w-30 sm:max-w-37.5 truncate block font-medium text-slate-800 dark:text-slate-200 cursor-help"
+                              title={session.personName}
+                            >
+                              {session.personName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 font-medium">Khách vãng lai</span>
+                          )}
+                          {renderPersonTypeBadge(session)}
+                        </div>
                       </td>
                       <td className="p-3.5 text-center">
                         {getVehicleTypeBadge(session.vehicleType)}

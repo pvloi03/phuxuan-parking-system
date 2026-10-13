@@ -5,6 +5,7 @@ export interface SessionFilterParams {
   plateNumber?: string
   status?: ParkingSessionStatus
   vehicleType?: VehicleType
+  personType?: string
   fromDate?: string
   toDate?: string
   hour?: number

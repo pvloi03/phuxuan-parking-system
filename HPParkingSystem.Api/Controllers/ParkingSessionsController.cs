@@ -24,13 +24,14 @@ namespace HPParkingSystem.Api.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetList(
-            [FromQuery] string? plateNumber,
-            [FromQuery] ParkingSessionStatus? status,
-            [FromQuery] VehicleType? vehicleType,
-            [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate,
-            [FromQuery] int? hour,
-            [FromQuery] string? laneName,
+            [FromQuery] string? plateNumber = null,
+            [FromQuery] ParkingSessionStatus? status = null,
+            [FromQuery] VehicleType? vehicleType = null,
+            [FromQuery] string? personType = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? hour = null,
+            [FromQuery] string? laneName = null,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 15)
         {
@@ -51,6 +52,12 @@ namespace HPParkingSystem.Api.Controllers
             if (vehicleType.HasValue)
             {
                 filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, vehicleType.Value);
+            }
+
+            var personTypeFilter = BuildPersonTypeFilter(personType);
+            if (personTypeFilter != null)
+            {
+                filter &= personTypeFilter;
             }
 
             var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
@@ -106,12 +113,13 @@ namespace HPParkingSystem.Api.Controllers
 
         [HttpGet("export-excel")]
         public async Task<IActionResult> ExportExcel(
-            [FromQuery] string? plateNumber,
-            [FromQuery] ParkingSessionStatus? status,
-            [FromQuery] VehicleType? vehicleType,
-            [FromQuery] DateTime? fromDate,
-            [FromQuery] DateTime? toDate,
-            [FromQuery] int? hour)
+            [FromQuery] string? plateNumber = null,
+            [FromQuery] ParkingSessionStatus? status = null,
+            [FromQuery] VehicleType? vehicleType = null,
+            [FromQuery] string? personType = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? hour = null)
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
@@ -132,6 +140,12 @@ namespace HPParkingSystem.Api.Controllers
                 filter &= MongoDB.Driver.Builders<ParkingSession>.Filter.Eq(s => s.VehicleType, vehicleType.Value);
             }
 
+            var personTypeFilter = BuildPersonTypeFilter(personType);
+            if (personTypeFilter != null)
+            {
+                filter &= personTypeFilter;
+            }
+
             var timeFilter = BuildTimeFilter(fromDate, toDate, hour, status);
             if (timeFilter != MongoDB.Driver.Builders<ParkingSession>.Filter.Empty)
             {
@@ -149,14 +163,14 @@ namespace HPParkingSystem.Api.Controllers
             var wsSummary = package.Workbook.Worksheets.Add("Thống Kê Số Lượt Từng Xe");
 
             // Tiêu đề Sheet 1
-            wsSummary.Cells["A1:L1"].Merge = true;
+            wsSummary.Cells["A1:M1"].Merge = true;
             wsSummary.Cells["A1"].Value = "BÁO CÁO THỐNG KÊ SỐ LƯỢT XE VÀO RA THEO TỪNG XE";
             wsSummary.Cells["A1"].Style.Font.Bold = true;
             wsSummary.Cells["A1"].Style.Font.Size = 15;
             wsSummary.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
             // Thông tin thời gian lọc
-            wsSummary.Cells["A2:L2"].Merge = true;
+            wsSummary.Cells["A2:M2"].Merge = true;
             string timeRangeStr = $"Khoảng thời gian: {(fromDate.HasValue ? fromDate.Value.ToString("dd/MM/yyyy") : "Toàn bộ")} - {(toDate.HasValue ? toDate.Value.ToString("dd/MM/yyyy") : "Hiện tại")}";
             wsSummary.Cells["A2"].Value = timeRangeStr;
             wsSummary.Cells["A2"].Style.Font.Italic = true;
@@ -168,6 +182,7 @@ namespace HPParkingSystem.Api.Controllers
                 "STT", 
                 "Biển Số Xe", 
                 "Chủ Xe", 
+                "Đối Tượng",
                 "Loại Xe", 
                 "Khối Lượng Xe (Tấn)", 
                 "Tổng Lượt Vào", 
@@ -228,67 +243,69 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 1].Value = sumStt++;
                 wsSummary.Cells[sumRow, 2].Value = g.Key;
                 wsSummary.Cells[sumRow, 3].Value = first.PersonName ?? "Xe vãng lai";
-                wsSummary.Cells[sumRow, 4].Value = first.VehicleType.ToDisplayName();
+                wsSummary.Cells[sumRow, 4].Value = GetPersonCategoryLabel(first);
+                wsSummary.Cells[sumRow, 5].Value = first.VehicleType.ToDisplayName();
                 if (vehicleWeight.HasValue && vehicleWeight.Value > 0)
                 {
-                    wsSummary.Cells[sumRow, 5].Value = vehicleWeight.Value;
-                    wsSummary.Cells[sumRow, 5].Style.Numberformat.Format = "#,##0.##";
+                    wsSummary.Cells[sumRow, 6].Value = vehicleWeight.Value;
+                    wsSummary.Cells[sumRow, 6].Style.Numberformat.Format = "#,##0.##";
                 }
                 else
                 {
-                    wsSummary.Cells[sumRow, 5].Value = "--";
+                    wsSummary.Cells[sumRow, 6].Value = "--";
                 }
-                wsSummary.Cells[sumRow, 6].Value = inCount;
-                wsSummary.Cells[sumRow, 7].Value = outCount;
+                wsSummary.Cells[sumRow, 7].Value = inCount;
+                wsSummary.Cells[sumRow, 8].Value = outCount;
                 if (totalGroupWeight > 0)
                 {
-                    wsSummary.Cells[sumRow, 8].Value = totalGroupWeight;
-                    wsSummary.Cells[sumRow, 8].Style.Numberformat.Format = "#,##0.##";
+                    wsSummary.Cells[sumRow, 9].Value = totalGroupWeight;
+                    wsSummary.Cells[sumRow, 9].Style.Numberformat.Format = "#,##0.##";
                 }
                 else
                 {
-                    wsSummary.Cells[sumRow, 8].Value = "--";
+                    wsSummary.Cells[sumRow, 9].Value = "--";
                 }
-                wsSummary.Cells[sumRow, 9].Value = isCurrentlyInParking ? "Có (Đang đỗ)" : "Không";
-                wsSummary.Cells[sumRow, 10].Value = totalDurationStr;
-                wsSummary.Cells[sumRow, 11].Value = latestIn.HasValue ? latestIn.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
-                wsSummary.Cells[sumRow, 12].Value = latestOut.HasValue ? latestOut.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
+                wsSummary.Cells[sumRow, 10].Value = isCurrentlyInParking ? "Có (Đang đỗ)" : "Không";
+                wsSummary.Cells[sumRow, 11].Value = totalDurationStr;
+                wsSummary.Cells[sumRow, 12].Value = latestIn.HasValue ? latestIn.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
+                wsSummary.Cells[sumRow, 13].Value = latestOut.HasValue ? latestOut.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
 
                 // Canh lề
                 wsSummary.Cells[sumRow, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 wsSummary.Cells[sumRow, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 wsSummary.Cells[sumRow, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                wsSummary.Cells[sumRow, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                wsSummary.Cells[sumRow, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                wsSummary.Cells[sumRow, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                wsSummary.Cells[sumRow, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
                 wsSummary.Cells[sumRow, 7].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                wsSummary.Cells[sumRow, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                wsSummary.Cells[sumRow, 9].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                wsSummary.Cells[sumRow, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                wsSummary.Cells[sumRow, 9].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                wsSummary.Cells[sumRow, 10].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 sumRow++;
             }
 
             if (vehicleGroups.Count > 0)
             {
-                wsSummary.Cells[sumRow, 1, sumRow, 5].Merge = true;
+                wsSummary.Cells[sumRow, 1, sumRow, 6].Merge = true;
                 wsSummary.Cells[sumRow, 1].Value = "TỔNG CỘNG";
                 wsSummary.Cells[sumRow, 1].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                wsSummary.Cells[sumRow, 6].Value = grandTotalIn;
-                wsSummary.Cells[sumRow, 6].Style.Font.Bold = true;
-                wsSummary.Cells[sumRow, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-
-                wsSummary.Cells[sumRow, 7].Value = grandTotalOut;
+                wsSummary.Cells[sumRow, 7].Value = grandTotalIn;
                 wsSummary.Cells[sumRow, 7].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 7].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                wsSummary.Cells[sumRow, 8].Value = grandTotalWeightSheet1;
+                wsSummary.Cells[sumRow, 8].Value = grandTotalOut;
                 wsSummary.Cells[sumRow, 8].Style.Font.Bold = true;
-                wsSummary.Cells[sumRow, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                wsSummary.Cells[sumRow, 8].Style.Numberformat.Format = "#,##0.##";
+                wsSummary.Cells[sumRow, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                wsSummary.Cells[sumRow, 1, sumRow, 12].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                wsSummary.Cells[sumRow, 1, sumRow, 12].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(241, 245, 249));
+                wsSummary.Cells[sumRow, 9].Value = grandTotalWeightSheet1;
+                wsSummary.Cells[sumRow, 9].Style.Font.Bold = true;
+                wsSummary.Cells[sumRow, 9].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                wsSummary.Cells[sumRow, 9].Style.Numberformat.Format = "#,##0.##";
+
+                wsSummary.Cells[sumRow, 1, sumRow, 13].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                wsSummary.Cells[sumRow, 1, sumRow, 13].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(241, 245, 249));
                 sumRow++;
             }
 
@@ -300,7 +317,7 @@ namespace HPParkingSystem.Api.Controllers
             var ws = package.Workbook.Worksheets.Add("Lịch Sử Chi Tiết");
 
             // Header Title
-            ws.Cells["A1:I1"].Merge = true;
+            ws.Cells["A1:J1"].Merge = true;
             ws.Cells["A1"].Value = "BÁO CÁO CHI TIẾT CÁC PHIÊN XE RA VÀO";
             ws.Cells["A1"].Style.Font.Bold = true;
             ws.Cells["A1"].Style.Font.Size = 15;
@@ -311,6 +328,7 @@ namespace HPParkingSystem.Api.Controllers
                 "STT", 
                 "Biển Số Xe", 
                 "Chủ Xe", 
+                "Đối Tượng",
                 "Loại Xe", 
                 "Khối Lượng (Tấn)", 
                 "Thời Gian Vào", 
@@ -336,33 +354,35 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 1].Value = stt++;
                 ws.Cells[row, 2].Value = s.PlateNumber;
                 ws.Cells[row, 3].Value = s.PersonName ?? "Xe vãng lai";
-                ws.Cells[row, 4].Value = s.VehicleType.ToDisplayName();
+                ws.Cells[row, 4].Value = GetPersonCategoryLabel(s);
+                ws.Cells[row, 5].Value = s.VehicleType.ToDisplayName();
                 if (s.Weight.HasValue && s.Weight.Value > 0)
                 {
-                    ws.Cells[row, 5].Value = s.Weight.Value;
-                    ws.Cells[row, 5].Style.Numberformat.Format = "#,##0.##";
+                    ws.Cells[row, 6].Value = s.Weight.Value;
+                    ws.Cells[row, 6].Style.Numberformat.Format = "#,##0.##";
                 }
                 else
                 {
-                    ws.Cells[row, 5].Value = "--";
+                    ws.Cells[row, 6].Value = "--";
                 }
-                ws.Cells[row, 6].Value = s.InTime.HasValue ? s.InTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
-                ws.Cells[row, 7].Value = s.OutTime.HasValue ? s.OutTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
-                ws.Cells[row, 8].Value = s.Duration.HasValue ? $"{s.Duration.Value.Hours}h {s.Duration.Value.Minutes}m" : "--";
-                ws.Cells[row, 9].Value = s.Status == ParkingSessionStatus.Active ? "Đang trong bãi" :
-                                         s.Status == ParkingSessionStatus.Completed ? "Đã hoàn thành" : "Xe ra không có vào";
+                ws.Cells[row, 7].Value = s.InTime.HasValue ? s.InTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
+                ws.Cells[row, 8].Value = s.OutTime.HasValue ? s.OutTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
+                ws.Cells[row, 9].Value = s.Duration.HasValue ? $"{s.Duration.Value.Hours}h {s.Duration.Value.Minutes}m" : "--";
+                ws.Cells[row, 10].Value = s.Status == ParkingSessionStatus.Active ? "Đang trong bãi" :
+                                          s.Status == ParkingSessionStatus.Completed ? "Đã hoàn thành" : "Xe ra không có vào";
 
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 4].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
-                ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                ws.Cells[row, 9].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                ws.Cells[row, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                ws.Cells[row, 10].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 row++;
             }
 
             if (sessions.Count > 0)
             {
-                ws.Cells[row, 1, row, 4].Merge = true;
+                ws.Cells[row, 1, row, 5].Merge = true;
                 ws.Cells[row, 1].Value = "TỔNG CỘNG KHỐI LƯỢNG (LƯỢT ĐÃ RA)";
                 ws.Cells[row, 1].Style.Font.Bold = true;
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -370,13 +390,13 @@ namespace HPParkingSystem.Api.Controllers
                 double grandTotalSessionsWeight = sessions
                     .Where(s => (s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed) && s.Weight.HasValue)
                     .Sum(s => s.Weight!.Value);
-                ws.Cells[row, 5].Value = grandTotalSessionsWeight;
-                ws.Cells[row, 5].Style.Font.Bold = true;
-                ws.Cells[row, 5].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                ws.Cells[row, 5].Style.Numberformat.Format = "#,##0.##";
+                ws.Cells[row, 6].Value = grandTotalSessionsWeight;
+                ws.Cells[row, 6].Style.Font.Bold = true;
+                ws.Cells[row, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
+                ws.Cells[row, 6].Style.Numberformat.Format = "#,##0.##";
 
-                ws.Cells[row, 1, row, 9].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                ws.Cells[row, 1, row, 9].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(241, 245, 249));
+                ws.Cells[row, 1, row, 10].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                ws.Cells[row, 1, row, 10].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(241, 245, 249));
                 row++;
             }
 
@@ -509,6 +529,49 @@ namespace HPParkingSystem.Api.Controllers
             if (hourFilter != fb.Empty) return hourFilter;
 
             return fb.Empty;
+        }
+
+        private static MongoDB.Driver.FilterDefinition<ParkingSession>? BuildPersonTypeFilter(string? personType)
+        {
+            if (string.IsNullOrWhiteSpace(personType))
+            {
+                return null;
+            }
+
+            var fb = MongoDB.Driver.Builders<ParkingSession>.Filter;
+
+            if (personType.Equals("Guest", StringComparison.OrdinalIgnoreCase))
+            {
+                return fb.Eq(s => s.PersonType, null) |
+                       fb.Eq(s => s.PersonType, PersonType.Other) |
+                       fb.Eq(s => s.PersonId, null) |
+                       fb.Eq(s => s.PersonId, "") |
+                       fb.Eq(s => s.PersonName, null) |
+                       fb.Eq(s => s.PersonName, "");
+            }
+
+            if (Enum.TryParse<PersonType>(personType, true, out var parsedPersonType))
+            {
+                return fb.Eq(s => s.PersonType, parsedPersonType);
+            }
+
+            return null;
+        }
+
+        private static string GetPersonCategoryLabel(ParkingSession s)
+        {
+            if (s.PersonType.HasValue)
+            {
+                return s.PersonType.Value switch
+                {
+                    PersonType.Employee => "Cán bộ / Nhân viên",
+                    PersonType.Contractor => "Đối tác / Nhà thầu",
+                    PersonType.VIP => "Khách VIP",
+                    PersonType.Visitor => "Khách thăm",
+                    _ => "Khách vãng lai"
+                };
+            }
+            return !string.IsNullOrWhiteSpace(s.PersonName) ? "Xe đăng ký" : "Khách vãng lai";
         }
     }
 }
