@@ -104,9 +104,28 @@ namespace HPParkingSystem.Models.Data
 
         private void EnsureOpen()
         {
-            if (_disposed) return;
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(LiteDbContext), "Không thể truy cập cơ sở dữ liệu LiteDB sau khi Context đã bị Dispose.");
+            }
+
             lock (_dbLock)
             {
+                if (_database != null)
+                {
+                    try
+                    {
+                        // Kiểm tra tính sẵn sàng của engine thông qua thao tác siêu nhẹ
+                        _ = _database.GetCollectionNames();
+                    }
+                    catch (Exception ex) when (IsEngineDisposedException(ex))
+                    {
+                        // Engine bên dưới đã bị hủy đột ngột -> Giải phóng reference để kích hoạt khởi tạo lại
+                        try { _database.Dispose(); } catch { }
+                        _database = null;
+                    }
+                }
+
                 if (_database == null)
                 {
                     InitializeDatabase();
@@ -114,6 +133,9 @@ namespace HPParkingSystem.Models.Data
             }
         }
 
+        /// <summary>
+        /// Tái tạo và thiết lập lại kết nối LiteDB một cách an toàn đa luồng.
+        /// </summary>
         public void ResetDatabase()
         {
             lock (_dbLock)
@@ -131,6 +153,9 @@ namespace HPParkingSystem.Models.Data
             }
         }
 
+        /// <summary>
+        /// Đối tượng LiteDatabase gốc đã được đảm bảo mở và tự phục hồi khi có sự cố.
+        /// </summary>
         public ILiteDatabase Database
         {
             get
@@ -140,29 +165,41 @@ namespace HPParkingSystem.Models.Data
             }
         }
 
+        /// <summary>
+        /// Lấy collection theo entity type và tên collection tương ứng.
+        /// </summary>
         public ILiteCollection<T> GetCollection<T>(string? name = null)
         {
             EnsureOpen();
             try
             {
-                return string.IsNullOrEmpty(name)
-                    ? _database!.GetCollection<T>()
-                    : _database!.GetCollection<T>(name);
+                return ResolveCollection<T>(name);
             }
             catch (Exception ex) when (IsEngineDisposedException(ex))
             {
                 ResetDatabase();
-                return string.IsNullOrEmpty(name)
-                    ? _database!.GetCollection<T>()
-                    : _database!.GetCollection<T>(name);
+                return ResolveCollection<T>(name);
             }
         }
 
+        private ILiteCollection<T> ResolveCollection<T>(string? name)
+        {
+            return string.IsNullOrEmpty(name)
+                ? _database!.GetCollection<T>()
+                : _database!.GetCollection<T>(name);
+        }
+
+        /// <summary>
+        /// Lấy collection chứa các tác vụ đồng bộ bản ghi ngoại tuyến.
+        /// </summary>
         public ILiteCollection<OfflineSyncTask> GetSyncTasks()
         {
             return GetCollection<OfflineSyncTask>("offline_sync_tasks");
         }
 
+        /// <summary>
+        /// Lấy collection chứa các tác vụ đồng bộ hình ảnh ngoại tuyến.
+        /// </summary>
         public ILiteCollection<OfflineImageSyncTask> GetImageSyncTasks()
         {
             return GetCollection<OfflineImageSyncTask>("offline_image_sync_tasks");
@@ -174,6 +211,9 @@ namespace HPParkingSystem.Models.Data
                    (ex is LiteException && ex.Message.IndexOf("disposed", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
+        /// <summary>
+        /// Giải phóng toàn bộ tài nguyên của LiteDB context.
+        /// </summary>
         public void Dispose()
         {
             lock (_dbLock)

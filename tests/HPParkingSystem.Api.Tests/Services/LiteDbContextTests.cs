@@ -148,5 +148,42 @@ namespace HPParkingSystem.Api.Tests.Services
             record.Should().NotBeNull();
             record.RecordId.Should().Be("heal_001");
         }
+
+        [Fact]
+        public void LiteDbContext_WhenUnderlyingEngineDisposedDirectly_ShouldSelfHealOnNextAccess()
+        {
+            // Arrange
+            var syncTasks = _context.GetSyncTasks();
+            syncTasks.Insert(new OfflineSyncTask { RecordId = "engine_heal_001", IsSynced = false });
+
+            // Act: Trực tiếp dispose Database engine bên dưới (mô phỏng crash nội bộ của LiteDB)
+            _context.Database.Dispose();
+
+            // Assert: Khi truy cập lại, EnsureOpen probe phát hiện engine chết và tự tái tạo
+            var recoveredCol = _context.GetSyncTasks();
+            recoveredCol.Should().NotBeNull();
+
+            var record = recoveredCol.FindOne(t => t.RecordId == "engine_heal_001");
+            record.Should().NotBeNull();
+            record.RecordId.Should().Be("engine_heal_001");
+        }
+
+        [Fact]
+        public void LiteDbContext_WhenContextDisposed_ShouldThrowObjectDisposedException()
+        {
+            // Arrange
+            string tempDir = Path.Combine(Path.GetTempPath(), "HPParkingDisposedTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            var context = new LiteDbContext(Path.Combine(tempDir, "disposed_test.db"));
+
+            // Act
+            context.Dispose();
+
+            // Assert
+            var act = () => context.GetSyncTasks();
+            act.Should().Throw<ObjectDisposedException>();
+
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
     }
 }
