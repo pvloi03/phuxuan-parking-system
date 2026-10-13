@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Enums;
+using HPParkingSystem.Models.Enums;
 using HPParkingSystem.SDK.NST;
 using HPParkingSystem.Services.Logging;
 using System;
@@ -107,8 +107,6 @@ namespace HPParkingSystem.Services.Devices.Camera
                     u32Mode = CHISDK.HI_STREAM_MODE_TCP,
                     u8Type = CHISDK.HI_STREAM_ALL
                 };
-
-                CHISDK.HI_SDK_SetDisplayCallback(_handle, 1);
 
                 int ret = CHISDK.HI_SDK_RealPlayExt(_handle, windowHandle, ref streamInfo);
                 bool success = ret == CHISDK.HI_SUCCESS;
