@@ -200,8 +200,7 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 5].Value = first.VehicleType.ToDisplayName();
                 if (vehicleWeight.HasValue && vehicleWeight.Value > 0)
                 {
-                    wsSummary.Cells[sumRow, 6].Value = vehicleWeight.Value;
-                    wsSummary.Cells[sumRow, 6].Style.Numberformat.Format = "#,##0.##";
+                    SetWeightCellValue(wsSummary.Cells[sumRow, 6], vehicleWeight.Value);
                 }
                 else
                 {
@@ -211,8 +210,7 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 8].Value = outCount;
                 if (totalGroupWeight > 0)
                 {
-                    wsSummary.Cells[sumRow, 9].Value = totalGroupWeight;
-                    wsSummary.Cells[sumRow, 9].Style.Numberformat.Format = "#,##0.##";
+                    SetWeightCellValue(wsSummary.Cells[sumRow, 9], totalGroupWeight);
                 }
                 else
                 {
@@ -252,10 +250,9 @@ namespace HPParkingSystem.Api.Controllers
                 wsSummary.Cells[sumRow, 8].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 8].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
-                wsSummary.Cells[sumRow, 9].Value = grandTotalWeightSheet1;
+                SetWeightCellValue(wsSummary.Cells[sumRow, 9], grandTotalWeightSheet1);
                 wsSummary.Cells[sumRow, 9].Style.Font.Bold = true;
                 wsSummary.Cells[sumRow, 9].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                wsSummary.Cells[sumRow, 9].Style.Numberformat.Format = "#,##0.##";
 
                 wsSummary.Cells[sumRow, 1, sumRow, 13].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 wsSummary.Cells[sumRow, 1, sumRow, 13].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(241, 245, 249));
@@ -311,8 +308,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 5].Value = s.VehicleType.ToDisplayName();
                 if (s.Weight.HasValue && s.Weight.Value > 0)
                 {
-                    ws.Cells[row, 6].Value = s.Weight.Value;
-                    ws.Cells[row, 6].Style.Numberformat.Format = "#,##0.##";
+                    SetWeightCellValue(ws.Cells[row, 6], s.Weight.Value);
                 }
                 else
                 {
@@ -343,10 +339,9 @@ namespace HPParkingSystem.Api.Controllers
                 double grandTotalSessionsWeight = sessions
                     .Where(s => (s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed) && s.Weight.HasValue)
                     .Sum(s => s.Weight!.Value);
-                ws.Cells[row, 6].Value = grandTotalSessionsWeight;
+                SetWeightCellValue(ws.Cells[row, 6], grandTotalSessionsWeight);
                 ws.Cells[row, 6].Style.Font.Bold = true;
                 ws.Cells[row, 6].Style.HorizontalAlignment = ExcelHorizontalAlignment.Right;
-                ws.Cells[row, 6].Style.Numberformat.Format = "#,##0.##";
 
                 ws.Cells[row, 1, row, 10].Style.Fill.PatternType = ExcelFillStyle.Solid;
                 ws.Cells[row, 1, row, 10].Style.Fill.BackgroundColor.SetColor(Color.FromArgb(241, 245, 249));
@@ -552,6 +547,12 @@ namespace HPParkingSystem.Api.Controllers
             }
 
             return fb.Eq(s => s.PersonType, personType.Value);
+        }
+
+        private static void SetWeightCellValue(ExcelRange cell, double weight)
+        {
+            cell.Value = weight;
+            cell.Style.Numberformat.Format = (Math.Abs(weight % 1) < 0.0001) ? "#,##0" : "#,##0.##";
         }
     }
 }

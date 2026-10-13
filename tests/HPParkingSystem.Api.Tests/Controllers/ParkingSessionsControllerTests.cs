@@ -243,15 +243,18 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws1.Cells[5, 4].Value.Should().Be("Khách vãng lai");
             ws1.Cells[5, 5].Value.Should().Be("Xe tải");
             ws1.Cells[5, 6].Value.Should().Be(10.0);
+            ws1.Cells[5, 6].Style.Numberformat.Format.Should().Be("#,##0");
             ws1.Cells[5, 7].Value.Should().Be(2); // In count
             ws1.Cells[5, 8].Value.Should().Be(2); // Out count
             ws1.Cells[5, 9].Value.Should().Be(20.0); // Total group weight = 10 * 2 = 20
+            ws1.Cells[5, 9].Style.Numberformat.Format.Should().Be("#,##0");
 
             // Hàng dữ liệu thứ 2 (29C-20002, 1 lượt đang trong bãi):
             ws1.Cells[6, 2].Value.Should().Be("29C-20002");
             ws1.Cells[6, 4].Value.Should().Be("Khách vãng lai");
             ws1.Cells[6, 5].Value.Should().Be("Xe tải");
             ws1.Cells[6, 6].Value.Should().Be(5.0);
+            ws1.Cells[6, 6].Style.Numberformat.Format.Should().Be("#,##0");
             ws1.Cells[6, 7].Value.Should().Be(1);
             ws1.Cells[6, 8].Value.Should().Be(0);
             ws1.Cells[6, 9].Value.Should().Be("--");
@@ -262,6 +265,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws1.Cells[7, 8].Value.Should().Be(2); // Tổng lượt ra: 2 + 0 = 2
             double grandTotalSheet1 = Convert.ToDouble(ws1.Cells[7, 9].Value);
             grandTotalSheet1.Should().Be(20.0); // 20.0 tấn
+            ws1.Cells[7, 9].Style.Numberformat.Format.Should().Be("#,##0");
 
             // 2. Kiểm tra Sheet 2: Lịch Sử Chi Tiết
             var ws2 = package.Workbook.Worksheets["Lịch Sử Chi Tiết"];
@@ -276,12 +280,15 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws2.Cells[4, 4].Value.Should().Be("Khách vãng lai");
             ws2.Cells[4, 5].Value.Should().Be("Xe tải");
             ws2.Cells[4, 6].Value.Should().Be(10.0);
+            ws2.Cells[4, 6].Style.Numberformat.Format.Should().Be("#,##0");
 
             ws2.Cells[5, 2].Value.Should().Be("29C-10001");
             ws2.Cells[5, 6].Value.Should().Be(10.0);
+            ws2.Cells[5, 6].Style.Numberformat.Format.Should().Be("#,##0");
 
             ws2.Cells[6, 2].Value.Should().Be("29C-20002");
             ws2.Cells[6, 6].Value.Should().Be(5.0);
+            ws2.Cells[6, 6].Style.Numberformat.Format.Should().Be("#,##0");
             ws2.Cells[6, 10].Value.Should().Be("Đang trong bãi");
 
             // Dòng Tổng Cộng Khối Lượng Sheet 2 (Row 7):
@@ -290,6 +297,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
 
             // Khối lượng Sheet 2 chỉ tính lượt đã ra (10 + 10 = 20), loại trừ xe đang trong bãi (5 tấn)
             grandTotalSheet2.Should().Be(20.0);
+            ws2.Cells[7, 6].Style.Numberformat.Format.Should().Be("#,##0");
 
             // Bất biến: Tổng khối lượng Sheet 1 và Sheet 2 phải khớp 100%!
             grandTotalSheet2.Should().Be(grandTotalSheet1);
@@ -522,6 +530,48 @@ namespace HPParkingSystem.Api.Tests.Controllers
             PersonType? nullType = null;
             nullType.ToDisplayName(null).Should().Be("Khách vãng lai");
             nullType.ToDisplayName("   ").Should().Be("Khách vãng lai");
+        }
+
+        [Fact]
+        public async Task ExportExcel_WithDecimalWeight_ShouldUseDecimalNumberFormat()
+        {
+            // Arrange
+            var session = new ParkingSession
+            {
+                Id = "s_dec_01",
+                PlateNumber = "29C-88888",
+                VehicleType = VehicleType.Truck,
+                Weight = 2.5,
+                InTime = DateTime.Today.AddHours(8),
+                OutTime = DateTime.Today.AddHours(10),
+                Status = ParkingSessionStatus.Completed
+            };
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<MongoDB.Driver.FilterDefinition<ParkingSession>>(),
+                    It.IsAny<MongoDB.Driver.SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession> { session });
+
+            // Act
+            var actionResult = await _controller.ExportExcel();
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new ExcelPackage(stream);
+
+            var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
+            ws1.Cells[5, 6].Value.Should().Be(2.5);
+            ws1.Cells[5, 6].Style.Numberformat.Format.Should().Be("#,##0.##");
+
+            var ws2 = package.Workbook.Worksheets["Lịch Sử Chi Tiết"];
+            ws2.Cells[4, 6].Value.Should().Be(2.5);
+            ws2.Cells[4, 6].Style.Numberformat.Format.Should().Be("#,##0.##");
         }
     }
 }
