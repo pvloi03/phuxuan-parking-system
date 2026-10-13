@@ -147,19 +147,17 @@ namespace HPParkingSystem.Api.Services
 
                     if (currentPerson == null && !string.IsNullOrWhiteSpace(cleanCode) && !string.IsNullOrWhiteSpace(cleanFullName))
                     {
-                        // Thêm mới Nhân sự
-                        currentPerson = new Person
-                        {
-                            Code = cleanCode,
-                            FullName = cleanFullName,
-                            Type = row.PersonType ?? PersonType.Employee,
-                            PhoneNumber = row.PhoneNumber?.Trim(),
-                            Email = row.Email?.Trim(),
-                            DepartmentId = resolvedDeptId,
-                            CompanyId = resolvedCompId,
-                            ContractorId = resolvedContrId,
-                            IsActive = row.PersonIsActive ?? true
-                        };
+                        // Thêm mới Nhân sự qua Domain Factory Method
+                        currentPerson = Person.Create(
+                            cleanCode,
+                            cleanFullName,
+                            row.PersonType ?? PersonType.Employee,
+                            row.PhoneNumber?.Trim(),
+                            row.Email?.Trim(),
+                            resolvedDeptId,
+                            resolvedCompId,
+                            resolvedContrId,
+                            row.PersonIsActive ?? true);
 
                         await _personRepo.AddAsync(currentPerson);
                         result.PeopleCreated++;
@@ -242,15 +240,13 @@ namespace HPParkingSystem.Api.Services
 
                         if (currentVehicle == null)
                         {
-                            // Thêm mới Phương tiện
-                            currentVehicle = new Vehicle
-                            {
-                                PlateNumber = validCleanPlate,
-                                Type = row.VehicleType ?? VehicleType.Car,
-                                Weight = (row.Weight.HasValue && row.Weight.Value >= 0) ? row.Weight.Value : null,
-                                OwnerPersonId = ownerId,
-                                IsActive = row.VehicleIsActive ?? true
-                            };
+                            // Thêm mới Phương tiện qua Domain Factory Method
+                            currentVehicle = Vehicle.Create(
+                                validCleanPlate,
+                                row.VehicleType ?? VehicleType.Car,
+                                ownerId,
+                                (row.Weight.HasValue && row.Weight.Value >= 0) ? row.Weight.Value : null,
+                                row.VehicleIsActive ?? true);
 
                             await _vehicleRepo.AddAsync(currentVehicle);
                             result.VehiclesCreated++;

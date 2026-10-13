@@ -60,5 +60,22 @@ namespace HPParkingSystem.Models.Entities
             OwnerPersonId = ownerPersonId;
             Weight = weight;
         }
+
+        /// <summary>
+        /// Domain Factory Method khởi tạo Vehicle tuân thủ các quy tắc bất biến miền (Domain Invariants)
+        /// </summary>
+        public static Vehicle Create(
+            string plateNumber,
+            VehicleType type = VehicleType.Car,
+            string? ownerPersonId = null,
+            double? weight = null,
+            bool isActive = true)
+        {
+            var vehicle = new Vehicle(plateNumber, type, ownerPersonId, weight)
+            {
+                IsActive = isActive
+            };
+            return vehicle;
+        }
     }
 }

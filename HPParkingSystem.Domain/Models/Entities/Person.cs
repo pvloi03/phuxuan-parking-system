@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.Common;
+using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
@@ -32,6 +32,31 @@ namespace HPParkingSystem.Models.Entities
             Code = code;
             FullName = fullName;
             Type = type;
+        }
+
+        /// <summary>
+        /// Domain Factory Method khởi tạo Person tuân thủ các quy tắc bất biến miền (Domain Invariants)
+        /// </summary>
+        public static Person Create(
+            string code,
+            string fullName,
+            PersonType type = PersonType.Employee,
+            string? phoneNumber = null,
+            string? email = null,
+            string? departmentId = null,
+            string? companyId = null,
+            string? contractorId = null,
+            bool isActive = true)
+        {
+            return new Person(code, fullName, type)
+            {
+                PhoneNumber = phoneNumber,
+                Email = email,
+                DepartmentId = departmentId,
+                CompanyId = companyId,
+                ContractorId = contractorId,
+                IsActive = isActive
+            };
         }
     }
 }
