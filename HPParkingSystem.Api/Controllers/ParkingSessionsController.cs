@@ -27,7 +27,7 @@ namespace HPParkingSystem.Api.Controllers
             [FromQuery] string? plateNumber = null,
             [FromQuery] ParkingSessionStatus? status = null,
             [FromQuery] VehicleType? vehicleType = null,
-            [FromQuery] string? personType = null,
+            [FromQuery] PersonType? personType = null,
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null,
             [FromQuery] int? hour = null,
@@ -116,7 +116,7 @@ namespace HPParkingSystem.Api.Controllers
             [FromQuery] string? plateNumber = null,
             [FromQuery] ParkingSessionStatus? status = null,
             [FromQuery] VehicleType? vehicleType = null,
-            [FromQuery] string? personType = null,
+            [FromQuery] PersonType? personType = null,
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null,
             [FromQuery] int? hour = null)
@@ -531,18 +531,19 @@ namespace HPParkingSystem.Api.Controllers
             return fb.Empty;
         }
 
-        private static MongoDB.Driver.FilterDefinition<ParkingSession>? BuildPersonTypeFilter(string? personType)
+        private static MongoDB.Driver.FilterDefinition<ParkingSession>? BuildPersonTypeFilter(PersonType? personType)
         {
-            if (string.IsNullOrWhiteSpace(personType))
+            if (!personType.HasValue)
             {
                 return null;
             }
 
             var fb = MongoDB.Driver.Builders<ParkingSession>.Filter;
 
-            if (personType.Equals("Guest", StringComparison.OrdinalIgnoreCase))
+            if (personType.Value == PersonType.Guest)
             {
-                return fb.Eq(s => s.PersonType, null) |
+                return fb.Eq(s => s.PersonType, PersonType.Guest) |
+                       fb.Eq(s => s.PersonType, null) |
                        fb.Eq(s => s.PersonType, PersonType.Other) |
                        fb.Eq(s => s.PersonId, null) |
                        fb.Eq(s => s.PersonId, "") |
@@ -550,12 +551,7 @@ namespace HPParkingSystem.Api.Controllers
                        fb.Eq(s => s.PersonName, "");
             }
 
-            if (Enum.TryParse<PersonType>(personType, true, out var parsedPersonType))
-            {
-                return fb.Eq(s => s.PersonType, parsedPersonType);
-            }
-
-            return null;
+            return fb.Eq(s => s.PersonType, personType.Value);
         }
 
         private static string GetPersonCategoryLabel(ParkingSession s)
@@ -568,6 +564,7 @@ namespace HPParkingSystem.Api.Controllers
                     PersonType.Contractor => "Đối tác / Nhà thầu",
                     PersonType.VIP => "Khách VIP",
                     PersonType.Visitor => "Khách thăm",
+                    PersonType.Guest => "Khách vãng lai",
                     _ => "Khách vãng lai"
                 };
             }

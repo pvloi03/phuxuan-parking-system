@@ -17,7 +17,7 @@ namespace HPParkingSystem.Services.Parking
         double? Weight)
     {
         public static VehicleLookupResult Unregistered(VehicleType defaultType = VehicleType.Car) =>
-            new(null, null, null, null, defaultType, PersonType.Visitor, false, null);
+            new(null, null, null, null, defaultType, PersonType.Guest, false, null);
     }
 }
 

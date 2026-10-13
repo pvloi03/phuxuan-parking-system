@@ -326,7 +326,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
                 plateNumber: null,
                 status: null,
                 vehicleType: null,
-                personType: "Employee",
+                personType: PersonType.Employee,
                 fromDate: null,
                 toDate: null,
                 hour: null,
@@ -384,7 +384,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
                 plateNumber: null,
                 status: null,
                 vehicleType: null,
-                personType: "Guest",
+                personType: PersonType.Guest,
                 fromDate: null,
                 toDate: null,
                 hour: null,
@@ -430,7 +430,7 @@ namespace HPParkingSystem.Api.Tests.Controllers
                 .ReturnsAsync(new List<ParkingSession> { empSession });
 
             // Act
-            var actionResult = await _controller.ExportExcel(personType: "Employee");
+            var actionResult = await _controller.ExportExcel(personType: PersonType.Employee);
 
             // Assert
             actionResult.Should().BeOfType<FileContentResult>();

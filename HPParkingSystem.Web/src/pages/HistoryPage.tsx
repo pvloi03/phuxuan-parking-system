@@ -24,7 +24,7 @@ import {
   Scale,
 } from 'lucide-react'
 import { parkingService } from '@/services/parkingService'
-import type { ImageStoragePathDto, ParkingSession, ParkingSessionStatus, VehicleType } from '@/types'
+import type { ImageStoragePathDto, ParkingSession, ParkingSessionStatus, PersonType, VehicleType } from '@/types'
 import { notify } from '@/lib/notify'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,7 +66,7 @@ export function HistoryPage() {
   const [plateNumber, setPlateNumber] = useState('')
   const [status, setStatus] = useState<string>('')
   const [vehicleType, setVehicleType] = useState<string>('')
-  const [personType, setPersonType] = useState<string>('')
+  const [personType, setPersonType] = useState<PersonType | ''>('')
   const [hour, setHour] = useState<string>('')
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
@@ -506,7 +506,7 @@ export function HistoryPage() {
             <select
               value={personType}
               onChange={(e) => {
-                setPersonType(e.target.value)
+                setPersonType(e.target.value as PersonType | '')
                 setPage(1)
               }}
               className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer"
