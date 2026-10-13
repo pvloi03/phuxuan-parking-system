@@ -425,7 +425,7 @@ namespace HPParkingSystem.Forms
         {
             string typeName = type.ToDisplayName();
             return (weight.HasValue && weight.Value > 0)
-                ? $"{typeName} - {weight.Value:G} m3"
+                ? $"{typeName} - {weight.Value:G} m³"
                 : typeName;
         }
 

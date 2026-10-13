@@ -311,7 +311,7 @@ export function VehiclesPage() {
           STT: i + 1,
           'Biển Số Xe': v.plateNumber,
           'Loại Phương Tiện': getVehicleTypeLabel(v.type),
-          'Khối Lượng (m3)': v.weight !== undefined && v.weight !== null ? `${v.weight} m3` : '--',
+          'Khối Lượng (m³)': v.weight !== undefined && v.weight !== null ? `${v.weight} m³` : '--',
           'Chủ Sở Hữu': owner ? owner.fullName : 'Xe vãng lai / Chưa gán',
           'Mã Chủ Xe': owner ? owner.code : '',
           'Số Điện Thoại': owner ? (owner.phoneNumber || '') : '',
@@ -357,7 +357,7 @@ export function VehiclesPage() {
           </select>
         </div>
         <div className="space-y-1">
-          <label className="font-semibold text-slate-700 dark:text-slate-300">Khối lượng (m3)</label>
+          <label className="font-semibold text-slate-700 dark:text-slate-300">Khối lượng (m³)</label>
           <Input
             type="number"
             step="0.01"
@@ -513,7 +513,7 @@ export function VehiclesPage() {
                 </th>
                 <th className="p-3.5">Biển Số Xe</th>
                 <th className="p-3.5">Loại Phương Tiện</th>
-                <th className="p-3.5">Khối Lượng (m3)</th>
+                <th className="p-3.5">Khối Lượng (m³)</th>
                 <th className="p-3.5">Chủ Sở Hữu (Person)</th>
                 <th className="p-3.5">Trạng Thái</th>
                 <th className="p-3.5">Ngày Đăng Ký</th>
@@ -542,7 +542,7 @@ export function VehiclesPage() {
                         {getVehicleTypeBadge(vehicle.type)}
                       </td>
                       <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300">
-                        {vehicle.weight !== undefined && vehicle.weight !== null ? `${vehicle.weight} m3` : <span className="text-slate-400 italic">--</span>}
+                        {vehicle.weight !== undefined && vehicle.weight !== null ? `${vehicle.weight} m³` : <span className="text-slate-400 italic">--</span>}
                       </td>
                       <td className="p-3.5">
                         {owner ? (
@@ -770,7 +770,7 @@ export function VehiclesPage() {
                   <div>
                     <span className="text-slate-400 block text-[11px]">Khối lượng tải trọng:</span>
                     <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                      {selectedVehicle.weight !== undefined && selectedVehicle.weight !== null ? `${selectedVehicle.weight} m3` : '--'}
+                      {selectedVehicle.weight !== undefined && selectedVehicle.weight !== null ? `${selectedVehicle.weight} m³` : '--'}
                     </span>
                   </div>
                   <div>

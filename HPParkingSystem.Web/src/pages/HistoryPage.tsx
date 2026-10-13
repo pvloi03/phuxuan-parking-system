@@ -649,7 +649,7 @@ export function HistoryPage() {
                 <th className="p-3.5">Biển Số Xe</th>
                 <th className="p-3.5">Chủ Xe</th>
                 <th className="p-3.5 text-center">Loại Xe</th>
-                <th className="p-3.5 text-center">Khối Lượng (m3)</th>
+                <th className="p-3.5 text-center">Khối Lượng (m³)</th>
                 <th className="p-3.5">Thời Gian Vào</th>
                 <th className="p-3.5">Thời Gian Ra</th>
                 <th className="p-3.5 text-center">Trạng Thái</th>
@@ -707,7 +707,7 @@ export function HistoryPage() {
                         {session.weight !== undefined && session.weight !== null ? (
                           <span className="inline-flex items-center gap-1 font-semibold font-mono text-[11px] text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded shadow-2xs">
                             <Scale className="h-3 w-3 text-slate-500" />
-                            {session.weight} m3
+                            {session.weight} m³
                           </span>
                         ) : (
                           <span className="text-slate-400 font-mono text-[11px]">--</span>
@@ -894,7 +894,7 @@ export function HistoryPage() {
                     Chi Tiết Lượt Xe: {selectedSession?.plateNumber}
                   </span>
                   <span className="text-xs text-slate-500 dark:text-slate-400 ml-2 font-normal hidden sm:inline">
-                    ({selectedSession?.personName || 'Khách vãng lai'} • {selectedSession ? getVehicleTypeName(selectedSession.vehicleType) : ''}{selectedSession?.weight !== undefined && selectedSession?.weight !== null ? ` - ${selectedSession.weight} m3` : ''})
+                    ({selectedSession?.personName || 'Khách vãng lai'} • {selectedSession ? getVehicleTypeName(selectedSession.vehicleType) : ''}{selectedSession?.weight !== undefined && selectedSession?.weight !== null ? ` - ${selectedSession.weight} m³` : ''})
                   </span>
                 </div>
               </div>
@@ -1093,7 +1093,7 @@ export function HistoryPage() {
                           <span className="text-slate-400 block text-[11px]">Khối lượng:</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">
                             {selectedSession.weight !== undefined && selectedSession.weight !== null
-                              ? `${selectedSession.weight} m3`
+                              ? `${selectedSession.weight} m³`
                               : '--'}
                           </span>
                         </div>

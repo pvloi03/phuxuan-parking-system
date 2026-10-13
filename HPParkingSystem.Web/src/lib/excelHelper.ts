@@ -101,7 +101,7 @@ export function downloadCrossImportTemplate(
       'Nhà Thầu': '',
       'Biển Số Xe': '29C-123.45',
       'Loại Phương Tiện (Car/Motorcycle/Truck/Other)': 'Truck',
-      'Khối Lượng (m3)': '15.5',
+      'Khối Lượng (m³)': '15.5',
       'Trạng Thái (Hoạt động/Tạm dừng)': 'Hoạt động',
     },
     {
@@ -115,7 +115,7 @@ export function downloadCrossImportTemplate(
       'Nhà Thầu': '',
       'Biển Số Xe': '30H-888.88',
       'Loại Phương Tiện (Car/Motorcycle/Truck/Other)': 'Car',
-      'Khối Lượng (m3)': '2.5',
+      'Khối Lượng (m³)': '2.5',
       'Trạng Thái (Hoạt động/Tạm dừng)': 'Hoạt động',
     },
     {
@@ -129,7 +129,7 @@ export function downloadCrossImportTemplate(
       'Nhà Thầu': 'Nhà thầu Nam Cường',
       'Biển Số Xe': '',
       'Loại Phương Tiện (Car/Motorcycle/Truck/Other)': '',
-      'Khối Lượng (m3)': '',
+      'Khối Lượng (m³)': '',
       'Trạng Thái (Hoạt động/Tạm dừng)': 'Hoạt động',
     },
     {
@@ -143,7 +143,7 @@ export function downloadCrossImportTemplate(
       'Nhà Thầu': '',
       'Biển Số Xe': '51D-999.99',
       'Loại Phương Tiện (Car/Motorcycle/Truck/Other)': 'Truck',
-      'Khối Lượng (m3)': '24.0',
+      'Khối Lượng (m³)': '24.0',
       'Trạng Thái (Hoạt động/Tạm dừng)': 'Hoạt động',
     },
   ]
@@ -183,7 +183,7 @@ export function parseCrossImportExcel(rawData: any[]): import('@/types').Vehicle
     else if (rawVehType.includes('truck') || rawVehType.includes('tải')) vehicleType = 'Truck'
     else if (rawVehType.includes('other') || rawVehType.includes('khác')) vehicleType = 'Other'
 
-    const rawWeight = row['Khối Lượng (m3)'] || row['Khối Lượng (m³)'] || row['Khối Lượng (M3)'] || row['Khối Lượng (Tấn)'] || row['Khối Lượng Xe (m3)'] || row['Khối Lượng Xe (m³)'] || row['Khối Lượng Xe (Tấn)'] || row['Khối Lượng'] || row['weight']
+    const rawWeight = row['Khối Lượng (m³)'] || row['Khối Lượng (m3)'] || row['Khối Lượng (M3)'] || row['Khối Lượng Xe (m³)'] || row['Khối Lượng Xe (m3)'] || row['Khối Lượng (Tấn)'] || row['Khối Lượng Xe (Tấn)'] || row['Khối Lượng'] || row['weight']
     const weightVal = rawWeight !== undefined && rawWeight !== null && String(rawWeight).trim() !== ''
       ? parseFloat(String(rawWeight))
       : undefined
