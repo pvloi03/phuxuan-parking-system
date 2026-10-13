@@ -19,6 +19,7 @@ import {
   Layers,
   Info,
   Route,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { Lane, Device } from '@/types'
@@ -38,6 +39,7 @@ export function LanesPage() {
   const [search, setSearch] = useState('')
   const [directionFilter, setDirectionFilter] = useState<string>('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -248,31 +250,41 @@ export function LanesPage() {
   const isAllSelected = lanes.length > 0 && lanes.every((l) => selectedIds.includes(l.id))
 
   // Excel Handlers
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (!lanes.length) {
       notify.warning('Không có dữ liệu làn kiểm soát để xuất Excel.')
       return
     }
 
-    const exportData = lanes.map((l, index) => {
-      const plCam = l.plateCameraDeviceId ? deviceMap.get(l.plateCameraDeviceId) : null
-      const ovCam = l.overviewCameraDeviceId ? deviceMap.get(l.overviewCameraDeviceId) : null
-      const ctrl = l.controllerDeviceId ? deviceMap.get(l.controllerDeviceId) : null
+    setIsExporting(true)
+    notify.info(`Đang chuẩn bị xuất ${lanes.length} làn kiểm soát ra Excel...`)
 
-      return {
-        STT: index + 1,
-        'Mã Làn': l.code,
-        'Tên Làn': l.name,
-        'Chiều Làn': l.direction === 'In' || l.direction === 1 ? 'Làn Vào (In)' : 'Làn Ra (Out)',
-        'Camera Biển Số': plCam ? `${plCam.name} (${plCam.ipAddress}:${plCam.port})` : 'Chưa gán',
-        'Camera Toàn Cảnh': ovCam ? `${ovCam.name} (${ovCam.ipAddress}:${ovCam.port})` : 'Chưa gán',
-        'Bộ Điều Khiển': ctrl ? `${ctrl.name} (${ctrl.ipAddress}) - Cổng Aux ${l.triggerAuxPort}` : 'Chưa gán',
-        'Mô Tả': l.description || '',
-        'Trạng Thái': l.isActive ? 'Đang hoạt động' : 'Tạm dừng',
-      }
-    })
+    try {
+      const exportData = lanes.map((l, index) => {
+        const plCam = l.plateCameraDeviceId ? deviceMap.get(l.plateCameraDeviceId) : null
+        const ovCam = l.overviewCameraDeviceId ? deviceMap.get(l.overviewCameraDeviceId) : null
+        const ctrl = l.controllerDeviceId ? deviceMap.get(l.controllerDeviceId) : null
 
-    exportToExcel(exportData, `Danh_Sach_Lan_Kiem_Soat_${new Date().toISOString().slice(0, 10)}.xlsx`, 'LanKiemSoat')
+        return {
+          STT: index + 1,
+          'Mã Làn': l.code,
+          'Tên Làn': l.name,
+          'Chiều Làn': l.direction === 'In' || l.direction === 1 ? 'Làn Vào (In)' : 'Làn Ra (Out)',
+          'Camera Biển Số': plCam ? `${plCam.name} (${plCam.ipAddress}:${plCam.port})` : 'Chưa gán',
+          'Camera Toàn Cảnh': ovCam ? `${ovCam.name} (${ovCam.ipAddress}:${ovCam.port})` : 'Chưa gán',
+          'Bộ Điều Khiển': ctrl ? `${ctrl.name} (${ctrl.ipAddress}) - Cổng Aux ${l.triggerAuxPort}` : 'Chưa gán',
+          'Mô Tả': l.description || '',
+          'Trạng Thái': l.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+        }
+      })
+
+      exportToExcel(exportData, `Danh_Sach_Lan_Kiem_Soat_${new Date().toISOString().slice(0, 10)}.xlsx`, 'LanKiemSoat')
+      notify.success(`Xuất thành công ${exportData.length} làn kiểm soát!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi xuất dữ liệu làn kiểm soát', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDownloadTemplate = () => {
@@ -522,10 +534,11 @@ export function LanesPage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
+            disabled={isExporting}
             className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5 text-blue-600" />
-            Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
 
           {/* Create Button */}

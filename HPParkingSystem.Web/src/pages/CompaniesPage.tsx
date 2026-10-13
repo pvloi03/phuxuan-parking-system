@@ -20,6 +20,7 @@ import {
   XCircle,
   FileBadge,
   Info,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Company } from '@/types'
@@ -40,6 +41,7 @@ export function CompaniesPage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -213,23 +215,47 @@ export function CompaniesPage() {
   const isAllSelected = items.length > 0 && items.every((i) => selectedIds.includes(i.id))
 
   // Excel Handlers
-  const handleExportExcel = () => {
-    if (!items.length) {
+  const handleExportExcel = async () => {
+    if (!totalItems || totalItems === 0) {
       notify.warning('Không có dữ liệu công ty để xuất Excel.')
       return
     }
 
-    const exportData = items.map((c, index) => ({
-      STT: (pageNumber - 1) * pageSize + index + 1,
-      'Mã Công Ty': c.code || '',
-      'Tên Công Ty': c.name,
-      'Số Điện Thoại': c.phoneNumber || '',
-      'Email': c.email || '',
-      'Ghi Chú': c.note || '',
-      'Trạng Thái': c.isActive ? 'Đang hoạt động' : 'Tạm dừng',
-    }))
+    setIsExporting(true)
+    notify.info(`Đang tải toàn bộ dữ liệu công ty (${totalItems} bản ghi) để xuất Excel...`)
 
-    exportToExcel(exportData, `Danh_Sach_Cong_Ty_${new Date().toISOString().slice(0, 10)}.xlsx`, 'CongTy')
+    try {
+      const res = await apiClient.get<{ data: PagedResult<Company> }>('/companies', {
+        params: {
+          search: search || undefined,
+          pageNumber: 1,
+          pageSize: Math.max(totalItems, 1000),
+        },
+      })
+
+      const allCompanies = res.data.data?.items || []
+      if (!allCompanies.length) {
+        notify.warning('Không tìm thấy công ty nào phù hợp với bộ lọc.')
+        return
+      }
+
+      const exportData = allCompanies.map((c, index) => ({
+        STT: index + 1,
+        'Mã Công Ty': c.code || '',
+        'Tên Công Ty': c.name,
+        'Số Điện Thoại': c.phoneNumber || '',
+        'Email': c.email || '',
+        'Ghi Chú': c.note || '',
+        'Trạng Thái': c.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+      }))
+
+      exportToExcel(exportData, `Danh_Sach_Cong_Ty_${new Date().toISOString().slice(0, 10)}.xlsx`, 'CongTy')
+      notify.success(`Xuất thành công ${exportData.length} công ty!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi tải dữ liệu xuất Excel', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDownloadTemplate = () => {
@@ -411,10 +437,11 @@ export function CompaniesPage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
+            disabled={isExporting}
             className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5 text-blue-600" />
-            Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
 
           {/* Create Button */}

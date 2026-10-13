@@ -24,6 +24,7 @@ import {
   Info,
   CheckCircle2,
   XCircle,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Person, PersonType, Department, Company, Contractor } from '@/types'
@@ -54,6 +55,7 @@ export function PeoplePage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -278,32 +280,57 @@ export function PeoplePage() {
   const isAllSelected = items.length > 0 && items.every((p) => selectedIds.includes(p.id))
 
   // Excel Handlers
-  const handleExportExcel = () => {
-    if (!items.length) {
+  const handleExportExcel = async () => {
+    if (!totalItems || totalItems === 0) {
       notify.warning('Không có dữ liệu nhân sự để xuất Excel.')
       return
     }
 
-    const exportData = items.map((p, index) => {
-      const deptName = p.departmentId ? deptMap.get(p.departmentId) || '' : ''
-      const contrName = p.contractorId ? contrMap.get(p.contractorId) || '' : ''
-      const compName = p.companyId ? compMap.get(p.companyId) || '' : ''
+    setIsExporting(true)
+    notify.info(`Đang tải toàn bộ dữ liệu nhân sự (${totalItems} bản ghi) để xuất Excel...`)
 
-      return {
-        STT: (pageNumber - 1) * pageSize + index + 1,
-        'Mã Định Danh': p.code,
-        'Họ Và Tên': p.fullName,
-        'Phòng Ban': deptName,
-        'Nhà Thầu': contrName,
-        'Công Ty': compName,
-        'Phân Loại Đối Tượng': getPersonTypeLabel(p.type),
-        'Số Điện Thoại': p.phoneNumber || '',
-        'Email Liên Hệ': p.email || '',
-        'Trạng Thái': p.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+    try {
+      const res = await apiClient.get<{ data: PagedResult<Person> }>('/people', {
+        params: {
+          search: search || undefined,
+          type: typeFilter || undefined,
+          pageNumber: 1,
+          pageSize: Math.max(totalItems, 1000),
+        },
+      })
+
+      const allPeople = res.data.data?.items || []
+      if (!allPeople.length) {
+        notify.warning('Không tìm thấy nhân sự nào phù hợp với bộ lọc.')
+        return
       }
-    })
 
-    exportToExcel(exportData, `Danh_Sach_Nhan_Su_${new Date().toISOString().slice(0, 10)}.xlsx`, 'NhanSu')
+      const exportData = allPeople.map((p, index) => {
+        const deptName = p.departmentId ? deptMap.get(p.departmentId) || '' : ''
+        const contrName = p.contractorId ? contrMap.get(p.contractorId) || '' : ''
+        const compName = p.companyId ? compMap.get(p.companyId) || '' : ''
+
+        return {
+          STT: index + 1,
+          'Mã Định Danh': p.code,
+          'Họ Và Tên': p.fullName,
+          'Phòng Ban': deptName,
+          'Nhà Thầu': contrName,
+          'Công Ty': compName,
+          'Phân Loại Đối Tượng': getPersonTypeLabel(p.type),
+          'Số Điện Thoại': p.phoneNumber || '',
+          'Email Liên Hệ': p.email || '',
+          'Trạng Thái': p.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+        }
+      })
+
+      exportToExcel(exportData, `Danh_Sach_Nhan_Su_${new Date().toISOString().slice(0, 10)}.xlsx`, 'NhanSu')
+      notify.success(`Xuất thành công ${exportData.length} nhân sự!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi tải dữ liệu xuất Excel', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   // Badges
@@ -487,10 +514,11 @@ export function PeoplePage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
+            disabled={isExporting}
             className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5 text-blue-600" />
-            Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
 
           {/* Create Button */}

@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
   Tag,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Vehicle, VehicleType, Person } from '@/types'
@@ -91,6 +92,7 @@ export function VehiclesPage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -272,28 +274,59 @@ export function VehiclesPage() {
   const isAllSelected = items.length > 0 && items.every((d) => selectedIds.includes(d.id))
 
   // ======================== Excel Handlers ========================
-  const handleExportExcel = () => {
-    if (!items.length) {
+  const handleExportExcel = async () => {
+    if (!totalItems || totalItems === 0) {
       notify.warning('Không có dữ liệu phương tiện để xuất Excel.')
       return
     }
 
-    const exportData = items.map((v, i) => {
-      const owner = v.ownerPersonId ? personMap.get(v.ownerPersonId) : null
-      return {
-        STT: (pageNumber - 1) * pageSize + i + 1,
-        'Biển Số Xe': v.plateNumber,
-        'Loại Phương Tiện': getVehicleTypeLabel(v.type),
-        'Khối Lượng (Tấn)': v.weight !== undefined && v.weight !== null ? `${v.weight} tấn` : '--',
-        'Chủ Sở Hữu': owner ? owner.fullName : 'Xe vãng lai / Chưa gán',
-        'Mã Chủ Xe': owner ? owner.code : '',
-        'Số Điện Thoại': owner ? (owner.phoneNumber || '') : '',
-        'Trạng Thái': v.isActive ? 'Đang hoạt động' : 'Tạm dừng',
-        'Ngày Đăng Ký': v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : '',
-      }
-    })
+    setIsExporting(true)
+    notify.info(`Đang tải toàn bộ dữ liệu phương tiện (${totalItems} bản ghi) để xuất Excel...`)
 
-    exportToExcel(exportData, `Danh_Sach_Phuong_Tien_${new Date().toISOString().slice(0, 10)}.xlsx`, 'PhuongTien')
+    try {
+      const res = await apiClient.get<{ data: PagedResult<Vehicle> }>('/vehicles', {
+        params: {
+          search: search || undefined,
+          type: typeFilter || undefined,
+          pageNumber: 1,
+          pageSize: Math.max(totalItems, 1000),
+        },
+      })
+
+      let allVehicles = res.data.data?.items || []
+      if (ownerFilter === 'has_owner') {
+        allVehicles = allVehicles.filter((v) => !!v.ownerPersonId)
+      } else if (ownerFilter === 'no_owner') {
+        allVehicles = allVehicles.filter((v) => !v.ownerPersonId)
+      }
+
+      if (!allVehicles.length) {
+        notify.warning('Không tìm thấy phương tiện nào phù hợp với bộ lọc.')
+        return
+      }
+
+      const exportData = allVehicles.map((v, i) => {
+        const owner = v.ownerPersonId ? personMap.get(v.ownerPersonId) : null
+        return {
+          STT: i + 1,
+          'Biển Số Xe': v.plateNumber,
+          'Loại Phương Tiện': getVehicleTypeLabel(v.type),
+          'Khối Lượng (Tấn)': v.weight !== undefined && v.weight !== null ? `${v.weight} tấn` : '--',
+          'Chủ Sở Hữu': owner ? owner.fullName : 'Xe vãng lai / Chưa gán',
+          'Mã Chủ Xe': owner ? owner.code : '',
+          'Số Điện Thoại': owner ? (owner.phoneNumber || '') : '',
+          'Trạng Thái': v.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+          'Ngày Đăng Ký': v.createdAt ? new Date(v.createdAt).toLocaleString('vi-VN') : '',
+        }
+      })
+
+      exportToExcel(exportData, `Danh_Sach_Phuong_Tien_${new Date().toISOString().slice(0, 10)}.xlsx`, 'PhuongTien')
+      notify.success(`Xuất thành công ${exportData.length} phương tiện!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi tải dữ liệu xuất Excel', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   // ======================== Form JSX ========================
@@ -403,9 +436,10 @@ export function VehiclesPage() {
             className="gap-1.5 text-xs text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap" title="Tải file mẫu Excel">
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" /> Tải Mẫu
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportExcel}
+          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isExporting}
             className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap">
-            <Download className="h-3.5 w-3.5 text-blue-600" /> Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
           <Button
             size="sm"

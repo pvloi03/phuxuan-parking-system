@@ -18,6 +18,7 @@ import {
   Mail,
   User,
   FileSpreadsheet,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Contractor } from '@/types'
@@ -37,6 +38,7 @@ export function PartnersPage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -214,24 +216,48 @@ export function PartnersPage() {
     items.length > 0 && items.every((p) => selectedIds.includes(p.id))
 
   // Excel Handlers
-  const handleExportExcel = () => {
-    if (!items.length) {
+  const handleExportExcel = async () => {
+    if (!totalItems || totalItems === 0) {
       notify.warning('Không có dữ liệu đối tác để xuất Excel.')
       return
     }
 
-    const exportData = items.map((p, index) => ({
-      STT: (pageNumber - 1) * pageSize + index + 1,
-      'Mã Đối Tác': p.code,
-      'Tên Đối Tác / Nhà Thầu': p.name,
-      'Người Đại Diện': p.contactPerson || '',
-      'Số Điện Thoại': p.phoneNumber || '',
-      'Email Liên Hệ': p.email || '',
-      'Ghi Chú': p.note || '',
-      'Trạng Thái': p.isActive ? 'Đang hoạt động' : 'Tạm dừng',
-    }))
+    setIsExporting(true)
+    notify.info(`Đang tải toàn bộ dữ liệu đối tác (${totalItems} bản ghi) để xuất Excel...`)
 
-    exportToExcel(exportData, `Danh_Sach_Doi_Tac_${new Date().toISOString().slice(0, 10)}.xlsx`, 'DoiTac')
+    try {
+      const res = await apiClient.get<{ data: PagedResult<Contractor> }>('/contractors', {
+        params: {
+          search: search || undefined,
+          pageNumber: 1,
+          pageSize: Math.max(totalItems, 1000),
+        },
+      })
+
+      const allContractors = res.data.data?.items || []
+      if (!allContractors.length) {
+        notify.warning('Không tìm thấy đối tác nào phù hợp với bộ lọc.')
+        return
+      }
+
+      const exportData = allContractors.map((p, index) => ({
+        STT: index + 1,
+        'Mã Đối Tác': p.code,
+        'Tên Đối Tác / Nhà Thầu': p.name,
+        'Người Đại Diện': p.contactPerson || '',
+        'Số Điện Thoại': p.phoneNumber || '',
+        'Email Liên Hệ': p.email || '',
+        'Ghi Chú': p.note || '',
+        'Trạng Thái': p.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+      }))
+
+      exportToExcel(exportData, `Danh_Sach_Doi_Tac_${new Date().toISOString().slice(0, 10)}.xlsx`, 'DoiTac')
+      notify.success(`Xuất thành công ${exportData.length} đối tác!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi tải dữ liệu xuất Excel', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDownloadTemplate = () => {
@@ -408,10 +434,11 @@ export function PartnersPage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
+            disabled={isExporting}
             className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5 text-blue-600" />
-            Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
 
           {/* Create Button */}

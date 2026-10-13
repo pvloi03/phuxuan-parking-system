@@ -22,6 +22,7 @@ import {
   Layers,
   CheckCircle2,
   XCircle,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Device, DeviceType, DeviceStatus } from '@/types'
@@ -133,6 +134,7 @@ export function DevicesPage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -322,25 +324,50 @@ export function DevicesPage() {
   const isAllSelected = items.length > 0 && items.every((d) => selectedIds.includes(d.id))
 
   // ======================== Excel Handlers ========================
-  const handleExportExcel = () => {
-    if (!items.length) {
+  const handleExportExcel = async () => {
+    if (!totalItems || totalItems === 0) {
       notify.warning('Không có dữ liệu thiết bị để xuất Excel.')
       return
     }
 
-    const exportData = items.map((d, i) => ({
-      STT: (pageNumber - 1) * pageSize + i + 1,
-      'Mã Thiết Bị': d.code,
-      'Tên Thiết Bị': d.name,
-      'Loại Thiết Bị': getDeviceTypeLabel(d.type),
-      'Địa Chỉ IP': d.ipAddress,
-      'Port': d.port,
-      'Tên Đăng Nhập': d.userName || '',
-      'Ghi Chú': d.note || '',
-      'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
-    }))
+    setIsExporting(true)
+    notify.info(`Đang tải toàn bộ dữ liệu thiết bị (${totalItems} bản ghi) để xuất Excel...`)
 
-    exportToExcel(exportData, `Danh_Sach_Thiet_Bi_${new Date().toISOString().slice(0, 10)}.xlsx`, 'ThietBi')
+    try {
+      const res = await apiClient.get<{ data: PagedResult<Device> }>('/devices', {
+        params: {
+          search: search || undefined,
+          type: typeFilter || undefined,
+          pageNumber: 1,
+          pageSize: Math.max(totalItems, 1000),
+        },
+      })
+
+      const allDevices = res.data.data?.items || []
+      if (!allDevices.length) {
+        notify.warning('Không tìm thấy thiết bị nào phù hợp với bộ lọc.')
+        return
+      }
+
+      const exportData = allDevices.map((d, i) => ({
+        STT: i + 1,
+        'Mã Thiết Bị': d.code,
+        'Tên Thiết Bị': d.name,
+        'Loại Thiết Bị': getDeviceTypeLabel(d.type),
+        'Địa Chỉ IP': d.ipAddress,
+        'Port': d.port,
+        'Tên Đăng Nhập': d.userName || '',
+        'Ghi Chú': d.note || '',
+        'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+      }))
+
+      exportToExcel(exportData, `Danh_Sach_Thiet_Bi_${new Date().toISOString().slice(0, 10)}.xlsx`, 'ThietBi')
+      notify.success(`Xuất thành công ${exportData.length} thiết bị!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi tải dữ liệu xuất Excel', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDownloadTemplate = () => {
@@ -535,9 +562,10 @@ export function DevicesPage() {
             className="gap-1.5 text-xs text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap" title="Tải file mẫu Excel">
             <FileSpreadsheet className="h-3.5 w-3.5 text-blue-500" /> Tải Mẫu
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExportExcel}
+          <Button variant="outline" size="sm" onClick={handleExportExcel} disabled={isExporting}
             className="gap-1.5 text-xs text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap">
-            <Download className="h-3.5 w-3.5 text-blue-600" /> Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
           <Button
             size="sm"

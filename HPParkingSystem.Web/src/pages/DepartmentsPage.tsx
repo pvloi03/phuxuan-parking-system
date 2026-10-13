@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle,
   FileBadge,
+  Loader2,
 } from 'lucide-react'
 import { apiClient } from '@/services/apiClient'
 import type { PagedResult, Department, Company } from '@/types'
@@ -42,6 +43,7 @@ export function DepartmentsPage() {
   const [pageNumber, setPageNumber] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [isExporting, setIsExporting] = useState(false)
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -243,25 +245,50 @@ export function DepartmentsPage() {
   const isAllSelected = items.length > 0 && items.every((i) => selectedIds.includes(i.id))
 
   // Excel Handlers
-  const handleExportExcel = () => {
-    if (!items.length) {
+  const handleExportExcel = async () => {
+    if (!totalItems || totalItems === 0) {
       notify.warning('Không có dữ liệu phòng ban để xuất Excel.')
       return
     }
 
-    const exportData = items.map((d, index) => ({
-      STT: (pageNumber - 1) * pageSize + index + 1,
-      'Mã Phòng Ban': d.code || '',
-      'Tên Phòng Ban': d.name,
-      'Công Ty Trực Thuộc': d.companyId ? companyMap.get(d.companyId) || 'Chưa xác định' : 'Trực thuộc hệ thống',
-      'Trưởng Phòng': d.managerName || '',
-      'Số Điện Thoại': d.phoneNumber || '',
-      'Email': d.email || '',
-      'Ghi Chú': d.note || '',
-      'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
-    }))
+    setIsExporting(true)
+    notify.info(`Đang tải toàn bộ dữ liệu phòng ban (${totalItems} bản ghi) để xuất Excel...`)
 
-    exportToExcel(exportData, `Danh_Sach_Phong_Ban_${new Date().toISOString().slice(0, 10)}.xlsx`, 'PhongBan')
+    try {
+      const res = await apiClient.get<{ data: PagedResult<Department> }>('/departments', {
+        params: {
+          search: search || undefined,
+          companyId: companyIdFilter || undefined,
+          pageNumber: 1,
+          pageSize: Math.max(totalItems, 1000),
+        },
+      })
+
+      const allDepts = res.data.data?.items || []
+      if (!allDepts.length) {
+        notify.warning('Không tìm thấy phòng ban nào phù hợp với bộ lọc.')
+        return
+      }
+
+      const exportData = allDepts.map((d, index) => ({
+        STT: index + 1,
+        'Mã Phòng Ban': d.code || '',
+        'Tên Phòng Ban': d.name,
+        'Công Ty Trực Thuộc': d.companyId ? companyMap.get(d.companyId) || 'Chưa xác định' : 'Trực thuộc hệ thống',
+        'Trưởng Phòng': d.managerName || '',
+        'Số Điện Thoại': d.phoneNumber || '',
+        'Email': d.email || '',
+        'Ghi Chú': d.note || '',
+        'Trạng Thái': d.isActive ? 'Đang hoạt động' : 'Tạm dừng',
+      }))
+
+      exportToExcel(exportData, `Danh_Sach_Phong_Ban_${new Date().toISOString().slice(0, 10)}.xlsx`, 'PhongBan')
+      notify.success(`Xuất thành công ${exportData.length} phòng ban!`)
+    } catch (err: any) {
+      notify.error('Lỗi khi tải dữ liệu xuất Excel', err)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDownloadTemplate = () => {
@@ -467,10 +494,11 @@ export function DepartmentsPage() {
             variant="outline"
             size="sm"
             onClick={handleExportExcel}
+            disabled={isExporting}
             className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
-            <Download className="h-3.5 w-3.5 text-blue-600" />
-            Xuất Excel
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
           </Button>
 
           {/* Create Button */}
