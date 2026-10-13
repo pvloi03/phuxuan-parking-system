@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using HPParkingSystem.Api.Helpers;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
@@ -15,8 +15,8 @@ namespace HPParkingSystem.Api.Services
     {
         public static async ValueTask LogActivityAsync(
             this IAuditLogQueue queue,
-            ClaimsPrincipal user,
-            HttpContext httpContext,
+            ClaimsPrincipal? user,
+            HttpContext? httpContext,
             AuditActionType actionType,
             string targetEntity,
             string? targetId,
@@ -29,7 +29,9 @@ namespace HPParkingSystem.Api.Services
         {
             if (queue == null) return;
 
-            var (actorId, actorUsername, actorRole) = user.GetActorInfo();
+            var (actorId, actorUsername, actorRole) = user != null
+                ? user.GetActorInfo()
+                : ("system", "System", "System");
 
             var log = new AuditLog
             {

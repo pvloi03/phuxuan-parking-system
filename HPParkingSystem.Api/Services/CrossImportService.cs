@@ -116,11 +116,8 @@ namespace HPParkingSystem.Api.Services
                         await _personRepo.AddAsync(currentPerson);
                         result.PeopleCreated++;
 
-                        if (user != null && httpContext != null)
-                        {
-                            var diff = AuditDiffHelper.ComputeDiff<Person>(null, currentPerson);
-                            await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Create, "Person", currentPerson.Id, currentPerson.FullName, diff);
-                        }
+                        var personCreateDiff = AuditDiffHelper.ComputeDiff<Person>(null, currentPerson);
+                        await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Create, "Person", currentPerson.Id, currentPerson.FullName, personCreateDiff);
                     }
                     else if (currentPerson != null)
                     {
@@ -175,13 +172,10 @@ namespace HPParkingSystem.Api.Services
                             await _personRepo.UpdateAsync(currentPerson);
                             result.PeopleUpdated++;
 
-                            if (user != null && httpContext != null)
+                            var personUpdateDiff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, currentPerson);
+                            if (personUpdateDiff.HasChanges)
                             {
-                                var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, currentPerson);
-                                if (diff.HasChanges)
-                                {
-                                    await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Update, "Person", currentPerson.Id, currentPerson.FullName, diff);
-                                }
+                                await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Update, "Person", currentPerson.Id, currentPerson.FullName, personUpdateDiff);
                             }
                         }
                     }
@@ -209,11 +203,8 @@ namespace HPParkingSystem.Api.Services
                                 result.LinksCreated++;
                             }
 
-                            if (user != null && httpContext != null)
-                            {
-                                var diff = AuditDiffHelper.ComputeDiff<Vehicle>(null, currentVehicle);
-                                await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Create, "Vehicle", currentVehicle.Id, currentVehicle.PlateNumber, diff);
-                            }
+                            var vehCreateDiff = AuditDiffHelper.ComputeDiff<Vehicle>(null, currentVehicle);
+                            await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Create, "Vehicle", currentVehicle.Id, currentVehicle.PlateNumber, vehCreateDiff);
                         }
                         else
                         {
@@ -252,13 +243,10 @@ namespace HPParkingSystem.Api.Services
                                 await _vehicleRepo.UpdateAsync(currentVehicle);
                                 result.VehiclesUpdated++;
 
-                                if (user != null && httpContext != null)
+                                var vehUpdateDiff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, currentVehicle);
+                                if (vehUpdateDiff.HasChanges)
                                 {
-                                    var diff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, currentVehicle);
-                                    if (diff.HasChanges)
-                                    {
-                                        await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Update, "Vehicle", currentVehicle.Id, currentVehicle.PlateNumber, diff);
-                                    }
+                                    await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Update, "Vehicle", currentVehicle.Id, currentVehicle.PlateNumber, vehUpdateDiff);
                                 }
                             }
                         }

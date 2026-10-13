@@ -325,5 +325,84 @@ namespace HPParkingSystem.Api.Tests.Services
             _vehiclesInDb.Should().BeEmpty();
             _peopleInDb.Should().HaveCount(1);
         }
+
+        [Fact]
+        public async Task ImportAsync_WhenCreatingPersonAndVehicle_QueuesAuditLogsForBoth()
+        {
+            // Arrange
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    PersonCode = "NS_AUDIT_1",
+                    FullName = "Kiểm Toán Viên 1",
+                    PlateNumber = "29A88888"
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.PeopleCreated.Should().Be(1);
+            result.VehiclesCreated.Should().Be(1);
+
+            _auditQueueMock.Verify(
+                q => q.QueueLogAsync(
+                    It.Is<AuditLog>(l => l.ActionType == AuditActionType.Create && l.TargetEntity == "Person" && l.TargetDisplay == "Kiểm Toán Viên 1"),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _auditQueueMock.Verify(
+                q => q.QueueLogAsync(
+                    It.Is<AuditLog>(l => l.ActionType == AuditActionType.Create && l.TargetEntity == "Vehicle" && l.TargetDisplay == "29A88888"),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task ImportAsync_WhenUpdatingExistingPersonAndVehicle_QueuesUpdateAuditLogsWithDiff()
+        {
+            // Arrange
+            var initialPerson = Person.Create("NS_AUDIT_2", "Tên Ban Đầu", PersonType.Employee, null, null, null, null, null, true);
+            initialPerson.Id = "p-audit-2";
+            _peopleInDb.Add(initialPerson);
+
+            var initialVehicle = Vehicle.Create("30E99999", VehicleType.Car, initialPerson.Id, 1.5, true);
+            initialVehicle.Id = "v-audit-2";
+            _vehiclesInDb.Add(initialVehicle);
+
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    PersonCode = "NS_AUDIT_2",
+                    FullName = "Tên Mới Sau Khi Cập Nhật",
+                    PlateNumber = "30E99999",
+                    Weight = 2.8
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.PeopleUpdated.Should().Be(1);
+            result.VehiclesUpdated.Should().Be(1);
+
+            _auditQueueMock.Verify(
+                q => q.QueueLogAsync(
+                    It.Is<AuditLog>(l => l.ActionType == AuditActionType.Update && l.TargetEntity == "Person" && l.ChangedProperties.Contains("FullName")),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            _auditQueueMock.Verify(
+                q => q.QueueLogAsync(
+                    It.Is<AuditLog>(l => l.ActionType == AuditActionType.Update && l.TargetEntity == "Vehicle" && l.ChangedProperties.Contains("Weight")),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
     }
 }
