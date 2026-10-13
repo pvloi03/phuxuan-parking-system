@@ -34,6 +34,9 @@ namespace HPParkingSystem.Services.Parking
         private readonly ConcurrentDictionary<string, (DateTime ProcessTime, string LaneType)> _lastProcessedPlates = new();
         private const int CROSS_LANE_INTERVAL_SECONDS = 15;
 
+        // Bộ nhớ đệm tra cứu xe và chủ xe (Cache in-memory) giúp phản hồi tức thì (< 1ms) kể cả khi máy chủ mất mạng
+        private readonly ConcurrentDictionary<string, VehicleLookupResult> _vehicleLookupCache = new(StringComparer.OrdinalIgnoreCase);
+
         public ParkingLaneService(
             IRepository<ParkingSession> sessionRepo,
             IRepository<Vehicle> vehicleRepo,
@@ -71,7 +74,7 @@ namespace HPParkingSystem.Services.Parking
             };
 
             // 0. Xác định tên làn chính xác từ bảng Lanes nếu chưa có
-            if (string.IsNullOrWhiteSpace(inLaneName) && _laneRepo != null)
+            if (string.IsNullOrWhiteSpace(inLaneName) && _laneRepo != null && (_healthTracker == null || _healthTracker.IsServerOnline))
             {
                 try
                 {
@@ -81,7 +84,10 @@ namespace HPParkingSystem.Services.Parking
                         inLaneName = lane.Name;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _healthTracker?.MarkMongoStatus(false, $"Lỗi kết nối MongoDB khi lấy tên làn: {ex.Message}");
+                }
             }
             if (string.IsNullOrWhiteSpace(inLaneName)) inLaneName = "Làn Vào";
 
@@ -278,7 +284,7 @@ namespace HPParkingSystem.Services.Parking
             };
 
             // 0. Xác định tên làn chính xác từ bảng Lanes nếu chưa có
-            if (string.IsNullOrWhiteSpace(outLaneName) && _laneRepo != null)
+            if (string.IsNullOrWhiteSpace(outLaneName) && _laneRepo != null && (_healthTracker == null || _healthTracker.IsServerOnline))
             {
                 try
                 {
@@ -288,7 +294,10 @@ namespace HPParkingSystem.Services.Parking
                         outLaneName = lane.Name;
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    _healthTracker?.MarkMongoStatus(false, $"Lỗi kết nối MongoDB khi lấy tên làn: {ex.Message}");
+                }
             }
             if (string.IsNullOrWhiteSpace(outLaneName)) outLaneName = "Làn Ra";
 
@@ -612,9 +621,20 @@ namespace HPParkingSystem.Services.Parking
                 return VehicleLookupResult.Unregistered();
             }
 
+            string clean = PlateNumber.Clean(plateNumber);
+
+            // 1. Nếu máy chủ đang Offline -> Lấy từ bộ nhớ đệm (Cache) hoặc trả về Unregistered ngay lập tức (< 1ms)
+            if (_healthTracker != null && !_healthTracker.IsServerOnline)
+            {
+                if (_vehicleLookupCache.TryGetValue(clean, out var cachedLookup))
+                {
+                    return cachedLookup;
+                }
+                return VehicleLookupResult.Unregistered();
+            }
+
             try
             {
-                string clean = PlateNumber.Clean(plateNumber);
                 var vehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == clean && !v.IsDeleted);
                 if (vehicle != null)
                 {
@@ -641,12 +661,25 @@ namespace HPParkingSystem.Services.Parking
                         }
                     }
 
-                    return new VehicleLookupResult(personName, deptName, compName, personId, vehicle.Type, personType, true, vehicle.Weight);
+                    var lookup = new VehicleLookupResult(personName, deptName, compName, personId, vehicle.Type, personType, true, vehicle.Weight);
+                    _vehicleLookupCache[clean] = lookup;
+                    return lookup;
                 }
+
+                var unregistered = VehicleLookupResult.Unregistered();
+                _vehicleLookupCache[clean] = unregistered;
+                return unregistered;
             }
             catch (Exception ex)
             {
+                // Đánh dấu ngay lập tức máy chủ MongoDB offline để các lượt xe/tác vụ tiếp theo không bị chờ timeout
+                _healthTracker?.MarkMongoStatus(false, $"Lỗi kết nối MongoDB khi tra cứu xe {clean}: {ex.Message}");
                 AppLogger.Error(ex, $"Lỗi tra cứu thông tin xe/chủ xe: {ex.Message}", "ParkingLaneService");
+
+                if (_vehicleLookupCache.TryGetValue(clean, out var cachedLookup))
+                {
+                    return cachedLookup;
+                }
             }
 
             return VehicleLookupResult.Unregistered();
@@ -663,7 +696,10 @@ namespace HPParkingSystem.Services.Parking
             string primaryBase = string.IsNullOrWhiteSpace(captureDir) ? "Captures" : captureDir;
             string primaryDir = Path.IsPathRooted(primaryBase) ? primaryBase : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, primaryBase);
 
-            if (_healthTracker == null || _healthTracker.IsServerOnline)
+            // Kiểm tra máy chủ trực tuyến VÀ chia sẻ ảnh trực tuyến (tránh treo blocking 15-30s của Windows SMB trên đường dẫn mạng UNC)
+            bool isServerOk = (_healthTracker == null) || (_healthTracker.IsServerOnline && _healthTracker.IsImageShareOnline);
+
+            if (isServerOk)
             {
                 try
                 {
@@ -680,7 +716,7 @@ namespace HPParkingSystem.Services.Parking
                 }
                 catch (Exception ex)
                 {
-                    // Lỗi I/O thư mục mạng máy chủ -> fallback
+                    // Lỗi I/O thư mục mạng máy chủ -> fallback và đánh dấu ngay ImageShareStatus = false
                     AppLogger.Error(ex, $"[LÀN XE] Lỗi I/O khi kết nối/tạo thư mục ảnh máy chủ ({primaryDir}): {ex.Message}", "ParkingLaneService");
                     _healthTracker?.MarkImageShareStatus(false, $"Không thể kết nối/tạo thư mục ảnh máy chủ: {ex.Message}");
                 }
