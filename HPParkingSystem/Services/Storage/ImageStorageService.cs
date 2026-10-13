@@ -145,7 +145,7 @@ namespace HPParkingSystem.Services.Storage
         public async Task<int> SyncPendingImagesAsync()
         {
             var taskCollection = _liteDb.GetImageSyncTasks();
-            var pendingTasks = taskCollection.Find(t => !t.IsSynced);
+            var pendingTasks = taskCollection.Find(t => !t.IsSynced).ToList();
             int syncedCount = 0;
 
             foreach (var task in pendingTasks)

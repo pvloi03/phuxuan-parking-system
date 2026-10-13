@@ -1,4 +1,4 @@
-﻿using LiteDB;
+using LiteDB;
 using System;
 using System.IO;
 
@@ -44,7 +44,8 @@ namespace HPParkingSystem.Models.Data
         private static readonly Lazy<LiteDbContext> _instance = new(() => new LiteDbContext());
         public static LiteDbContext Instance => _instance.Value;
 
-        private readonly LiteDatabase _database;
+        private readonly object _dbLock = new object();
+        private LiteDatabase? _database;
         private readonly string _dbPath;
         private bool _disposed = false;
 
@@ -55,55 +56,138 @@ namespace HPParkingSystem.Models.Data
         public LiteDbContext(string dbPath)
         {
             _dbPath = dbPath;
-            var directory = Path.GetDirectoryName(_dbPath);
-            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            // Cấu hình BsonMapper của LiteDB để nhận dạng Id làm khóa chính
-            var mapper = new BsonMapper();
-            mapper.EmptyStringToNull = false;
-
-            var connectionString = new ConnectionString
-            {
-                Filename = _dbPath,
-                Connection = ConnectionType.Shared
-            };
-
-            _database = new LiteDatabase(connectionString, mapper);
+            InitializeDatabase();
         }
 
-        public ILiteDatabase Database => _database;
+        private void InitializeDatabase()
+        {
+            lock (_dbLock)
+            {
+                var directory = Path.GetDirectoryName(_dbPath);
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                // Cấu hình BsonMapper của LiteDB để nhận dạng Id làm khóa chính
+                var mapper = new BsonMapper();
+                mapper.EmptyStringToNull = false;
+
+                var connectionString = new ConnectionString
+                {
+                    Filename = _dbPath,
+                    Connection = ConnectionType.Direct
+                };
+
+                _database = new LiteDatabase(connectionString, mapper);
+                EnsureIndexes();
+            }
+        }
+
+        private void EnsureIndexes()
+        {
+            try
+            {
+                if (_database == null) return;
+                var syncCol = _database.GetCollection<OfflineSyncTask>("offline_sync_tasks");
+                syncCol.EnsureIndex(x => x.IsSynced);
+                syncCol.EnsureIndex(x => x.RecordId);
+
+                var imgCol = _database.GetCollection<OfflineImageSyncTask>("offline_image_sync_tasks");
+                imgCol.EnsureIndex(x => x.IsSynced);
+            }
+            catch
+            {
+                // Không chặn khởi tạo nếu kiểm tra chỉ mục gặp lỗi ngoại cảnh
+            }
+        }
+
+        private void EnsureOpen()
+        {
+            if (_disposed) return;
+            lock (_dbLock)
+            {
+                if (_database == null)
+                {
+                    InitializeDatabase();
+                }
+            }
+        }
+
+        public void ResetDatabase()
+        {
+            lock (_dbLock)
+            {
+                try
+                {
+                    _database?.Dispose();
+                }
+                catch { }
+                _database = null;
+                if (!_disposed)
+                {
+                    InitializeDatabase();
+                }
+            }
+        }
+
+        public ILiteDatabase Database
+        {
+            get
+            {
+                EnsureOpen();
+                return _database!;
+            }
+        }
 
         public ILiteCollection<T> GetCollection<T>(string? name = null)
         {
-            return string.IsNullOrEmpty(name)
-                ? _database.GetCollection<T>()
-                : _database.GetCollection<T>(name);
+            EnsureOpen();
+            try
+            {
+                return string.IsNullOrEmpty(name)
+                    ? _database!.GetCollection<T>()
+                    : _database!.GetCollection<T>(name);
+            }
+            catch (Exception ex) when (IsEngineDisposedException(ex))
+            {
+                ResetDatabase();
+                return string.IsNullOrEmpty(name)
+                    ? _database!.GetCollection<T>()
+                    : _database!.GetCollection<T>(name);
+            }
         }
 
         public ILiteCollection<OfflineSyncTask> GetSyncTasks()
         {
-            var col = _database.GetCollection<OfflineSyncTask>("offline_sync_tasks");
-            col.EnsureIndex(x => x.IsSynced);
-            col.EnsureIndex(x => x.RecordId);
-            return col;
+            return GetCollection<OfflineSyncTask>("offline_sync_tasks");
         }
 
         public ILiteCollection<OfflineImageSyncTask> GetImageSyncTasks()
         {
-            var col = _database.GetCollection<OfflineImageSyncTask>("offline_image_sync_tasks");
-            col.EnsureIndex(x => x.IsSynced);
-            return col;
+            return GetCollection<OfflineImageSyncTask>("offline_image_sync_tasks");
+        }
+
+        private static bool IsEngineDisposedException(Exception ex)
+        {
+            return ex is ObjectDisposedException ||
+                   (ex is LiteException && ex.Message.IndexOf("disposed", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         public void Dispose()
         {
-            if (!_disposed)
+            lock (_dbLock)
             {
-                _database?.Dispose();
-                _disposed = true;
+                if (!_disposed)
+                {
+                    try
+                    {
+                        _database?.Dispose();
+                    }
+                    catch { }
+                    _database = null;
+                    _disposed = true;
+                }
             }
             GC.SuppressFinalize(this);
         }

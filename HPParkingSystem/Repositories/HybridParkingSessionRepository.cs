@@ -124,11 +124,22 @@ namespace HPParkingSystem.Repositories
             if (session == null) throw new ArgumentNullException(nameof(session));
 
             // Kiểm tra nguồn gốc: Bản ghi này có đang nằm chờ sync trong LiteDB hay không?
-            var syncTasksCol = _liteDb.GetSyncTasks();
-            var localCol = _liteDb.GetCollection<ParkingSession>("offline_sessions");
+            OfflineSyncTask? pendingInsertTask = null;
+            ParkingSession? localSession = null;
+            LiteDB.ILiteCollection<OfflineSyncTask>? syncTasksCol = null;
+            LiteDB.ILiteCollection<ParkingSession>? localCol = null;
 
-            var pendingInsertTask = syncTasksCol.FindOne(t => t.RecordId == session.Id && t.Operation == "Insert" && !t.IsSynced);
-            var localSession = localCol.FindById(session.Id);
+            try
+            {
+                syncTasksCol = _liteDb.GetSyncTasks();
+                localCol = _liteDb.GetCollection<ParkingSession>("offline_sessions");
+                pendingInsertTask = syncTasksCol.FindOne(t => t.RecordId == session.Id && t.Operation == "Insert" && !t.IsSynced);
+                localSession = localCol.FindById(session.Id);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"[HybridRepo] Không thể tra cứu phiên offline từ LiteDB khi CheckOut (xe {session.PlateNumber}): {ex.Message}");
+            }
 
             if (pendingInsertTask != null || localSession != null)
             {
@@ -138,26 +149,33 @@ namespace HPParkingSystem.Repositories
                 // Ta cập nhật thẳng vào LiteDB và cập nhật Payload của pendingInsertTask.
                 // Khi tiến trình nền đồng bộ chạy, nó sẽ đẩy 1 bản ghi hoàn chỉnh (có cả In lẫn Out)
                 // lên MongoDB mà không sợ lỗi update vào record không tồn tại!
-                localCol.Upsert(session);
+                try
+                {
+                    localCol?.Upsert(session);
 
-                if (pendingInsertTask != null)
-                {
-                    pendingInsertTask.PayloadJson = JsonSerializer.Serialize(session);
-                    pendingInsertTask.CreatedAt = DateTime.Now; // Đẩy thời gian cập nhật mới
-                    syncTasksCol.Update(pendingInsertTask);
-                }
-                else
-                {
-                    // Tạo mới task đồng bộ toàn diện
-                    syncTasksCol.Insert(new OfflineSyncTask
+                    if (pendingInsertTask != null)
                     {
-                        RecordId = session.Id,
-                        EntityType = nameof(ParkingSession),
-                        Operation = "Insert",
-                        PayloadJson = JsonSerializer.Serialize(session),
-                        CreatedAt = DateTime.Now,
-                        IsSynced = false
-                    });
+                        pendingInsertTask.PayloadJson = JsonSerializer.Serialize(session);
+                        pendingInsertTask.CreatedAt = DateTime.Now; // Đẩy thời gian cập nhật mới
+                        syncTasksCol?.Update(pendingInsertTask);
+                    }
+                    else
+                    {
+                        // Tạo mới task đồng bộ toàn diện
+                        syncTasksCol?.Insert(new OfflineSyncTask
+                        {
+                            RecordId = session.Id,
+                            EntityType = nameof(ParkingSession),
+                            Operation = "Insert",
+                            PayloadJson = JsonSerializer.Serialize(session),
+                            CreatedAt = DateTime.Now,
+                            IsSynced = false
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"[HybridRepo] Lỗi cập nhật phiên offline vào LiteDB khi CheckOut (xe {session.PlateNumber}): {ex.Message}");
                 }
 
                 return;
