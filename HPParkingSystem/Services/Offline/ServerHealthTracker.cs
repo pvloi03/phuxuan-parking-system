@@ -184,30 +184,31 @@ namespace HPParkingSystem.Services.Offline
         public async Task<bool> CheckHealthAsync(CancellationToken cancellationToken = default)
         {
             bool currentCheckSuccess = false;
+            string? checkError = null;
 
             try
             {
-                // Lớp 1: Socket TCP Ping siêu nhẹ (< 150ms)
-                bool tcpOk = await CheckTcpPortAsync(_host, _port, 150, cancellationToken).ConfigureAwait(false);
+                // Lớp 1: Socket TCP Ping cổng MongoDB với timeout 1000ms (tránh false alarm do jitter mạng LAN)
+                bool tcpOk = await CheckTcpPortAsync(_host, _port, 1000, cancellationToken).ConfigureAwait(false);
                 if (tcpOk)
                 {
                     // Lớp 2: Kiểm tra database engine thực sự phản hồi lệnh ping
-                    bool mongoOk = await _context.PingAsync(1000, cancellationToken).ConfigureAwait(false);
+                    bool mongoOk = await _context.PingAsync(1500, cancellationToken).ConfigureAwait(false);
                     currentCheckSuccess = mongoOk;
-                    if (!mongoOk && string.IsNullOrEmpty(_lastMongoError))
+                    if (!mongoOk)
                     {
-                        _lastMongoError = "Lệnh Ping MongoDB không phản hồi trong 1000ms";
+                        checkError = "Lệnh Ping MongoDB không phản hồi trong 1500ms";
                     }
                 }
                 else
                 {
-                    _lastMongoError = $"Không thể kết nối cổng TCP {_host}:{_port} (quá thời gian chờ 150ms)";
+                    checkError = $"Không thể kết nối cổng TCP {_host}:{_port} (quá thời gian chờ 1000ms)";
                 }
             }
             catch (Exception ex)
             {
                 currentCheckSuccess = false;
-                _lastMongoError = ex.Message;
+                checkError = ex.Message;
             }
 
             bool statusChanged = false;
@@ -219,11 +220,11 @@ namespace HPParkingSystem.Services.Offline
                 {
                     _consecutiveFailures = 0;
                     _consecutiveSuccesses++;
+                    _lastMongoError = null; // Luôn xóa sạch lỗi cũ khi kiểm tra thành công!
 
                     if (!_isServerOnline && _consecutiveSuccesses >= REQUIRED_SUCCESS_COUNT)
                     {
                         _isServerOnline = true;
-                        _lastMongoError = null;
                         newStatus = true;
                         statusChanged = true;
                     }
@@ -233,11 +234,16 @@ namespace HPParkingSystem.Services.Offline
                     _consecutiveSuccesses = 0;
                     _consecutiveFailures++;
 
-                    if (_isServerOnline && _consecutiveFailures >= REQUIRED_FAILURE_COUNT)
+                    // Chỉ ghi nhận lỗi khi đã xác nhận thất bại liên tiếp (Hysteresis) để tránh báo động giả
+                    if (_consecutiveFailures >= REQUIRED_FAILURE_COUNT)
                     {
-                        _isServerOnline = false;
-                        newStatus = false;
-                        statusChanged = true;
+                        _lastMongoError = checkError;
+                        if (_isServerOnline)
+                        {
+                            _isServerOnline = false;
+                            newStatus = false;
+                            statusChanged = true;
+                        }
                     }
                 }
             }
