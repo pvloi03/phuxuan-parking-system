@@ -74,9 +74,9 @@ namespace HPParkingSystem.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Vehicle vehicle)
         {
-            if (string.IsNullOrWhiteSpace(vehicle.PlateNumber))
+            if (string.IsNullOrWhiteSpace(vehicle.PlateNumber) || !Models.ValueObjects.PlateNumber.IsValid(vehicle.PlateNumber))
             {
-                return BadRequest(ApiResponse.Fail("Biển số xe không được để trống."));
+                return BadRequest(ApiResponse.Fail("Biển số xe không hợp lệ."));
             }
 
             var cleanPlate = Models.ValueObjects.PlateNumber.Clean(vehicle.PlateNumber);
@@ -118,11 +118,12 @@ namespace HPParkingSystem.Api.Controllers
             var existing = await _vehicleRepo.GetByIdAsync(id);
             if (existing == null || existing.IsDeleted) return NotFound(ApiResponse.Fail("Không tìm thấy phương tiện."));
 
-            var cleanPlate = Models.ValueObjects.PlateNumber.Clean(vehicle.PlateNumber);
-            if (string.IsNullOrWhiteSpace(cleanPlate))
+            if (string.IsNullOrWhiteSpace(vehicle.PlateNumber) || !Models.ValueObjects.PlateNumber.IsValid(vehicle.PlateNumber))
             {
                 return BadRequest(ApiResponse.Fail("Biển số xe không hợp lệ."));
             }
+
+            var cleanPlate = Models.ValueObjects.PlateNumber.Clean(vehicle.PlateNumber);
 
             var duplicate = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && v.Id != id && !v.IsDeleted);
             if (duplicate != null)
@@ -200,7 +201,7 @@ namespace HPParkingSystem.Api.Controllers
 
             foreach (var v in vehicles)
             {
-                if (string.IsNullOrWhiteSpace(v.PlateNumber)) continue;
+                if (string.IsNullOrWhiteSpace(v.PlateNumber) || !Models.ValueObjects.PlateNumber.IsValid(v.PlateNumber)) continue;
                 var cleanPlate = Models.ValueObjects.PlateNumber.Clean(v.PlateNumber);
 
                 var exists = await _vehicleRepo.FindOneAsync(x => x.PlateNumber == cleanPlate && !x.IsDeleted);

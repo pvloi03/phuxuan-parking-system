@@ -90,9 +90,7 @@ namespace HPParkingSystem.Api.Services
 
                 try
                 {
-                    var cleanPlate = !string.IsNullOrWhiteSpace(row.PlateNumber)
-                        ? Models.ValueObjects.PlateNumber.Clean(row.PlateNumber)
-                        : null;
+                    var rawPlate = !string.IsNullOrWhiteSpace(row.PlateNumber) ? row.PlateNumber.Trim() : null;
                     var cleanCode = !string.IsNullOrWhiteSpace(row.PersonCode)
                         ? row.PersonCode.Trim().ToUpperInvariant()
                         : null;
@@ -101,9 +99,23 @@ namespace HPParkingSystem.Api.Services
                         : null;
 
                     // Nếu dòng rỗng cả người lẫn xe thì bỏ qua
-                    if (string.IsNullOrWhiteSpace(cleanPlate) && string.IsNullOrWhiteSpace(cleanCode) && string.IsNullOrWhiteSpace(cleanFullName))
+                    if (string.IsNullOrWhiteSpace(rawPlate) && string.IsNullOrWhiteSpace(cleanCode) && string.IsNullOrWhiteSpace(cleanFullName))
                     {
                         continue;
+                    }
+
+                    // Kiểm tra tính hợp lệ của biển số xe nếu có truyền (Domain Invariant #3)
+                    string? validCleanPlate = null;
+                    if (!string.IsNullOrWhiteSpace(rawPlate))
+                    {
+                        if (Models.ValueObjects.PlateNumber.IsValid(rawPlate))
+                        {
+                            validCleanPlate = Models.ValueObjects.PlateNumber.Clean(rawPlate);
+                        }
+                        else
+                        {
+                            result.Errors.Add($"Dòng {rowIndex}: Biển số xe '{row.PlateNumber}' không hợp lệ (Domain Invariant #3).");
+                        }
                     }
 
                     // --- BƯỚC A: XỬ LÝ NHÂN SỰ ---
@@ -223,9 +235,9 @@ namespace HPParkingSystem.Api.Services
                     }
 
                     // --- BƯỚC B: XỬ LÝ PHƯƠNG TIỆN ---
-                    if (!string.IsNullOrWhiteSpace(cleanPlate))
+                    if (!string.IsNullOrWhiteSpace(validCleanPlate))
                     {
-                        var currentVehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == cleanPlate && !v.IsDeleted);
+                        var currentVehicle = await _vehicleRepo.FindOneAsync(v => v.PlateNumber == validCleanPlate && !v.IsDeleted);
                         string? ownerId = currentPerson?.Id;
 
                         if (currentVehicle == null)
@@ -233,7 +245,7 @@ namespace HPParkingSystem.Api.Services
                             // Thêm mới Phương tiện
                             currentVehicle = new Vehicle
                             {
-                                PlateNumber = cleanPlate,
+                                PlateNumber = validCleanPlate,
                                 Type = row.VehicleType ?? VehicleType.Car,
                                 Weight = (row.Weight.HasValue && row.Weight.Value >= 0) ? row.Weight.Value : null,
                                 OwnerPersonId = ownerId,

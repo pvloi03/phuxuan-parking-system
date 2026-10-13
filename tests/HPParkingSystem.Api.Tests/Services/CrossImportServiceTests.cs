@@ -292,5 +292,35 @@ namespace HPParkingSystem.Api.Tests.Services
             _peopleInDb[0].DepartmentId.Should().Be("dept1");
             _peopleInDb[0].CompanyId.Should().Be("comp1");
         }
+
+        [Fact]
+        public async Task ImportAsync_WithInvalidPlateNumber_ReportsErrorAndDoesNotCreateVehicle()
+        {
+            // Arrange
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    PersonCode = "NS004",
+                    FullName = "Phạm Văn D",
+                    PlateNumber = "--" // Ký tự lạ, rỗng sau clean
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.TotalRows.Should().Be(1);
+            result.PeopleCreated.Should().Be(1);
+            result.VehiclesCreated.Should().Be(0);
+            result.LinksCreated.Should().Be(0);
+            result.Errors.Should().HaveCount(1);
+            result.Errors[0].Should().Contain("Biển số xe '--' không hợp lệ");
+
+            _vehiclesInDb.Should().BeEmpty();
+            _peopleInDb.Should().HaveCount(1);
+        }
     }
 }

@@ -15,7 +15,25 @@ namespace HPParkingSystem.Models.Entities
         // =========================================================================
         // --- CÁC TRƯỜNG LƯU TRỮ DATABASE (PERSISTED PROPERTIES) ---
         // =========================================================================
-        public string PlateNumber { get; set; } = string.Empty;                          // [LƯU DB] Biển số xe (chuỗi chuẩn hóa)
+        private string _plateNumber = string.Empty;
+        public string PlateNumber
+        {
+            get => _plateNumber;
+            set
+            {
+                if (!string.IsNullOrEmpty(value))
+                {
+                    if (!ValueObjects.PlateNumber.IsValid(value))
+                        throw new System.ArgumentException("Biển số xe không hợp lệ (Domain Invariant #3).", nameof(value));
+                    _plateNumber = ValueObjects.PlateNumber.Clean(value);
+                }
+                else
+                {
+                    _plateNumber = string.Empty;
+                }
+            }
+        }
+
         [BsonRepresentation(BsonType.String)]
         public VehicleType Type { get; set; } = VehicleType.Car;                         // [LƯU DB] Loại xe (Ô tô, Xe máy...)
         [BsonRepresentation(BsonType.ObjectId)]
@@ -37,7 +55,7 @@ namespace HPParkingSystem.Models.Entities
 
         public Vehicle(string plateNumber, VehicleType type = VehicleType.Car, string? ownerPersonId = null, double? weight = null)
         {
-            PlateNumber = ValueObjects.PlateNumber.Clean(plateNumber);
+            PlateNumber = plateNumber;
             Type = type;
             OwnerPersonId = ownerPersonId;
             Weight = weight;

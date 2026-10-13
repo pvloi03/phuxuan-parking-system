@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Text.RegularExpressions;
 
 namespace HPParkingSystem.Models.ValueObjects
@@ -54,6 +54,31 @@ namespace HPParkingSystem.Models.ValueObjects
             if (string.IsNullOrWhiteSpace(input)) return string.Empty;
             if (IsUnrecognized(input)) return Unrecognized;
             return Regex.Replace(input!.Trim().ToUpperInvariant(), @"[^A-Z0-9]", "");
+        }
+
+        /// <summary>
+        /// Kiểm tra xem chuỗi đầu vào có phải là biển số xe hợp lệ hay không (sau khi Clean).
+        /// Ràng buộc Domain Invariant #3: Vehicle phải có PlateNumber hợp lệ.
+        /// </summary>
+        public static bool IsValid(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return false;
+            var clean = Clean(input);
+            if (string.IsNullOrEmpty(clean) || clean == Unrecognized) return false;
+
+            // Biển số chuẩn có độ dài từ 5 đến 12 ký tự chữ và số
+            if (clean.Length < 5 || clean.Length > 12) return false;
+
+            bool hasLetter = false;
+            bool hasDigit = false;
+            foreach (char c in clean)
+            {
+                if (c >= 'A' && c <= 'Z') hasLetter = true;
+                else if (c >= '0' && c <= '9') hasDigit = true;
+                else return false;
+            }
+
+            return hasLetter && hasDigit;
         }
 
         public static string FormatDisplay(string? input)
