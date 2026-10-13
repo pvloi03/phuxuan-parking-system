@@ -88,94 +88,112 @@ namespace HPParkingSystem.Api.Services
 
                     // --- BƯỚC A: XỬ LÝ NHÂN SỰ ---
                     Person? currentPerson = null;
-
-                    if (!string.IsNullOrWhiteSpace(cleanCode))
-                    {
-                        currentPerson = await _personRepo.FindOneAsync(p => p.Code == cleanCode && !p.IsDeleted);
-                    }
+                    bool hasPersonInfo = !string.IsNullOrWhiteSpace(cleanCode)
+                        || !string.IsNullOrWhiteSpace(cleanFullName)
+                        || !string.IsNullOrWhiteSpace(row.PhoneNumber)
+                        || !string.IsNullOrWhiteSpace(row.Email);
 
                     // Xác định phòng ban, công ty, nhà thầu qua catalog
                     var resolvedDeptId = orgCatalog.ResolveDepartmentId(row.DepartmentId, row.DepartmentName);
                     var resolvedCompId = orgCatalog.ResolveCompanyId(row.CompanyId, row.CompanyName);
                     var resolvedContrId = orgCatalog.ResolveContractorId(row.ContractorId, row.ContractorName);
 
-                    if (currentPerson == null && !string.IsNullOrWhiteSpace(cleanCode) && !string.IsNullOrWhiteSpace(cleanFullName))
+                    if (hasPersonInfo)
                     {
-                        // Thêm mới Nhân sự qua Domain Factory Method
-                        currentPerson = Person.Create(
-                            cleanCode,
-                            cleanFullName,
-                            row.PersonType ?? PersonType.Employee,
-                            row.PhoneNumber?.Trim(),
-                            row.Email?.Trim(),
-                            resolvedDeptId,
-                            resolvedCompId,
-                            resolvedContrId,
-                            row.PersonIsActive ?? true);
+                        if (string.IsNullOrWhiteSpace(cleanCode))
+                        {
+                            result.Errors.Add($"Dòng {rowIndex}: Thông tin nhân sự '{cleanFullName ?? "Chưa rõ"}' thiếu mã định danh bắt buộc (PersonCode).");
+                        }
+                        else
+                        {
+                            currentPerson = await _personRepo.FindOneAsync(p => p.Code == cleanCode && !p.IsDeleted);
 
-                        await _personRepo.AddAsync(currentPerson);
-                        result.PeopleCreated++;
-
-                        var personCreateDiff = AuditDiffHelper.ComputeDiff<Person>(null, currentPerson);
-                        await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Create, "Person", currentPerson.Id, currentPerson.FullName, personCreateDiff);
-                    }
-                    else if (currentPerson != null)
-                    {
-                        // Cập nhật thông tin nhân sự có sẵn
-                        var snapshot = AuditDiffHelper.TakeSnapshot(currentPerson);
-                        bool changed = false;
-
-                        if (!string.IsNullOrWhiteSpace(cleanFullName) && currentPerson.FullName != cleanFullName)
-                        {
-                            currentPerson.FullName = cleanFullName;
-                            changed = true;
-                        }
-                        if (!string.IsNullOrWhiteSpace(row.PhoneNumber) && currentPerson.PhoneNumber != row.PhoneNumber.Trim())
-                        {
-                            currentPerson.PhoneNumber = row.PhoneNumber.Trim();
-                            changed = true;
-                        }
-                        if (!string.IsNullOrWhiteSpace(row.Email) && currentPerson.Email != row.Email.Trim())
-                        {
-                            currentPerson.Email = row.Email.Trim();
-                            changed = true;
-                        }
-                        if (row.PersonType.HasValue && currentPerson.Type != row.PersonType.Value)
-                        {
-                            currentPerson.Type = row.PersonType.Value;
-                            changed = true;
-                        }
-                        if (row.PersonIsActive.HasValue && currentPerson.IsActive != row.PersonIsActive.Value)
-                        {
-                            currentPerson.IsActive = row.PersonIsActive.Value;
-                            changed = true;
-                        }
-                        if (resolvedDeptId != null && currentPerson.DepartmentId != resolvedDeptId)
-                        {
-                            currentPerson.DepartmentId = resolvedDeptId;
-                            changed = true;
-                        }
-                        if (resolvedCompId != null && currentPerson.CompanyId != resolvedCompId)
-                        {
-                            currentPerson.CompanyId = resolvedCompId;
-                            changed = true;
-                        }
-                        if (resolvedContrId != null && currentPerson.ContractorId != resolvedContrId)
-                        {
-                            currentPerson.ContractorId = resolvedContrId;
-                            changed = true;
-                        }
-
-                        if (changed)
-                        {
-                            currentPerson.UpdatedAt = DateTime.Now;
-                            await _personRepo.UpdateAsync(currentPerson);
-                            result.PeopleUpdated++;
-
-                            var personUpdateDiff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, currentPerson);
-                            if (personUpdateDiff.HasChanges)
+                            if (currentPerson == null)
                             {
-                                await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Update, "Person", currentPerson.Id, currentPerson.FullName, personUpdateDiff);
+                                if (string.IsNullOrWhiteSpace(cleanFullName))
+                                {
+                                    result.Errors.Add($"Dòng {rowIndex}: Nhân sự mới với mã '{cleanCode}' thiếu họ và tên bắt buộc (FullName).");
+                                }
+                                else
+                                {
+                                    // Thêm mới Nhân sự qua Domain Factory Method
+                                    currentPerson = Person.Create(
+                                        cleanCode,
+                                        cleanFullName,
+                                        row.PersonType ?? PersonType.Employee,
+                                        row.PhoneNumber?.Trim(),
+                                        row.Email?.Trim(),
+                                        resolvedDeptId,
+                                        resolvedCompId,
+                                        resolvedContrId,
+                                        row.PersonIsActive ?? true);
+
+                                    await _personRepo.AddAsync(currentPerson);
+                                    result.PeopleCreated++;
+
+                                    var personCreateDiff = AuditDiffHelper.ComputeDiff<Person>(null, currentPerson);
+                                    await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Create, "Person", currentPerson.Id, currentPerson.FullName, personCreateDiff);
+                                }
+                            }
+                            else
+                            {
+                                // Cập nhật thông tin nhân sự có sẵn
+                                var snapshot = AuditDiffHelper.TakeSnapshot(currentPerson);
+                                bool changed = false;
+
+                                if (!string.IsNullOrWhiteSpace(cleanFullName) && currentPerson.FullName != cleanFullName)
+                                {
+                                    currentPerson.FullName = cleanFullName;
+                                    changed = true;
+                                }
+                                if (!string.IsNullOrWhiteSpace(row.PhoneNumber) && currentPerson.PhoneNumber != row.PhoneNumber.Trim())
+                                {
+                                    currentPerson.PhoneNumber = row.PhoneNumber.Trim();
+                                    changed = true;
+                                }
+                                if (!string.IsNullOrWhiteSpace(row.Email) && currentPerson.Email != row.Email.Trim())
+                                {
+                                    currentPerson.Email = row.Email.Trim();
+                                    changed = true;
+                                }
+                                if (row.PersonType.HasValue && currentPerson.Type != row.PersonType.Value)
+                                {
+                                    currentPerson.Type = row.PersonType.Value;
+                                    changed = true;
+                                }
+                                if (row.PersonIsActive.HasValue && currentPerson.IsActive != row.PersonIsActive.Value)
+                                {
+                                    currentPerson.IsActive = row.PersonIsActive.Value;
+                                    changed = true;
+                                }
+                                if (resolvedDeptId != null && currentPerson.DepartmentId != resolvedDeptId)
+                                {
+                                    currentPerson.DepartmentId = resolvedDeptId;
+                                    changed = true;
+                                }
+                                if (resolvedCompId != null && currentPerson.CompanyId != resolvedCompId)
+                                {
+                                    currentPerson.CompanyId = resolvedCompId;
+                                    changed = true;
+                                }
+                                if (resolvedContrId != null && currentPerson.ContractorId != resolvedContrId)
+                                {
+                                    currentPerson.ContractorId = resolvedContrId;
+                                    changed = true;
+                                }
+
+                                if (changed)
+                                {
+                                    currentPerson.UpdatedAt = DateTime.Now;
+                                    await _personRepo.UpdateAsync(currentPerson);
+                                    result.PeopleUpdated++;
+
+                                    var personUpdateDiff = AuditDiffHelper.ComputeDiffFromSnapshot(snapshot, currentPerson);
+                                    if (personUpdateDiff.HasChanges)
+                                    {
+                                        await _auditQueue.LogActivityAsync(user, httpContext, AuditActionType.Update, "Person", currentPerson.Id, currentPerson.FullName, personUpdateDiff);
+                                    }
+                                }
                             }
                         }
                     }

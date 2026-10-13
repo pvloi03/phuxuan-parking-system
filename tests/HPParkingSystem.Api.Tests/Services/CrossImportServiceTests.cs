@@ -404,5 +404,84 @@ namespace HPParkingSystem.Api.Tests.Services
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
+
+        [Fact]
+        public async Task ImportAsync_WhenPersonMissingCode_ReportsErrorAndDoesNotCreatePerson()
+        {
+            // Arrange
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    FullName = "Trần Thị E" // Thiếu PersonCode
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.TotalRows.Should().Be(1);
+            result.PeopleCreated.Should().Be(0);
+            result.Errors.Should().HaveCount(1);
+            result.Errors[0].Should().Contain("thiếu mã định danh bắt buộc (PersonCode)");
+            _peopleInDb.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ImportAsync_WhenNewPersonMissingFullName_ReportsErrorAndDoesNotCreatePerson()
+        {
+            // Arrange
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    PersonCode = "NS_NO_NAME" // Thiếu FullName và chưa có trong DB
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.TotalRows.Should().Be(1);
+            result.PeopleCreated.Should().Be(0);
+            result.Errors.Should().HaveCount(1);
+            result.Errors[0].Should().Contain("thiếu họ và tên bắt buộc (FullName)");
+            _peopleInDb.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task ImportAsync_WhenPersonHasErrorButVehicleIsValid_CreatesVehicleAndReportsPersonError()
+        {
+            // Arrange
+            var service = CreateService();
+            var items = new List<VehiclePersonCrossImportItemDto>
+            {
+                new VehiclePersonCrossImportItemDto
+                {
+                    FullName = "Người Chưa Có Mã", // Thiếu PersonCode
+                    PlateNumber = "29A11111",
+                    VehicleType = VehicleType.Car
+                }
+            };
+
+            // Act
+            var result = await service.ImportAsync(items);
+
+            // Assert
+            result.TotalRows.Should().Be(1);
+            result.PeopleCreated.Should().Be(0);
+            result.VehiclesCreated.Should().Be(1);
+            result.LinksCreated.Should().Be(0);
+            result.Errors.Should().HaveCount(1);
+            result.Errors[0].Should().Contain("thiếu mã định danh bắt buộc (PersonCode)");
+
+            _vehiclesInDb.Should().HaveCount(1);
+            _vehiclesInDb[0].PlateNumber.Should().Be("29A11111");
+            _vehiclesInDb[0].OwnerPersonId.Should().BeNull();
+        }
     }
 }
