@@ -111,6 +111,20 @@ namespace HPParkingSystem.Models.ValueObjects
                 return $"{matchStd4.Groups[1].Value}-{matchStd4.Groups[2].Value}";
             }
 
+            // 4. Biển quân sự 5 số e.g. TH12345 -> TH-123.45
+            var matchMil5 = Regex.Match(clean, @"^([A-Z]{2})([0-9]{3})([0-9]{2})$");
+            if (matchMil5.Success)
+            {
+                return $"{matchMil5.Groups[1].Value}-{matchMil5.Groups[2].Value}.{matchMil5.Groups[3].Value}";
+            }
+
+            // 5. Biển quân sự 4 số e.g. QA1234 -> QA-1234
+            var matchMil4 = Regex.Match(clean, @"^([A-Z]{2})([0-9]{4})$");
+            if (matchMil4.Success)
+            {
+                return $"{matchMil4.Groups[1].Value}-{matchMil4.Groups[2].Value}";
+            }
+
             return clean;
         }
 

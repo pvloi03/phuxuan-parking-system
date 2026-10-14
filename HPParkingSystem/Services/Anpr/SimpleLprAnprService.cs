@@ -213,6 +213,11 @@ namespace HPParkingSystem.Services.Anpr
             {
                 score += 1.5f;
             }
+            // Khớp chính xác định dạng biển xe Quân đội (2 chữ cái đầu + 4 hoặc 5 số: ví dụ QA1234, TH12345)
+            else if (Regex.IsMatch(clean, @"^[A-Z]{2}[0-9]{4,5}$"))
+            {
+                score += 2.5f;
+            }
 
             return score;
         }
