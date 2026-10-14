@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.ValueObjects;
+using HPParkingSystem.Models.ValueObjects;
 using HPParkingSystem.Services.Logging;
 using SimpleLPR3;
 using System;
@@ -85,8 +85,17 @@ namespace HPParkingSystem.Services.Anpr
                     _processor.plateRegionDetectionEnabled = true;
                     _processor.cropToPlateRegionEnabled = true;
 
+                    // Cấu hình độ nhạy tương phản binarization 24/7 (Mặc định 0.40f)
+                    float csf = 0.40f;
+                    if (float.TryParse(System.Configuration.ConfigurationManager.AppSettings["Anpr_ContrastSensitivity"],
+                        System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float cfgCsf) && cfgCsf > 0 && cfgCsf <= 1.0f)
+                    {
+                        csf = cfgCsf;
+                    }
+                    _processor.contrastSensitivityFactor = csf;
+
                     _isInitialized = true;
-                    AppLogger.Information("SimpleLPR3 x86 Engine đã được khởi tạo thành công (Trọng số: VN 100%).");
+                    AppLogger.Information($"SimpleLPR3 x86 Engine đã được khởi tạo thành công (Trọng số: VN 100%, CSF: {csf:F2}).");
                 }
                 catch (Exception ex)
                 {
