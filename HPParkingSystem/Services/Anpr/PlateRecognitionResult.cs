@@ -1,4 +1,4 @@
-﻿using HPParkingSystem.Models.ValueObjects;
+using HPParkingSystem.Models.ValueObjects;
 using System;
 using System.Drawing;
 
@@ -24,6 +24,8 @@ namespace HPParkingSystem.Services.Anpr
             return new PlateRecognitionResult
             {
                 IsSuccess = false,
+                CleanPlate = PlateNumber.Unrecognized,
+                FormattedPlate = PlateNumber.UnrecognizedDisplay,
                 ErrorMessage = errorMessage,
                 DurationMs = durationMs
             };
@@ -32,13 +34,14 @@ namespace HPParkingSystem.Services.Anpr
         public static PlateRecognitionResult Success(string rawText, float confidence, Rectangle bbox = default, Bitmap? cropped = null, long durationMs = 0)
         {
             string clean = PlateNumber.Clean(rawText);
-            string formatted = PlateNumber.FormatDisplay(clean);
+            bool isValid = PlateNumber.IsValid(clean);
+            string formatted = isValid ? PlateNumber.FormatDisplay(clean) : PlateNumber.UnrecognizedDisplay;
 
             return new PlateRecognitionResult
             {
-                IsSuccess = !string.IsNullOrWhiteSpace(clean),
+                IsSuccess = isValid,
                 RawText = rawText,
-                CleanPlate = clean,
+                CleanPlate = isValid ? clean : PlateNumber.Unrecognized,
                 FormattedPlate = formatted,
                 Confidence = confidence,
                 BoundingBox = bbox,

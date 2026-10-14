@@ -276,8 +276,11 @@ namespace HPParkingSystem.Services.Anpr
                         {
                             foreach (var m in cand.matches)
                             {
+                                string clean = PlateNumber.Clean(m.text);
                                 float score = CalculateMatchScore(m.text, m.confidence);
-                                if (score > maxScore)
+
+                                // Chặn rác: Chỉ chấp nhận khi chuỗi hợp lệ (PlateNumber.IsValid(clean) == true và score >= 2.5)
+                                if (PlateNumber.IsValid(clean) && score >= 2.5f && score > maxScore)
                                 {
                                     maxScore = score;
                                     bestMatch = m;
@@ -287,59 +290,63 @@ namespace HPParkingSystem.Services.Anpr
                         }
                     }
 
-                    if (bestMatch.HasValue && maxScore > 0 && !string.IsNullOrWhiteSpace(bestMatch.Value.text))
+                    if (bestMatch.HasValue && maxScore >= 2.5f)
                     {
-                        Rectangle bbox = default;
-                        Bitmap? croppedPlate = null;
-
-                        if (bestCandidate.HasValue)
+                        string bestClean = PlateNumber.Clean(bestMatch.Value.text);
+                        if (PlateNumber.IsValid(bestClean))
                         {
-                            var candBbox = bestCandidate.Value.bbox;
+                            Rectangle bbox = default;
+                            Bitmap? croppedPlate = null;
 
-                            // Nếu ảnh đã được downscale, phóng to tọa độ bbox về kích thước ảnh gốc HD
-                            if (isDownscaled && scaleFactor > 0)
+                            if (bestCandidate.HasValue)
                             {
-                                float invScale = 1.0f / scaleFactor;
-                                int origX = (int)Math.Max(0, candBbox.Left * invScale);
-                                int origY = (int)Math.Max(0, candBbox.Top * invScale);
-                                int origW = (int)Math.Min(bitmap.Width - origX, candBbox.Width * invScale);
-                                int origH = (int)Math.Min(bitmap.Height - origY, candBbox.Height * invScale);
-                                bbox = new Rectangle(origX, origY, origW, origH);
-                            }
-                            else
-                            {
-                                bbox = new Rectangle(candBbox.Left, candBbox.Top, candBbox.Width, candBbox.Height);
+                                var candBbox = bestCandidate.Value.bbox;
+
+                                // Nếu ảnh đã được downscale, phóng to tọa độ bbox về kích thước ảnh gốc HD
+                                if (isDownscaled && scaleFactor > 0)
+                                {
+                                    float invScale = 1.0f / scaleFactor;
+                                    int origX = (int)Math.Max(0, candBbox.Left * invScale);
+                                    int origY = (int)Math.Max(0, candBbox.Top * invScale);
+                                    int origW = (int)Math.Min(bitmap.Width - origX, candBbox.Width * invScale);
+                                    int origH = (int)Math.Min(bitmap.Height - origY, candBbox.Height * invScale);
+                                    bbox = new Rectangle(origX, origY, origW, origH);
+                                }
+                                else
+                                {
+                                    bbox = new Rectangle(candBbox.Left, candBbox.Top, candBbox.Width, candBbox.Height);
+                                }
+
+                                // Cắt ảnh vùng biển số trực tiếp từ ảnh gốc chất lượng cao
+                                if (bbox.Width > 0 && bbox.Height > 0 &&
+                                    bbox.Right <= bitmap.Width && bbox.Bottom <= bitmap.Height)
+                                {
+                                    try
+                                    {
+                                        croppedPlate = new Bitmap(bbox.Width, bbox.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                                        using var g = Graphics.FromImage(croppedPlate);
+                                        g.DrawImage(bitmap, new Rectangle(0, 0, bbox.Width, bbox.Height), bbox, GraphicsUnit.Pixel);
+                                    }
+                                    catch
+                                    {
+                                        // Bỏ qua nếu lỗi cắt ảnh
+                                    }
+                                }
                             }
 
-                            // Cắt ảnh vùng biển số trực tiếp từ ảnh gốc chất lượng cao
-                            if (bbox.Width > 0 && bbox.Height > 0 &&
-                                bbox.Right <= bitmap.Width && bbox.Bottom <= bitmap.Height)
-                            {
-                                try
-                                {
-                                    croppedPlate = new Bitmap(bbox.Width, bbox.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                                    using var g = Graphics.FromImage(croppedPlate);
-                                    g.DrawImage(bitmap, new Rectangle(0, 0, bbox.Width, bbox.Height), bbox, GraphicsUnit.Pixel);
-                                }
-                                catch
-                                {
-                                    // Bỏ qua nếu lỗi cắt ảnh
-                                }
-                            }
+                            var result = PlateRecognitionResult.Success(
+                                bestMatch.Value.text,
+                                bestMatch.Value.confidence,
+                                bbox,
+                                croppedPlate,
+                                sw.ElapsedMilliseconds);
+
+                            AppLogger.Information($"Nhận diện thành công: '{result.FormattedPlate}' (Raw: '{result.RawText}', Conf: {result.Confidence:P1}, Score: {maxScore:F2}, Time: {result.DurationMs}ms{(isDownscaled ? $", Downscaled: {bitmap.Width}x{bitmap.Height} -> {targetBmp.Width}x{targetBmp.Height}" : "")})");
+                            return result;
                         }
-
-                        var result = PlateRecognitionResult.Success(
-                            bestMatch.Value.text,
-                            bestMatch.Value.confidence,
-                            bbox,
-                            croppedPlate,
-                            sw.ElapsedMilliseconds);
-
-                        AppLogger.Information($"Nhận diện thành công: '{result.FormattedPlate}' (Raw: '{result.RawText}', Conf: {result.Confidence:P1}, Time: {result.DurationMs}ms{(isDownscaled ? $", Downscaled: {bitmap.Width}x{bitmap.Height} -> {targetBmp.Width}x{targetBmp.Height}" : "")})");
-                        return result;
                     }
 
-                    return PlateRecognitionResult.Failed("Không phát hiện được biển số xe hợp lệ (Độ dài / Cấu trúc không khớp).", sw.ElapsedMilliseconds);
+                    return PlateRecognitionResult.Failed("Không phát hiện được biển số xe hợp lệ (Độ dài / Cấu trúc không khớp hoặc điểm số không đạt ngưỡng >= 2.5).", sw.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {
