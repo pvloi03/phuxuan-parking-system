@@ -130,7 +130,7 @@ export function Sidebar() {
               <img
                 src={logoImg}
                 alt="Hoàng Phát Logo"
-                className="h-8.5 w-auto max-w-[155px] object-contain dark:bg-white dark:px-2 dark:py-0.5 dark:rounded-md transition-all"
+                className="h-full w-auto max-w-full object-contain dark:bg-white dark:px-2 dark:py-0.5 dark:rounded-md transition-all"
               />
             </Link>
             <button
@@ -146,13 +146,13 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setIsCollapsed(false)}
-            className="h-9 w-9 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs group p-1 overflow-hidden"
+            className="h-9 w-9 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer group p-0.5 overflow-hidden"
             title="Mở rộng sidebar"
           >
             <img
               src={logoImg}
               alt="Logo"
-              className="h-6 w-auto max-w-none object-contain object-left group-hover:hidden"
+              className="h-7 w-auto max-w-none object-contain object-left group-hover:hidden"
             />
             <ChevronRight className="h-4.5 w-4.5 hidden group-hover:block text-blue-600 dark:text-blue-400" />
           </button>
