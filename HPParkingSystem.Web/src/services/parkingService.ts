@@ -8,6 +8,8 @@ export interface SessionFilterParams {
   personType?: PersonType
   fromDate?: string
   toDate?: string
+  fromTime?: string
+  toTime?: string
   hour?: number
   laneName?: string
   pageNumber?: number

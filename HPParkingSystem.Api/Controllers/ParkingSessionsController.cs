@@ -124,7 +124,14 @@ namespace HPParkingSystem.Api.Controllers
 
             // Thông tin thời gian lọc
             wsSummary.Cells["A2:M2"].Merge = true;
-            string timeRangeStr = $"Khoảng thời gian: {(fromDate.HasValue ? fromDate.Value.ToString("dd/MM/yyyy") : "Toàn bộ")} - {(toDate.HasValue ? toDate.Value.ToString("dd/MM/yyyy") : "Hiện tại")}";
+            static string FormatDateDisplay(DateTime dt, bool isStart)
+            {
+                if (isStart && dt.TimeOfDay == TimeSpan.Zero) return dt.ToString("dd/MM/yyyy");
+                if (!isStart && (dt.TimeOfDay == new TimeSpan(23, 59, 59) || dt.TimeOfDay == new TimeSpan(23, 59, 0))) return dt.ToString("dd/MM/yyyy");
+                return dt.ToString("dd/MM/yyyy HH:mm");
+            }
+
+            string timeRangeStr = $"Khoảng thời gian: {(fromDate.HasValue ? FormatDateDisplay(fromDate.Value, true) : "Toàn bộ")} - {(toDate.HasValue ? FormatDateDisplay(toDate.Value, false) : "Hiện tại")}";
             wsSummary.Cells["A2"].Value = timeRangeStr;
             wsSummary.Cells["A2"].Style.Font.Italic = true;
             wsSummary.Cells["A2"].Style.Font.Size = 11;

@@ -68,9 +68,10 @@ export function HistoryPage() {
   const [status, setStatus] = useState<string>('')
   const [vehicleType, setVehicleType] = useState<string>('')
   const [personType, setPersonType] = useState<PersonType | ''>('')
-  const [hour, setHour] = useState<string>('')
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
+  const [fromTime, setFromTime] = useState<string>('')
+  const [toTime, setToTime] = useState<string>('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [selectedSession, setSelectedSession] = useState<ParkingSession | null>(null)
@@ -87,16 +88,15 @@ export function HistoryPage() {
   }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parking-history', plateNumber, status, vehicleType, personType, hour, fromDate, toDate, page, pageSize],
+    queryKey: ['parking-history', plateNumber, status, vehicleType, personType, fromDate, toDate, fromTime, toTime, page, pageSize],
     queryFn: () =>
       parkingService.getSessions({
         plateNumber: plateNumber || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
         personType: personType || undefined,
-        hour: hour !== '' ? parseInt(hour, 10) : undefined,
-        fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
-        toDate: toDate ? `${toDate}T23:59:59` : undefined,
+        fromDate: fromDate ? `${fromDate}T${fromTime ? fromTime : '00:00'}:00` : undefined,
+        toDate: toDate ? `${toDate}T${toTime ? toTime : '23:59'}:59` : undefined,
         pageNumber: page,
         pageSize: pageSize,
       }),
@@ -141,24 +141,34 @@ export function HistoryPage() {
       const t = formatDate(now)
       setFromDate(t)
       setToDate(t)
+      setFromTime('00:00')
+      setToTime('23:59')
     } else if (preset === 'yesterday') {
       const y = new Date(now)
       y.setDate(y.getDate() - 1)
       const t = formatDate(y)
       setFromDate(t)
       setToDate(t)
+      setFromTime('00:00')
+      setToTime('23:59')
     } else if (preset === 'week') {
       const w = new Date(now)
       w.setDate(w.getDate() - 6)
       setFromDate(formatDate(w))
       setToDate(formatDate(now))
+      setFromTime('00:00')
+      setToTime('23:59')
     } else if (preset === 'month') {
       const m = new Date(now.getFullYear(), now.getMonth(), 1)
       setFromDate(formatDate(m))
       setToDate(formatDate(now))
+      setFromTime('00:00')
+      setToTime('23:59')
     } else if (preset === 'all') {
       setFromDate('')
       setToDate('')
+      setFromTime('')
+      setToTime('')
     }
     setPage(1)
   }
@@ -194,9 +204,8 @@ export function HistoryPage() {
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
         personType: personType || undefined,
-        hour: hour !== '' ? parseInt(hour, 10) : undefined,
-        fromDate: fromDate ? `${fromDate}T00:00:00` : undefined,
-        toDate: toDate ? `${toDate}T23:59:59` : undefined,
+        fromDate: fromDate ? `${fromDate}T${fromTime ? fromTime : '00:00'}:00` : undefined,
+        toDate: toDate ? `${toDate}T${toTime ? toTime : '23:59'}:59` : undefined,
       })
       notify.success(`Xuất báo cáo Excel thành công! Đã tổng hợp ${data.totalCount} lượt xe vào ra.`)
     } catch (err: any) {
@@ -430,8 +439,8 @@ export function HistoryPage() {
 
       {/* Filters Bar & Quick Date Selector */}
       <Card className="p-4 shadow-xs space-y-3">
-        {/* Hàng 1: Các trường lọc chính */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {/* Hàng 1: Tiêu chí xe & người dùng (Responsive 1 col trên mobile, 2 col trên tablet, 4 col trên desktop) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
           {/* 1. Tìm theo biển số */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -490,7 +499,7 @@ export function HistoryPage() {
                 setVehicleType(e.target.value)
                 setPage(1)
               }}
-              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200"
+              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200 cursor-pointer"
             >
               <option value="">-- Tất cả loại xe --</option>
               <option value="Car">Ô tô</option>
@@ -499,32 +508,13 @@ export function HistoryPage() {
               <option value="Other">Khác</option>
             </select>
           </div>
+        </div>
 
-          {/* 4. Lọc giờ cố định */}
-          <div>
-            <select
-              value={hour}
-              onChange={(e) => {
-                setHour(e.target.value)
-                setPage(1)
-              }}
-              className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-800 bg-transparent px-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 text-slate-800 dark:text-slate-200"
-            >
-              <option value="">-- Tất cả giờ --</option>
-              {Array.from({ length: 24 }, (_, i) => {
-                const hStr = `${i.toString().padStart(2, '0')}:00`
-                return (
-                  <option key={i} value={i.toString()}>
-                    {hStr}
-                  </option>
-                )
-              })}
-            </select>
-          </div>
-
-          {/* 5. Từ ngày */}
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
-            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Từ:</span>
+        {/* Hàng 2: Cụm Ngày & Giờ (Responsive: 1 col trên mobile, 2 col trên tablet và desktop) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          {/* CỤM TỪ (NGÀY + GIỜ) */}
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 h-9">
+            <span className="text-[11px] font-semibold text-slate-500 shrink-0">Từ:</span>
             <input
               type="date"
               value={fromDate}
@@ -532,13 +522,23 @@ export function HistoryPage() {
                 setFromDate(e.target.value)
                 setPage(1)
               }}
-              className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0"
+            />
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <input
+              type="time"
+              value={fromTime}
+              onChange={(e) => {
+                setFromTime(e.target.value)
+                setPage(1)
+              }}
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium"
             />
           </div>
 
-          {/* 6. Đến ngày */}
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 py-1">
-            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">Đến:</span>
+          {/* CỤM ĐẾN (NGÀY + GIỜ) */}
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 h-9">
+            <span className="text-[11px] font-semibold text-slate-500 shrink-0">Đến:</span>
             <input
               type="date"
               value={toDate}
@@ -546,12 +546,22 @@ export function HistoryPage() {
                 setToDate(e.target.value)
                 setPage(1)
               }}
-              className="w-full bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0"
+            />
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <input
+              type="time"
+              value={toTime}
+              onChange={(e) => {
+                setToTime(e.target.value)
+                setPage(1)
+              }}
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium"
             />
           </div>
         </div>
 
-        {/* Hàng 2: Bộ chọn nhanh khoảng thời gian & Reset */}
+        {/* Hàng 3: Bộ chọn nhanh khoảng thời gian & Reset */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1 mr-1">
@@ -619,9 +629,10 @@ export function HistoryPage() {
               setStatus('')
               setVehicleType('')
               setPersonType('')
-              setHour('')
               setFromDate('')
               setToDate('')
+              setFromTime('')
+              setToTime('')
               setPage(1)
             }}
             className="text-xs h-7 px-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer"

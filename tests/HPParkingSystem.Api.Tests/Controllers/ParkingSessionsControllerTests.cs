@@ -573,5 +573,176 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws2.Cells[4, 6].Value.Should().Be(2.5);
             ws2.Cells[4, 6].Style.Numberformat.Format.Should().Be("#,##0.##");
         }
+
+        [Fact]
+        public async Task GetList_FilteredByDateTimeRangeAcrossDays_ShouldApplyFilterCorrectly()
+        {
+            // Arrange
+            var fromDate = new DateTime(2026, 10, 19, 10, 0, 0);
+            var toDate = new DateTime(2026, 10, 20, 14, 0, 0);
+
+            var overnightSession = new ParkingSession
+            {
+                Id = "s_overnight",
+                PlateNumber = "29C-11111",
+                VehicleType = VehicleType.Truck,
+                InTime = new DateTime(2026, 10, 19, 23, 0, 0),
+                OutTime = new DateTime(2026, 10, 20, 6, 30, 0),
+                Status = ParkingSessionStatus.Completed
+            };
+
+            var day2Session = new ParkingSession
+            {
+                Id = "s_day2",
+                PlateNumber = "30A-22222",
+                VehicleType = VehicleType.Car,
+                InTime = new DateTime(2026, 10, 20, 8, 0, 0),
+                OutTime = new DateTime(2026, 10, 20, 11, 0, 0),
+                Status = ParkingSessionStatus.Completed
+            };
+
+            var sessions = new List<ParkingSession> { overnightSession, day2Session };
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(2);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    15,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(sessions);
+
+            // Act
+            var actionResult = await _controller.GetList(
+                plateNumber: null,
+                status: null,
+                vehicleType: null,
+                personType: null,
+                fromDate: fromDate,
+                toDate: toDate,
+                hour: null,
+                laneName: null,
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            actionResult.Should().BeOfType<OkObjectResult>();
+            var okResult = (OkObjectResult)actionResult;
+            var response = okResult.Value as ApiResponse<PagedResult<ParkingSession>>;
+
+            response.Should().NotBeNull();
+            response!.Success.Should().BeTrue();
+            response.Data!.Items.Should().HaveCount(2);
+            response.Data.Items[0].Id.Should().Be("s_overnight");
+            response.Data.Items[1].Id.Should().Be("s_day2");
+
+            capturedFilter.Should().NotBeNull();
+            var serializerRegistry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var documentSerializer = serializerRegistry.GetSerializer<ParkingSession>();
+            var rendered = capturedFilter!.Render(documentSerializer, serializerRegistry);
+            rendered.ToString().Should().Contain("InTime");
+            rendered.ToString().Should().Contain("OutTime");
+
+            _sessionRepoMock.Verify(r => r.FindAsync(
+                It.IsAny<FilterDefinition<ParkingSession>>(),
+                It.IsAny<SortDefinition<ParkingSession>>(),
+                0,
+                15,
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task ExportExcel_WithExactDateTimeRange_ShouldFormatHoursAndMinutesInHeader()
+        {
+            // Arrange
+            var fromDate = new DateTime(2026, 10, 19, 10, 0, 0);
+            var toDate = new DateTime(2026, 10, 20, 14, 30, 0);
+
+            var session = new ParkingSession
+            {
+                Id = "s_time_01",
+                PlateNumber = "29C-33333",
+                VehicleType = VehicleType.Truck,
+                Weight = 8.0,
+                Status = ParkingSessionStatus.Completed,
+                InTime = new DateTime(2026, 10, 19, 11, 0, 0),
+                OutTime = new DateTime(2026, 10, 19, 12, 0, 0)
+            };
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession> { session });
+
+            // Act
+            var actionResult = await _controller.ExportExcel(
+                fromDate: fromDate,
+                toDate: toDate);
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new ExcelPackage(stream);
+
+            var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
+            ws1.Should().NotBeNull();
+            ws1.Cells["A2"].Value.Should().Be("Khoảng thời gian: 19/10/2026 10:00 - 20/10/2026 14:30");
+        }
+
+        [Fact]
+        public async Task ExportExcel_WithFullDayRange_ShouldFormatDatesWithoutTimeInHeader()
+        {
+            // Arrange
+            var fromDate = new DateTime(2026, 10, 19, 0, 0, 0);
+            var toDate = new DateTime(2026, 10, 19, 23, 59, 59);
+
+            var session = new ParkingSession
+            {
+                Id = "s_time_02",
+                PlateNumber = "29C-33333",
+                VehicleType = VehicleType.Truck,
+                Weight = 8.0,
+                Status = ParkingSessionStatus.Completed,
+                InTime = new DateTime(2026, 10, 19, 11, 0, 0),
+                OutTime = new DateTime(2026, 10, 19, 12, 0, 0)
+            };
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession> { session });
+
+            // Act
+            var actionResult = await _controller.ExportExcel(
+                fromDate: fromDate,
+                toDate: toDate);
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new ExcelPackage(stream);
+
+            var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
+            ws1.Should().NotBeNull();
+            ws1.Cells["A2"].Value.Should().Be("Khoảng thời gian: 19/10/2026 - 19/10/2026");
+        }
     }
 }
