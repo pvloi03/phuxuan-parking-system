@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { PersonTypeBadge } from '@/components/common/PersonTypeBadge'
-import { formatDateTime24h, formatLocalDate } from '@/lib/utils'
+import { Time24Picker } from '@/components/common/Time24Picker'
 
 function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: string | number) {
   if (!inTimeStr) return '--'
@@ -61,6 +61,26 @@ function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: str
     return `${text} (đang đỗ)`
   }
   return text
+}
+
+function formatLocalDate(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatDateTime24h(dStr?: string | null): string {
+  if (!dStr) return '--'
+  const d = new Date(dStr)
+  if (isNaN(d.getTime())) return '--'
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  const hours = String(d.getHours()).padStart(2, '0')
+  const mins = String(d.getMinutes()).padStart(2, '0')
+  const secs = String(d.getSeconds()).padStart(2, '0')
+  return `${day}/${month}/${year} ${hours}:${mins}:${secs}`
 }
 
 export function HistoryPage() {
@@ -132,42 +152,6 @@ export function HistoryPage() {
       notify.error('Có lỗi xảy ra khi xóa hàng loạt.', err)
     },
   })
-
-  // Hàm nhập giờ chuẩn 24h (HH:mm) không dính AM/PM
-  const handleTimeInput = (val: string, setter: (v: string) => void) => {
-    let v = val.replace(/[^\d:]/g, '')
-
-    // Tự động chèn dấu : khi gõ 2 số đầu nếu chưa có dấu :
-    if (v.length === 2 && !v.includes(':')) {
-      const hh = parseInt(v, 10)
-      if (hh >= 0 && hh <= 23) {
-        v = `${v}:`
-      }
-    } else if (v.length === 3 && v[2] !== ':') {
-      v = `${v.slice(0, 2)}:${v.slice(2)}`
-    }
-
-    if (v.length > 5) {
-      v = v.slice(0, 5)
-    }
-
-    setter(v)
-    setPage(1)
-  }
-
-  // Chuẩn hóa giờ 24h khi blur (ví dụ nhập 9 -> 09:00, 14:3 -> 14:30)
-  const handleTimeBlur = (val: string, setter: (v: string) => void) => {
-    if (!val || !val.trim()) return
-    const parts = val.split(':')
-    if (parts.length === 1 && parts[0].length > 0) {
-      const hh = Math.min(23, Math.max(0, parseInt(parts[0], 10) || 0))
-      setter(`${String(hh).padStart(2, '0')}:00`)
-    } else if (parts.length === 2) {
-      const hh = Math.min(23, Math.max(0, parseInt(parts[0], 10) || 0))
-      const mm = Math.min(59, Math.max(0, parseInt(parts[1], 10) || 0))
-      setter(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`)
-    }
-  }
 
   // Quick Date Presets
   const setDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'all') => {
@@ -474,7 +458,7 @@ export function HistoryPage() {
       </div>
 
       {/* Filters Bar & Quick Date Selector */}
-      <Card className="p-4 shadow-xs space-y-3">
+      <Card className="p-4 shadow-xs space-y-3 relative z-20">
         {/* Hàng 1: Tiêu chí xe & người dùng (Responsive 1 col trên mobile, 2 col trên tablet, 4 col trên desktop) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
           {/* 1. Tìm theo biển số */}
@@ -546,25 +530,6 @@ export function HistoryPage() {
           </div>
         </div>
 
-        {/* Datalist các mốc giờ 24h để chọn nhanh 1 chạm */}
-        <datalist id="time-presets-24h">
-          <option value="00:00">00:00 (Đầu ngày)</option>
-          <option value="06:00">06:00 (Đầu ca 1)</option>
-          <option value="07:00">07:00</option>
-          <option value="07:30">07:30 (Đầu giờ HC)</option>
-          <option value="08:00">08:00</option>
-          <option value="11:30">11:30 (Nghỉ trưa)</option>
-          <option value="12:00">12:00</option>
-          <option value="13:30">13:30</option>
-          <option value="14:00">14:00 (Đầu ca 2)</option>
-          <option value="17:00">17:00</option>
-          <option value="17:30">17:30 (Hết giờ HC)</option>
-          <option value="18:00">18:00</option>
-          <option value="20:00">20:00</option>
-          <option value="22:00">22:00 (Đầu ca đêm)</option>
-          <option value="23:59">23:59 (Cuối ngày)</option>
-        </datalist>
-
         {/* Hàng 2: Cụm Ngày & Giờ (Responsive: 1 col trên mobile, 2 col trên tablet và desktop) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           {/* CỤM TỪ (NGÀY + GIỜ) */}
@@ -577,23 +542,17 @@ export function HistoryPage() {
                 setFromDate(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:[color-scheme:dark]"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:scheme-dark"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
-            <div className="flex items-center gap-1 shrink-0">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                list="time-presets-24h"
-                placeholder="00:00"
-                maxLength={5}
-                value={fromTime}
-                onChange={(e) => handleTimeInput(e.target.value, setFromTime)}
-                onBlur={() => handleTimeBlur(fromTime, setFromTime)}
-                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-14 text-center font-mono font-medium"
-                title="Giờ bắt đầu định dạng 24h (HH:mm, từ 00:00 đến 23:59)"
-              />
-            </div>
+            <Time24Picker
+              value={fromTime}
+              onChange={(val) => {
+                setFromTime(val)
+                setPage(1)
+              }}
+              placeholder="00:00"
+            />
           </div>
 
           {/* CỤM ĐẾN (NGÀY + GIỜ) */}
@@ -606,23 +565,17 @@ export function HistoryPage() {
                 setToDate(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:[color-scheme:dark]"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:scheme-dark"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
-            <div className="flex items-center gap-1 shrink-0">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                list="time-presets-24h"
-                placeholder="23:59"
-                maxLength={5}
-                value={toTime}
-                onChange={(e) => handleTimeInput(e.target.value, setToTime)}
-                onBlur={() => handleTimeBlur(toTime, setToTime)}
-                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-14 text-center font-mono font-medium"
-                title="Giờ kết thúc định dạng 24h (HH:mm, từ 00:00 đến 23:59)"
-              />
-            </div>
+            <Time24Picker
+              value={toTime}
+              onChange={(val) => {
+                setToTime(val)
+                setPage(1)
+              }}
+              placeholder="23:59"
+            />
           </div>
         </div>
 
@@ -663,11 +616,10 @@ export function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDatePreset('today')}
-                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                      isToday
-                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${isToday
+                      ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     Hôm nay
                   </Button>
@@ -676,11 +628,10 @@ export function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDatePreset('yesterday')}
-                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                      isYesterday
-                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${isYesterday
+                      ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     Hôm qua
                   </Button>
@@ -689,11 +640,10 @@ export function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDatePreset('week')}
-                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                      isWeek
-                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${isWeek
+                      ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     7 ngày qua
                   </Button>
@@ -702,11 +652,10 @@ export function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDatePreset('month')}
-                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                      isMonth
-                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${isMonth
+                      ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     Tháng này
                   </Button>
@@ -715,11 +664,10 @@ export function HistoryPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setDatePreset('all')}
-                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
-                      isAll
-                        ? 'bg-slate-200 dark:bg-slate-700 font-bold'
-                        : 'text-slate-600 dark:text-slate-300'
-                    }`}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${isAll
+                      ? 'bg-slate-200 dark:bg-slate-700 font-bold'
+                      : 'text-slate-600 dark:text-slate-300'
+                      }`}
                   >
                     Tất cả thời gian
                   </Button>
