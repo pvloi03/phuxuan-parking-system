@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { PersonTypeBadge } from '@/components/common/PersonTypeBadge'
+import { formatDateTime24h, formatLocalDate } from '@/lib/utils'
 
 function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: string | number) {
   if (!inTimeStr) return '--'
@@ -60,13 +61,6 @@ function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: str
     return `${text} (đang đỗ)`
   }
   return text
-}
-
-function formatLocalDate(d: Date = new Date()): string {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 
 export function HistoryPage() {
@@ -138,6 +132,42 @@ export function HistoryPage() {
       notify.error('Có lỗi xảy ra khi xóa hàng loạt.', err)
     },
   })
+
+  // Hàm nhập giờ chuẩn 24h (HH:mm) không dính AM/PM
+  const handleTimeInput = (val: string, setter: (v: string) => void) => {
+    let v = val.replace(/[^\d:]/g, '')
+
+    // Tự động chèn dấu : khi gõ 2 số đầu nếu chưa có dấu :
+    if (v.length === 2 && !v.includes(':')) {
+      const hh = parseInt(v, 10)
+      if (hh >= 0 && hh <= 23) {
+        v = `${v}:`
+      }
+    } else if (v.length === 3 && v[2] !== ':') {
+      v = `${v.slice(0, 2)}:${v.slice(2)}`
+    }
+
+    if (v.length > 5) {
+      v = v.slice(0, 5)
+    }
+
+    setter(v)
+    setPage(1)
+  }
+
+  // Chuẩn hóa giờ 24h khi blur (ví dụ nhập 9 -> 09:00, 14:3 -> 14:30)
+  const handleTimeBlur = (val: string, setter: (v: string) => void) => {
+    if (!val || !val.trim()) return
+    const parts = val.split(':')
+    if (parts.length === 1 && parts[0].length > 0) {
+      const hh = Math.min(23, Math.max(0, parseInt(parts[0], 10) || 0))
+      setter(`${String(hh).padStart(2, '0')}:00`)
+    } else if (parts.length === 2) {
+      const hh = Math.min(23, Math.max(0, parseInt(parts[0], 10) || 0))
+      const mm = Math.min(59, Math.max(0, parseInt(parts[1], 10) || 0))
+      setter(`${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`)
+    }
+  }
 
   // Quick Date Presets
   const setDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'all') => {
@@ -318,7 +348,7 @@ export function HistoryPage() {
       {
         id: 'in-overview',
         label: '1. Toàn Cảnh Lúc Vào',
-        subtitle: `Làn: ${session.inLaneName || 'Làn Vào 1'} • Thời gian: ${session.inTime ? new Date(session.inTime).toLocaleString('vi-VN') : '--'}`,
+        subtitle: `Làn: ${session.inLaneName || 'Làn Vào 1'} • Thời gian: ${formatDateTime24h(session.inTime)}`,
         tag: 'VÀO',
         tagColor: 'bg-blue-600',
         url: formatImageUrl(session.inOverviewImagePath),
@@ -328,7 +358,7 @@ export function HistoryPage() {
       {
         id: 'in-plate',
         label: '2. Cận Cảnh Biển Số Vào',
-        subtitle: `Biển số nhận diện: ${session.plateNumber} • Thời gian: ${session.inTime ? new Date(session.inTime).toLocaleString('vi-VN') : '--'}`,
+        subtitle: `Biển số nhận diện: ${session.plateNumber} • Thời gian: ${formatDateTime24h(session.inTime)}`,
         tag: 'BIỂN SỐ VÀO',
         tagColor: 'bg-cyan-600',
         url: formatImageUrl(session.inPlateImagePath),
@@ -338,7 +368,7 @@ export function HistoryPage() {
       {
         id: 'out-overview',
         label: '3. Toàn Cảnh Lúc Ra',
-        subtitle: `Làn: ${session.outLaneName || 'Làn Ra 1'} • Thời gian: ${session.outTime ? new Date(session.outTime).toLocaleString('vi-VN') : '--'}`,
+        subtitle: `Làn: ${session.outLaneName || 'Làn Ra 1'} • Thời gian: ${formatDateTime24h(session.outTime)}`,
         tag: 'RA',
         tagColor: 'bg-emerald-600',
         url: formatImageUrl(session.outOverviewImagePath),
@@ -348,7 +378,7 @@ export function HistoryPage() {
       {
         id: 'out-plate',
         label: '4. Cận Cảnh Biển Số Ra',
-        subtitle: `Biển số đối chiếu: ${session.plateNumber} • Thời gian: ${session.outTime ? new Date(session.outTime).toLocaleString('vi-VN') : '--'}`,
+        subtitle: `Biển số đối chiếu: ${session.plateNumber} • Thời gian: ${formatDateTime24h(session.outTime)}`,
         tag: 'BIỂN SỐ RA',
         tagColor: 'bg-rose-600',
         url: formatImageUrl(session.outPlateImagePath),
@@ -516,6 +546,25 @@ export function HistoryPage() {
           </div>
         </div>
 
+        {/* Datalist các mốc giờ 24h để chọn nhanh 1 chạm */}
+        <datalist id="time-presets-24h">
+          <option value="00:00">00:00 (Đầu ngày)</option>
+          <option value="06:00">06:00 (Đầu ca 1)</option>
+          <option value="07:00">07:00</option>
+          <option value="07:30">07:30 (Đầu giờ HC)</option>
+          <option value="08:00">08:00</option>
+          <option value="11:30">11:30 (Nghỉ trưa)</option>
+          <option value="12:00">12:00</option>
+          <option value="13:30">13:30</option>
+          <option value="14:00">14:00 (Đầu ca 2)</option>
+          <option value="17:00">17:00</option>
+          <option value="17:30">17:30 (Hết giờ HC)</option>
+          <option value="18:00">18:00</option>
+          <option value="20:00">20:00</option>
+          <option value="22:00">22:00 (Đầu ca đêm)</option>
+          <option value="23:59">23:59 (Cuối ngày)</option>
+        </datalist>
+
         {/* Hàng 2: Cụm Ngày & Giờ (Responsive: 1 col trên mobile, 2 col trên tablet và desktop) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
           {/* CỤM TỪ (NGÀY + GIỜ) */}
@@ -531,15 +580,20 @@ export function HistoryPage() {
               className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:[color-scheme:dark]"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
-            <input
-              type="time"
-              value={fromTime}
-              onChange={(e) => {
-                setFromTime(e.target.value)
-                setPage(1)
-              }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium dark:[color-scheme:dark]"
-            />
+            <div className="flex items-center gap-1 shrink-0">
+              <Clock className="h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                list="time-presets-24h"
+                placeholder="00:00"
+                maxLength={5}
+                value={fromTime}
+                onChange={(e) => handleTimeInput(e.target.value, setFromTime)}
+                onBlur={() => handleTimeBlur(fromTime, setFromTime)}
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-14 text-center font-mono font-medium"
+                title="Giờ bắt đầu định dạng 24h (HH:mm, từ 00:00 đến 23:59)"
+              />
+            </div>
           </div>
 
           {/* CỤM ĐẾN (NGÀY + GIỜ) */}
@@ -555,15 +609,20 @@ export function HistoryPage() {
               className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:[color-scheme:dark]"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
-            <input
-              type="time"
-              value={toTime}
-              onChange={(e) => {
-                setToTime(e.target.value)
-                setPage(1)
-              }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium dark:[color-scheme:dark]"
-            />
+            <div className="flex items-center gap-1 shrink-0">
+              <Clock className="h-3.5 w-3.5 text-slate-400" />
+              <input
+                type="text"
+                list="time-presets-24h"
+                placeholder="23:59"
+                maxLength={5}
+                value={toTime}
+                onChange={(e) => handleTimeInput(e.target.value, setToTime)}
+                onBlur={() => handleTimeBlur(toTime, setToTime)}
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-14 text-center font-mono font-medium"
+                title="Giờ kết thúc định dạng 24h (HH:mm, từ 00:00 đến 23:59)"
+              />
+            </div>
           </div>
         </div>
 
@@ -773,10 +832,10 @@ export function HistoryPage() {
                         )}
                       </td>
                       <td className="p-3.5 text-slate-600 dark:text-slate-400 font-mono">
-                        {session.inTime ? new Date(session.inTime).toLocaleString('vi-VN') : '--'}
+                        {formatDateTime24h(session.inTime)}
                       </td>
                       <td className="p-3.5 text-slate-600 dark:text-slate-400 font-mono">
-                        {session.outTime ? new Date(session.outTime).toLocaleString('vi-VN') : '--'}
+                        {formatDateTime24h(session.outTime)}
                       </td>
                       <td className="p-3.5 text-center">{getStatusBadge(session.status)}</td>
                       <td className="p-3.5 pr-4 text-center">
@@ -1228,7 +1287,7 @@ export function HistoryPage() {
                         <div className="flex items-center justify-between">
                           <span className="text-slate-400 text-[11px]">Thời gian vào chính xác:</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
-                            {selectedSession.inTime ? new Date(selectedSession.inTime).toLocaleString('vi-VN') : '--'}
+                            {formatDateTime24h(selectedSession.inTime)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -1275,7 +1334,7 @@ export function HistoryPage() {
                           <span className="text-slate-400 text-[11px]">Thời gian ra chính xác:</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                             {selectedSession.outTime ? (
-                              new Date(selectedSession.outTime).toLocaleString('vi-VN')
+                              formatDateTime24h(selectedSession.outTime)
                             ) : (
                               <span className="text-blue-500 italic">Đang gửi trong bãi</span>
                             )}
