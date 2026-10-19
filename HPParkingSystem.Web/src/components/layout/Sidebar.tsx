@@ -12,7 +12,6 @@ import {
   Cpu,
   Route,
   Trash2,
-  ShieldCheck,
   ShieldAlert,
   LogOut,
   ChevronLeft,
@@ -23,6 +22,7 @@ import { useAuthStore } from '@/stores/useAuthStore'
 import { recycleBinService } from '@/services/recycleBinService'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { cn } from '@/lib/utils'
+import logoImg from '@/assets/logo.png'
 
 interface NavSubItem {
   title: string
@@ -126,17 +126,13 @@ export function Sidebar() {
       >
         {!isCollapsed ? (
           <>
-            <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0 shadow-xs">
-                <ShieldCheck className="h-4.5 w-4.5 text-white" />
-              </div>
-              <div className="min-w-0 overflow-hidden">
-                <p className="text-[13px] font-bold text-slate-900 dark:text-white leading-tight truncate">
-                  HP<span className="text-blue-600 dark:text-blue-400">PARKING</span>
-                </p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">Admin Portal</p>
-              </div>
-            </div>
+            <Link to="/" className="flex items-center min-w-0 flex-1 overflow-hidden" title="Về trang tổng quan">
+              <img
+                src={logoImg}
+                alt="Hoàng Phát Logo"
+                className="h-8.5 w-auto max-w-[155px] object-contain dark:bg-white dark:px-2 dark:py-0.5 dark:rounded-md transition-all"
+              />
+            </Link>
             <button
               type="button"
               onClick={() => setIsCollapsed(true)}
@@ -150,11 +146,15 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setIsCollapsed(false)}
-            className="h-9 w-9 rounded-lg bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white transition-all cursor-pointer shadow-xs group"
+            className="h-9 w-9 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs group p-1 overflow-hidden"
             title="Mở rộng sidebar"
           >
-            <ShieldCheck className="h-4.5 w-4.5 group-hover:hidden" />
-            <ChevronRight className="h-4.5 w-4.5 hidden group-hover:block" />
+            <img
+              src={logoImg}
+              alt="Logo"
+              className="h-6 w-auto max-w-none object-contain object-left group-hover:hidden"
+            />
+            <ChevronRight className="h-4.5 w-4.5 hidden group-hover:block text-blue-600 dark:text-blue-400" />
           </button>
         )}
       </div>

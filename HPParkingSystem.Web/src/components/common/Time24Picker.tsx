@@ -190,7 +190,7 @@ export function Time24Picker({
           onClick={handleOpen}
           onChange={handleInputChange}
           onBlur={handleInputBlur}
-          className="w-13 text-center font-mono font-semibold text-xs bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded py-0.5 cursor-pointer selection:bg-blue-100 dark:selection:bg-blue-900"
+          className="w-10 text-center font-mono font-semibold text-xs bg-transparent text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded py-0.5 cursor-pointer selection:bg-blue-100 dark:selection:bg-blue-900"
         />
 
         {/* Icon đồng hồ mở picker */}
@@ -245,11 +245,10 @@ export function Time24Picker({
                       type="button"
                       data-active={isActive}
                       onClick={() => handleSelectHour(val)}
-                      className={`w-full py-1 rounded text-xs transition-colors cursor-pointer ${
-                        isActive
-                          ? 'bg-blue-600 text-white font-bold shadow-xs'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}
+                      className={`w-full py-1 rounded text-xs transition-colors cursor-pointer ${isActive
+                        ? 'bg-blue-600 text-white font-bold shadow-xs'
+                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}
                     >
                       {val}
                     </button>
@@ -272,11 +271,10 @@ export function Time24Picker({
                       type="button"
                       data-active={isActive}
                       onClick={() => handleSelectMinute(val)}
-                      className={`w-full py-1 rounded text-xs transition-colors cursor-pointer ${
-                        isActive
-                          ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                      }`}
+                      className={`w-full py-1 rounded text-xs transition-colors cursor-pointer ${isActive
+                        ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}
                     >
                       {val}
                     </button>

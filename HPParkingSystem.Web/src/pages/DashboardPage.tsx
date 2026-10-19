@@ -192,7 +192,7 @@ export function DashboardPage() {
                   setFromDate(e.target.value)
                   setPeriod('custom')
                 }}
-                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-27 shrink-0 dark:scheme-dark"
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-23 shrink-0 dark:scheme-dark"
               />
               <span className="text-slate-300 dark:text-slate-600">|</span>
               <Time24Picker
@@ -217,7 +217,7 @@ export function DashboardPage() {
                   setToDate(e.target.value)
                   setPeriod('custom')
                 }}
-                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-27 shrink-0 dark:scheme-dark"
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-23 shrink-0 dark:scheme-dark"
               />
               <span className="text-slate-300 dark:text-slate-600">|</span>
               <Time24Picker
