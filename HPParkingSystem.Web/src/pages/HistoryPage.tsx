@@ -62,6 +62,13 @@ function formatDuration(inTimeStr?: string, outTimeStr?: string, statusVal?: str
   return text
 }
 
+function formatLocalDate(d: Date = new Date()): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 export function HistoryPage() {
   const queryClient = useQueryClient()
   const [plateNumber, setPlateNumber] = useState('')
@@ -135,10 +142,9 @@ export function HistoryPage() {
   // Quick Date Presets
   const setDatePreset = (preset: 'today' | 'yesterday' | 'week' | 'month' | 'all') => {
     const now = new Date()
-    const formatDate = (d: Date) => d.toISOString().slice(0, 10)
 
     if (preset === 'today') {
-      const t = formatDate(now)
+      const t = formatLocalDate(now)
       setFromDate(t)
       setToDate(t)
       setFromTime('00:00')
@@ -146,7 +152,7 @@ export function HistoryPage() {
     } else if (preset === 'yesterday') {
       const y = new Date(now)
       y.setDate(y.getDate() - 1)
-      const t = formatDate(y)
+      const t = formatLocalDate(y)
       setFromDate(t)
       setToDate(t)
       setFromTime('00:00')
@@ -154,14 +160,14 @@ export function HistoryPage() {
     } else if (preset === 'week') {
       const w = new Date(now)
       w.setDate(w.getDate() - 6)
-      setFromDate(formatDate(w))
-      setToDate(formatDate(now))
+      setFromDate(formatLocalDate(w))
+      setToDate(formatLocalDate(now))
       setFromTime('00:00')
       setToTime('23:59')
     } else if (preset === 'month') {
       const m = new Date(now.getFullYear(), now.getMonth(), 1)
-      setFromDate(formatDate(m))
-      setToDate(formatDate(now))
+      setFromDate(formatLocalDate(m))
+      setToDate(formatLocalDate(now))
       setFromTime('00:00')
       setToTime('23:59')
     } else if (preset === 'all') {
@@ -522,7 +528,7 @@ export function HistoryPage() {
                 setFromDate(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:[color-scheme:dark]"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <input
@@ -532,7 +538,7 @@ export function HistoryPage() {
                 setFromTime(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium dark:[color-scheme:dark]"
             />
           </div>
 
@@ -546,7 +552,7 @@ export function HistoryPage() {
                 setToDate(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:[color-scheme:dark]"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <input
@@ -556,7 +562,7 @@ export function HistoryPage() {
                 setToTime(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium"
+              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-20 shrink-0 font-medium dark:[color-scheme:dark]"
             />
           </div>
         </div>
@@ -568,57 +574,99 @@ export function HistoryPage() {
               <Calendar className="h-3.5 w-3.5 text-blue-600" />
               Xem nhanh:
             </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDatePreset('today')}
-              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${fromDate && fromDate === toDate && fromDate === new Date().toISOString().slice(0, 10)
-                ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
-                : 'text-slate-600 dark:text-slate-300'
-                }`}
-            >
-              Hôm nay
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDatePreset('yesterday')}
-              className="h-7 px-2.5 text-[11px] cursor-pointer rounded-md text-slate-600 dark:text-slate-300"
-            >
-              Hôm qua
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDatePreset('week')}
-              className="h-7 px-2.5 text-[11px] cursor-pointer rounded-md text-slate-600 dark:text-slate-300"
-            >
-              7 ngày qua
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDatePreset('month')}
-              className="h-7 px-2.5 text-[11px] cursor-pointer rounded-md text-slate-600 dark:text-slate-300"
-            >
-              Tháng này
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDatePreset('all')}
-              className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${!fromDate && !toDate
-                ? 'bg-slate-200 dark:bg-slate-700 font-bold'
-                : 'text-slate-600 dark:text-slate-300'
-                }`}
-            >
-              Tất cả thời gian
-            </Button>
+            {(() => {
+              const todayStr = formatLocalDate()
+              const yesterdayStr = (() => {
+                const y = new Date()
+                y.setDate(y.getDate() - 1)
+                return formatLocalDate(y)
+              })()
+              const weekStartStr = (() => {
+                const w = new Date()
+                w.setDate(w.getDate() - 6)
+                return formatLocalDate(w)
+              })()
+              const monthStartStr = (() => {
+                const now = new Date()
+                return formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1))
+              })()
+
+              const isToday = fromDate === todayStr && toDate === todayStr
+              const isYesterday = fromDate === yesterdayStr && toDate === yesterdayStr
+              const isWeek = fromDate === weekStartStr && toDate === todayStr
+              const isMonth = fromDate === monthStartStr && toDate === todayStr
+              const isAll = !fromDate && !toDate
+
+              return (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDatePreset('today')}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                      isToday
+                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Hôm nay
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDatePreset('yesterday')}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                      isYesterday
+                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Hôm qua
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDatePreset('week')}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                      isWeek
+                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    7 ngày qua
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDatePreset('month')}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                      isMonth
+                        ? 'bg-blue-600 text-white font-bold border-blue-600 hover:bg-blue-700 hover:text-white'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Tháng này
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDatePreset('all')}
+                    className={`h-7 px-2.5 text-[11px] cursor-pointer rounded-md ${
+                      isAll
+                        ? 'bg-slate-200 dark:bg-slate-700 font-bold'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  >
+                    Tất cả thời gian
+                  </Button>
+                </>
+              )
+            })()}
           </div>
 
           <Button

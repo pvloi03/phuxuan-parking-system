@@ -744,5 +744,147 @@ namespace HPParkingSystem.Api.Tests.Controllers
             ws1.Should().NotBeNull();
             ws1.Cells["A2"].Value.Should().Be("Khoảng thời gian: 19/10/2026 - 19/10/2026");
         }
+
+        [Fact]
+        public async Task ExportExcel_WithOnlyFromDateTime_ShouldFormatStartDateTimeAndCurrentInHeader()
+        {
+            // Arrange
+            var fromDate = new DateTime(2026, 10, 19, 10, 0, 0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act
+            var actionResult = await _controller.ExportExcel(
+                fromDate: fromDate,
+                toDate: null);
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new ExcelPackage(stream);
+
+            var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
+            ws1.Should().NotBeNull();
+            ws1.Cells["A2"].Value.Should().Be("Khoảng thời gian: 19/10/2026 10:00 - Hiện tại");
+        }
+
+        [Fact]
+        public async Task ExportExcel_WithOnlyToDateTime_ShouldFormatAllAndEndDateTimeInHeader()
+        {
+            // Arrange
+            var toDate = new DateTime(2026, 10, 20, 14, 30, 0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act
+            var actionResult = await _controller.ExportExcel(
+                fromDate: null,
+                toDate: toDate);
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new ExcelPackage(stream);
+
+            var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
+            ws1.Should().NotBeNull();
+            ws1.Cells["A2"].Value.Should().Be("Khoảng thời gian: Toàn bộ - 20/10/2026 14:30");
+        }
+
+        [Fact]
+        public async Task GetList_FilteredByActiveStatusAndDateTimeRange_ShouldApplyInTimeOnlyFilter()
+        {
+            // Arrange
+            var fromDate = new DateTime(2026, 10, 19, 10, 0, 0);
+            var toDate = new DateTime(2026, 10, 19, 18, 0, 0);
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    15,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act
+            await _controller.GetList(
+                status: ParkingSessionStatus.Active,
+                fromDate: fromDate,
+                toDate: toDate,
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            capturedFilter.Should().NotBeNull();
+            var serializerRegistry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var documentSerializer = serializerRegistry.GetSerializer<ParkingSession>();
+            var rendered = capturedFilter!.Render(documentSerializer, serializerRegistry);
+            rendered.ToString().Should().Contain("InTime");
+            rendered.ToString().Should().NotContain("OutTime");
+        }
+
+        [Fact]
+        public async Task GetList_FilteredByUnmatchedOutStatusAndDateTimeRange_ShouldApplyOutTimeOnlyFilter()
+        {
+            // Arrange
+            var fromDate = new DateTime(2026, 10, 19, 10, 0, 0);
+            var toDate = new DateTime(2026, 10, 19, 18, 0, 0);
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    15,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act
+            await _controller.GetList(
+                status: ParkingSessionStatus.UnmatchedOut,
+                fromDate: fromDate,
+                toDate: toDate,
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            capturedFilter.Should().NotBeNull();
+            var serializerRegistry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var documentSerializer = serializerRegistry.GetSerializer<ParkingSession>();
+            var rendered = capturedFilter!.Render(documentSerializer, serializerRegistry);
+            rendered.ToString().Should().Contain("OutTime");
+            rendered.ToString().Should().NotContain("InTime");
+        }
     }
 }
