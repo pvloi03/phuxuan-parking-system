@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HPParkingSystem.Api.DTOs;
 using HPParkingSystem.Models.Entities;
@@ -50,10 +50,33 @@ namespace HPParkingSystem.Api.Controllers
                     break;
 
                 case "custom":
-                    start = fromDate.HasValue ? fromDate.Value.Date : DateTime.Today.AddDays(-7);
-                    end = (toDate.HasValue ? toDate.Value.Date : DateTime.Today).AddDays(1);
-                    if (end <= start) end = start.AddDays(1);
-                    periodLabel = $"{start:dd/MM/yyyy} - {end.AddDays(-1):dd/MM/yyyy}";
+                    start = fromDate ?? DateTime.Today.AddDays(-7);
+                    if (toDate.HasValue)
+                    {
+                        if (toDate.Value.TimeOfDay == TimeSpan.Zero && (!fromDate.HasValue || fromDate.Value.TimeOfDay == TimeSpan.Zero))
+                        {
+                            end = toDate.Value.Date.AddDays(1);
+                        }
+                        else
+                        {
+                            end = toDate.Value;
+                        }
+                    }
+                    else
+                    {
+                        end = DateTime.Today.AddDays(1);
+                    }
+
+                    if (end <= start) end = start.AddHours(1);
+
+                    static string FormatDateTimeDisplay(DateTime dt, bool isStart)
+                    {
+                        if (isStart && dt.TimeOfDay == TimeSpan.Zero) return dt.ToString("dd/MM/yyyy");
+                        if (!isStart && (dt.TimeOfDay == new TimeSpan(23, 59, 59) || dt.TimeOfDay == new TimeSpan(23, 59, 0))) return dt.ToString("dd/MM/yyyy");
+                        return dt.ToString("dd/MM/yyyy HH:mm");
+                    }
+
+                    periodLabel = $"{FormatDateTimeDisplay(start, true)} - {FormatDateTimeDisplay(end, false)}";
                     break;
 
                 case "today":
@@ -68,14 +91,14 @@ namespace HPParkingSystem.Api.Controllers
             // 1. Số xe đang trong bãi (Real-time active)
             var activeCount = (int)await _sessionRepo.CountAsync(s => s.Status == ParkingSessionStatus.Active && !s.IsDeleted);
 
-            // 2. Lấy toàn bộ sessions có lượt vào hoặc lượt ra trong khoảng thời gian [start, end)
+            // 2. Lấy toàn bộ sessions có lượt vào hoặc lượt ra trong khoảng thời gian [start, end]
             var periodSessions = await _sessionRepo.FindAsync(s =>
                 !s.IsDeleted &&
-                ((s.InTime >= start && s.InTime < end) || (s.OutTime.HasValue && s.OutTime >= start && s.OutTime < end)));
+                ((s.InTime >= start && s.InTime <= end) || (s.OutTime.HasValue && s.OutTime >= start && s.OutTime <= end)));
 
-            int periodIn = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= start && s.InTime < end);
-            int periodOut = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= start && s.OutTime < end && s.Status == ParkingSessionStatus.Completed);
-            int periodUnmatchedOut = periodSessions.Count(s => s.Status == ParkingSessionStatus.UnmatchedOut && s.OutTime.HasValue && s.OutTime >= start && s.OutTime < end);
+            int periodIn = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= start && s.InTime <= end);
+            int periodOut = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= start && s.OutTime <= end && s.Status == ParkingSessionStatus.Completed);
+            int periodUnmatchedOut = periodSessions.Count(s => s.Status == ParkingSessionStatus.UnmatchedOut && s.OutTime.HasValue && s.OutTime >= start && s.OutTime <= end);
 
             // 3. Tạo dữ liệu biểu đồ lưu lượng
             var trafficChart = new List<TrafficDataPointDto>();
