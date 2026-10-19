@@ -25,6 +25,7 @@ namespace HPParkingSystem.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetList(
             [FromQuery] string? plateNumber = null,
+            [FromQuery] string? keyword = null,
             [FromQuery] ParkingSessionStatus? status = null,
             [FromQuery] VehicleType? vehicleType = null,
             [FromQuery] PersonType? personType = null,
@@ -35,8 +36,9 @@ namespace HPParkingSystem.Api.Controllers
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 15)
         {
+            var searchTerm = !string.IsNullOrWhiteSpace(keyword) ? keyword : plateNumber;
             var filter = BuildSessionFilter(
-                plateNumber: plateNumber,
+                searchTerm: searchTerm,
                 status: status,
                 vehicleType: vehicleType,
                 personType: personType,
@@ -87,6 +89,7 @@ namespace HPParkingSystem.Api.Controllers
         [HttpGet("export-excel")]
         public async Task<IActionResult> ExportExcel(
             [FromQuery] string? plateNumber = null,
+            [FromQuery] string? keyword = null,
             [FromQuery] ParkingSessionStatus? status = null,
             [FromQuery] VehicleType? vehicleType = null,
             [FromQuery] PersonType? personType = null,
@@ -96,8 +99,9 @@ namespace HPParkingSystem.Api.Controllers
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
+            var searchTerm = !string.IsNullOrWhiteSpace(keyword) ? keyword : plateNumber;
             var filter = BuildSessionFilter(
-                plateNumber: plateNumber,
+                searchTerm: searchTerm,
                 status: status,
                 vehicleType: vehicleType,
                 personType: personType,
@@ -131,7 +135,8 @@ namespace HPParkingSystem.Api.Controllers
                 return dt.ToString("dd/MM/yyyy HH:mm");
             }
 
-            string timeRangeStr = $"Khoảng thời gian: {(fromDate.HasValue ? FormatDateDisplay(fromDate.Value, true) : "Toàn bộ")} - {(toDate.HasValue ? FormatDateDisplay(toDate.Value, false) : "Hiện tại")}";
+            string searchFilterStr = !string.IsNullOrWhiteSpace(searchTerm) ? $" | Từ khóa: {searchTerm.Trim()}" : "";
+            string timeRangeStr = $"Khoảng thời gian: {(fromDate.HasValue ? FormatDateDisplay(fromDate.Value, true) : "Toàn bộ")} - {(toDate.HasValue ? FormatDateDisplay(toDate.Value, false) : "Hiện tại")}{searchFilterStr}";
             wsSummary.Cells["A2"].Value = timeRangeStr;
             wsSummary.Cells["A2"].Style.Font.Italic = true;
             wsSummary.Cells["A2"].Style.Font.Size = 11;
@@ -487,7 +492,7 @@ namespace HPParkingSystem.Api.Controllers
         }
 
         private static MongoDB.Driver.FilterDefinition<ParkingSession> BuildSessionFilter(
-            string? plateNumber = null,
+            string? searchTerm = null,
             ParkingSessionStatus? status = null,
             VehicleType? vehicleType = null,
             PersonType? personType = null,
@@ -499,11 +504,33 @@ namespace HPParkingSystem.Api.Controllers
             var fb = MongoDB.Driver.Builders<ParkingSession>.Filter;
             var filter = fb.Eq(s => s.IsDeleted, false);
 
-            if (!string.IsNullOrWhiteSpace(plateNumber))
+            if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                filter &= fb.Regex(
-                    s => s.PlateNumber,
-                    new MongoDB.Bson.BsonRegularExpression(plateNumber.Trim(), "i"));
+                var trimmed = searchTerm.Trim();
+                var safePattern = System.Text.RegularExpressions.Regex.Escape(trimmed).Replace(@"\ ", " ");
+                var regex = new MongoDB.Bson.BsonRegularExpression(safePattern, "i");
+
+                // Tìm kiếm theo Biển số xe HOẶC Tên lái xe (PersonName)
+                var textConditions = fb.Regex(s => s.PlateNumber, regex) |
+                                     fb.Regex(s => s.PersonName, regex);
+
+                // Tự động bóc tách đơn vị để tìm kiếm theo Khối lượng (m³)
+                // Hỗ trợ nhập số trực tiếp (ví dụ: 15, 15.5) hoặc kèm đơn vị (ví dụ: 15m3, 15 m3, 15m³, 15 khối, 15 khoi)
+                var weightCleaned = System.Text.RegularExpressions.Regex.Replace(
+                    trimmed,
+                    @"\s*(m3|m³|khối|khoi)$",
+                    "",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+                if (double.TryParse(weightCleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double parsedWeight)
+                    || double.TryParse(weightCleaned, System.Globalization.NumberStyles.Any, new System.Globalization.CultureInfo("vi-VN"), out parsedWeight))
+                {
+                    filter &= (textConditions | fb.Eq(s => s.Weight, parsedWeight));
+                }
+                else
+                {
+                    filter &= textConditions;
+                }
             }
 
             if (status.HasValue)

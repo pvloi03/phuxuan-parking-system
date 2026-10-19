@@ -886,5 +886,164 @@ namespace HPParkingSystem.Api.Tests.Controllers
             rendered.ToString().Should().Contain("OutTime");
             rendered.ToString().Should().NotContain("InTime");
         }
+
+        [Fact]
+        public async Task GetList_FilteredByKeyword_WhenText_ShouldFilterPlateNumberAndPersonName()
+        {
+            // Arrange
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    15,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act
+            await _controller.GetList(
+                keyword: "Nguyễn Văn Hùng",
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            capturedFilter.Should().NotBeNull();
+            var serializerRegistry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var documentSerializer = serializerRegistry.GetSerializer<ParkingSession>();
+            var rendered = capturedFilter!.Render(documentSerializer, serializerRegistry);
+
+            var filterStr = rendered.ToString();
+            filterStr.Should().Contain("PlateNumber");
+            filterStr.Should().Contain("PersonName");
+            filterStr.Should().Contain("Nguyễn Văn Hùng");
+            filterStr.Should().NotContain("Weight");
+        }
+
+        [Fact]
+        public async Task GetList_FilteredByKeyword_WhenNumeric_ShouldFilterPlateNumberPersonNameAndWeight()
+        {
+            // Arrange
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    15,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act: Nhập "15"
+            await _controller.GetList(
+                keyword: "15",
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            capturedFilter.Should().NotBeNull();
+            var serializerRegistry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var documentSerializer = serializerRegistry.GetSerializer<ParkingSession>();
+            var rendered = capturedFilter!.Render(documentSerializer, serializerRegistry);
+
+            var filterStr = rendered.ToString();
+            filterStr.Should().Contain("PlateNumber");
+            filterStr.Should().Contain("PersonName");
+            filterStr.Should().Contain("Weight");
+            filterStr.Should().Contain("15.0");
+        }
+
+        [Fact]
+        public async Task GetList_FilteredByKeyword_WhenNumericWithUnit_ShouldExtractNumberAndFilterWeight()
+        {
+            // Arrange
+            FilterDefinition<ParkingSession>? capturedFilter = null;
+
+            _sessionRepoMock
+                .Setup(r => r.CountAsync(It.IsAny<FilterDefinition<ParkingSession>>(), It.IsAny<CancellationToken>()))
+                .Callback<FilterDefinition<ParkingSession>, CancellationToken>((f, _) => capturedFilter = f)
+                .ReturnsAsync(0);
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    15,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<ParkingSession>());
+
+            // Act: Nhập "15.5m3"
+            await _controller.GetList(
+                keyword: "15.5m3",
+                pageNumber: 1,
+                pageSize: 15);
+
+            // Assert
+            capturedFilter.Should().NotBeNull();
+            var serializerRegistry = MongoDB.Bson.Serialization.BsonSerializer.SerializerRegistry;
+            var documentSerializer = serializerRegistry.GetSerializer<ParkingSession>();
+            var rendered = capturedFilter!.Render(documentSerializer, serializerRegistry);
+
+            var filterStr = rendered.ToString();
+            filterStr.Should().Contain("Weight");
+            filterStr.Should().Contain("15.5");
+        }
+
+        [Fact]
+        public async Task ExportExcel_WithKeyword_ShouldIncludeKeywordInReportHeader()
+        {
+            // Arrange
+            var sampleSessions = new List<ParkingSession>
+            {
+                new ParkingSession
+                {
+                    Id = "s_01",
+                    PlateNumber = "29C-10001",
+                    VehicleType = VehicleType.Truck,
+                    Weight = 15.0,
+                    PersonName = "Tài xế A",
+                    Status = ParkingSessionStatus.Completed,
+                    InTime = DateTime.Today.AddHours(7),
+                    OutTime = DateTime.Today.AddHours(8)
+                }
+            };
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(sampleSessions);
+
+            // Act
+            var actionResult = await _controller.ExportExcel(
+                keyword: "15m3");
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new OfficeOpenXml.ExcelPackage(stream);
+
+            var ws1 = package.Workbook.Worksheets["Thống Kê Số Lượt Từng Xe"];
+            ws1.Should().NotBeNull();
+            var headerStr = ws1.Cells["A2"].Value?.ToString();
+            headerStr.Should().Contain("Từ khóa: 15m3");
+        }
     }
 }

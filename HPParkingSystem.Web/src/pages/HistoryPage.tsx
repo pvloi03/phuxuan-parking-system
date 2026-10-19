@@ -85,7 +85,7 @@ function formatDateTime24h(dStr?: string | null): string {
 
 export function HistoryPage() {
   const queryClient = useQueryClient()
-  const [plateNumber, setPlateNumber] = useState('')
+  const [keyword, setKeyword] = useState('')
   const [status, setStatus] = useState<string>('')
   const [vehicleType, setVehicleType] = useState<string>('')
   const [personType, setPersonType] = useState<PersonType | ''>('')
@@ -109,10 +109,10 @@ export function HistoryPage() {
   }>({ isOpen: false })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['parking-history', plateNumber, status, vehicleType, personType, fromDate, toDate, fromTime, toTime, page, pageSize],
+    queryKey: ['parking-history', keyword, status, vehicleType, personType, fromDate, toDate, fromTime, toTime, page, pageSize],
     queryFn: () =>
       parkingService.getSessions({
-        plateNumber: plateNumber || undefined,
+        keyword: keyword || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
         personType: personType || undefined,
@@ -220,7 +220,7 @@ export function HistoryPage() {
 
     try {
       await parkingService.exportExcel({
-        plateNumber: plateNumber || undefined,
+        keyword: keyword || undefined,
         status: status ? (status as ParkingSessionStatus) : undefined,
         vehicleType: vehicleType ? (vehicleType as VehicleType) : undefined,
         personType: personType || undefined,
@@ -461,14 +461,14 @@ export function HistoryPage() {
       <Card className="p-4 shadow-xs space-y-3 relative z-20">
         {/* Hàng 1: Tiêu chí xe & người dùng (Responsive 1 col trên mobile, 2 col trên tablet, 4 col trên desktop) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-center">
-          {/* 1. Tìm theo biển số */}
+          {/* 1. Tìm theo biển số, tên lái xe, khối lượng (m³) */}
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Tìm theo biển số..."
-              value={plateNumber}
+              placeholder="Tìm biển số, tên lái xe, khối lượng (m³)..."
+              value={keyword}
               onChange={(e) => {
-                setPlateNumber(e.target.value)
+                setKeyword(e.target.value)
                 setPage(1)
               }}
               className="pl-9 text-xs h-9"
@@ -680,7 +680,7 @@ export function HistoryPage() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              setPlateNumber('')
+              setKeyword('')
               setStatus('')
               setVehicleType('')
               setPersonType('')
