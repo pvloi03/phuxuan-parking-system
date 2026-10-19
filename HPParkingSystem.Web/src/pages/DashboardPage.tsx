@@ -122,7 +122,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Top Header Actions & Presets */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Tổng Quan Hệ Thống
@@ -132,114 +132,117 @@ export function DashboardPage() {
           </p>
         </div>
 
-        {/* Quick Period Buttons */}
-        <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shrink-0">
-          <button
-            type="button"
-            onClick={() => handleSetPreset('today')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'today'
-              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-          >
-            Hôm nay
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSetPreset('month')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'month'
-              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-          >
-            Tháng này
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSetPreset('year')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'year'
-              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-          >
-            Năm này
-          </button>
-          <button
-            type="button"
-            onClick={() => setPeriod('custom')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'custom'
-              ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-              }`}
-          >
-            Tùy chọn
-          </button>
-        </div>
-      </div>
+        {/* Khối điều khiển bên phải: Hàng trên là presets, Hàng dưới là bộ chọn ngày giờ + nút Làm mới */}
+        <div className="flex flex-col items-start xl:items-end gap-2.5">
+          {/* Hàng 1: Bộ chọn ngày tháng năm (Presets) */}
+          <div className="inline-flex rounded-lg bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSetPreset('today')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'today'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+            >
+              Hôm nay
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetPreset('month')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'month'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+            >
+              Tháng này
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetPreset('year')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'year'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+            >
+              Năm này
+            </button>
+            <button
+              type="button"
+              onClick={() => setPeriod('custom')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${period === 'custom'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+            >
+              Tùy chọn
+            </button>
+          </div>
 
-      {/* Date & Time Range Filters + Refresh Button (Luôn hiện, đặt bên trái nút Làm mới) */}
-      <div className="flex flex-wrap items-center gap-2.5 bg-white dark:bg-slate-900/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs relative z-20">
-        {/* Cụm Từ: Ngày + Giờ */}
-        <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 h-9 flex items-center gap-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 select-none">
-            Từ:
-          </span>
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(e) => {
-              setFromDate(e.target.value)
-              setPeriod('custom')
-            }}
-            className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-28 shrink-0 dark:scheme-dark"
-          />
-          <span className="text-slate-300 dark:text-slate-600">|</span>
-          <Time24Picker
-            value={fromTime}
-            onChange={(val) => {
-              setFromTime(val)
-              setPeriod('custom')
-            }}
-            placeholder="00:00"
-          />
-        </div>
+          {/* Hàng 2 (Đặt ngay hàng dưới của bộ chọn ngày tháng năm): Cụm Từ + Cụm Đến + Nút Làm mới */}
+          <div className="flex flex-wrap items-center gap-2 relative z-20">
+            {/* Cụm Từ: Ngày + Giờ */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 h-9 flex items-center gap-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 select-none">
+                Từ:
+              </span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value)
+                  setPeriod('custom')
+                }}
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-27 shrink-0 dark:scheme-dark"
+              />
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <Time24Picker
+                value={fromTime}
+                onChange={(val) => {
+                  setFromTime(val)
+                  setPeriod('custom')
+                }}
+                placeholder="00:00"
+              />
+            </div>
 
-        {/* Cụm Đến: Ngày + Giờ */}
-        <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 h-9 flex items-center gap-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
-          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 select-none">
-            Đến:
-          </span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={(e) => {
-              setToDate(e.target.value)
-              setPeriod('custom')
-            }}
-            className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-28 shrink-0 dark:scheme-dark"
-          />
-          <span className="text-slate-300 dark:text-slate-600">|</span>
-          <Time24Picker
-            value={toTime}
-            onChange={(val) => {
-              setToTime(val)
-              setPeriod('custom')
-            }}
-            placeholder="23:59"
-          />
-        </div>
+            {/* Cụm Đến: Ngày + Giờ */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 h-9 flex items-center gap-1.5 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all shadow-xs">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 select-none">
+                Đến:
+              </span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value)
+                  setPeriod('custom')
+                }}
+                className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer w-27 shrink-0 dark:scheme-dark"
+              />
+              <span className="text-slate-300 dark:text-slate-600">|</span>
+              <Time24Picker
+                value={toTime}
+                onChange={(val) => {
+                  setToTime(val)
+                  setPeriod('custom')
+                }}
+                placeholder="23:59"
+              />
+            </div>
 
-        {/* Nút Làm mới đặt bên phải của bộ chọn ngày giờ */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="h-9 gap-2 text-xs font-semibold cursor-pointer shadow-xs shrink-0"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
-          {isFetching ? 'Đang tải...' : 'Làm mới'}
-        </Button>
+            {/* Nút Làm mới đặt bên phải của bộ chọn ngày giờ */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="h-9 gap-2 text-xs font-semibold cursor-pointer shadow-xs shrink-0"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+              {isFetching ? 'Đang tải...' : 'Làm mới'}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* 3 KPI Metrics Cards (Đã loại bỏ Cảnh Báo Ra Không Vào theo yêu cầu) */}
