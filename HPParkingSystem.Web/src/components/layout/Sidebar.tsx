@@ -120,7 +120,7 @@ export function Sidebar() {
       {/* ── Brand Header ── */}
       <div
         className={cn(
-          'flex items-center h-14 border-b border-slate-100 dark:border-[#1e2d3d] shrink-0',
+          'flex items-center h-14 p-4 border-b border-slate-100 dark:border-[#1e2d3d] shrink-0',
           isCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'
         )}
       >
@@ -130,7 +130,7 @@ export function Sidebar() {
               <img
                 src={logoImg}
                 alt="Hoàng Phát Logo"
-                className="h-full w-auto max-w-full object-contain dark:bg-white dark:px-2 dark:py-0.5 dark:rounded-md transition-all"
+                className="w-full max-w-full object-contain dark:px-2 dark:py-0.5 dark:rounded-md transition-all"
               />
             </Link>
             <button
@@ -152,7 +152,7 @@ export function Sidebar() {
             <img
               src={logoImg}
               alt="Logo"
-              className="h-7 w-auto max-w-none object-contain object-left group-hover:hidden"
+              className="w-full max-w-none h-auto object-contain object-left group-hover:hidden"
             />
             <ChevronRight className="h-4.5 w-4.5 hidden group-hover:block text-blue-600 dark:text-blue-400" />
           </button>

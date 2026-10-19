@@ -6,7 +6,7 @@ interface HeaderProps {
   subtitle?: string
 }
 
-export function Header({ title = 'Bảng Điều Khiển', subtitle }: HeaderProps) {
+export function Header({ title = 'HPParking Admin', subtitle = "Hệ thống quản lý đỗ xe tập trung HPParking" }: HeaderProps) {
   const { isDark, toggleTheme } = useThemeStore()
 
   return (

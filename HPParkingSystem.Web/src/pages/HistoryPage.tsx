@@ -531,9 +531,9 @@ export function HistoryPage() {
         </div>
 
         {/* Hàng 2: Cụm Ngày & Giờ (Responsive: 1 col trên mobile, 2 col trên tablet và desktop) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="grid grid-cols-1 w-max sm:grid-cols-2 gap-3 items-center">
           {/* CỤM TỪ (NGÀY + GIỜ) */}
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 h-9">
+          <div className="flex w-max items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg px-2.5 h-9">
             <span className="text-[11px] font-semibold text-slate-500 shrink-0">Từ:</span>
             <input
               type="date"
@@ -542,7 +542,7 @@ export function HistoryPage() {
                 setFromDate(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:scheme-dark"
+              className="w-25 bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:scheme-dark"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <Time24Picker
@@ -565,7 +565,7 @@ export function HistoryPage() {
                 setToDate(e.target.value)
                 setPage(1)
               }}
-              className="bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:scheme-dark"
+              className="w-25 bg-transparent text-xs text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer flex-1 min-w-0 dark:scheme-dark"
             />
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <Time24Picker

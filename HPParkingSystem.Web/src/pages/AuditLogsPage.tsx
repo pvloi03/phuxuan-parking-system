@@ -13,6 +13,7 @@ import {
   UserCheck,
   AlertOctagon,
   Download,
+  Loader2,
 } from 'lucide-react'
 import { auditLogService } from '@/services/auditLogService'
 import type { AuditLogQueryParams } from '@/services/auditLogService'
@@ -20,6 +21,7 @@ import type { AuditLog, AuditActionType } from '@/types'
 import { AuditLogDetailDrawer } from '@/components/audit/AuditLogDetailDrawer'
 import { actionTypeConfig, targetEntityList } from '@/lib/auditConfig'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 const toEndOfDayIso = (d: string) => {
   const date = new Date(d)
@@ -99,14 +101,16 @@ export function AuditLogsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleExport}
             disabled={isExporting}
-            className="flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg shadow-xs transition-colors"
+            className="gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 cursor-pointer shadow-xs whitespace-nowrap"
           >
-            <Download className={cn('w-4 h-4', isExporting && 'animate-bounce')} />
-            {isExporting ? 'Đang Xuất...' : 'Xuất Excel'}
-          </button>
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" /> : <Download className="h-3.5 w-3.5 text-blue-600" />}
+            {isExporting ? 'Đang xuất...' : 'Xuất Excel'}
+          </Button>
 
           <button
             onClick={() => refetch()}
