@@ -1,6 +1,10 @@
+using System.Linq;
+using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Enums;
 using LiteDB;
 using System;
 using System.IO;
+using System.Text.Json;
 
 namespace HPParkingSystem.Models.Data
 {
@@ -81,6 +85,7 @@ namespace HPParkingSystem.Models.Data
 
                 _database = new LiteDatabase(connectionString, mapper);
                 EnsureIndexes();
+                MigrateOfflineSessionsToUnmatchedOut();
             }
         }
 
@@ -214,6 +219,57 @@ namespace HPParkingSystem.Models.Data
         /// <summary>
         /// Giải phóng toàn bộ tài nguyên của LiteDB context.
         /// </summary>
+        /// <summary>
+        /// Tự động chuyển đổi các bản ghi xe ra ngoại tuyến cũ (InTime == null && OutTime != null)
+        /// đang mang trạng thái Completed sang UnmatchedOut ("Xe ra") trong LiteDB.
+        /// Đồng thời cập nhật các task đồng bộ offline đang chờ sync lên MongoDB.
+        /// </summary>
+        public int MigrateOfflineSessionsToUnmatchedOut()
+        {
+            EnsureOpen();
+            int updatedCount = 0;
+            lock (_dbLock)
+            {
+                try
+                {
+                    if (_database == null) return 0;
+
+                    // 1. Cập nhật collection offline_sessions trong LiteDB
+                    var sessionCol = _database.GetCollection<ParkingSession>("offline_sessions");
+                    var oldSessions = sessionCol.Find(s => s.InTime == null && s.OutTime != null && s.Status == ParkingSessionStatus.Completed).ToList();
+                    foreach (var s in oldSessions)
+                    {
+                        s.Status = ParkingSessionStatus.UnmatchedOut;
+                        sessionCol.Update(s);
+                        updatedCount++;
+                    }
+
+                    // 2. Cập nhật các tác vụ đồng bộ offline đang chờ sync nếu payload chứa phiên cũ
+                    var syncTasksCol = GetSyncTasks();
+                    var pendingTasks = syncTasksCol.Find(t => !t.IsSynced && t.EntityType == nameof(ParkingSession)).ToList();
+                    foreach (var task in pendingTasks)
+                    {
+                        if (string.IsNullOrEmpty(task.PayloadJson)) continue;
+                        try
+                        {
+                            var session = System.Text.Json.JsonSerializer.Deserialize<ParkingSession>(task.PayloadJson);
+                            if (session != null && session.InTime == null && session.OutTime != null && session.Status == ParkingSessionStatus.Completed)
+                            {
+                                session.Status = ParkingSessionStatus.UnmatchedOut;
+                                task.PayloadJson = System.Text.Json.JsonSerializer.Serialize(session);
+                                syncTasksCol.Update(task);
+                            }
+                        }
+                        catch { }
+                    }
+                }
+                catch
+                {
+                    // Tránh gây crash ứng dụng nếu migration gặp ngoại lệ
+                }
+            }
+            return updatedCount;
+        }
         public void Dispose()
         {
             lock (_dbLock)

@@ -185,5 +185,51 @@ namespace HPParkingSystem.Api.Tests.Services
 
             try { Directory.Delete(tempDir, true); } catch { }
         }
+
+        [Fact]
+        public void MigrateOfflineSessionsToUnmatchedOut_ShouldUpdateOldCompletedSessionsAndPendingTasks()
+        {
+            // Arrange
+            var sessionCol = _context.GetCollection<HPParkingSystem.Models.Entities.ParkingSession>("offline_sessions");
+            var oldSession = new HPParkingSystem.Models.Entities.ParkingSession
+            {
+                Id = "test_offline_001",
+                PlateNumber = "29A99999",
+                InTime = null,
+                OutTime = DateTime.Now,
+                Status = HPParkingSystem.Models.Enums.ParkingSessionStatus.Completed
+            };
+            sessionCol.Insert(oldSession);
+
+            var syncCol = _context.GetSyncTasks();
+            syncCol.Insert(new OfflineSyncTask
+            {
+                RecordId = oldSession.Id,
+                EntityType = nameof(HPParkingSystem.Models.Entities.ParkingSession),
+                Operation = "Insert",
+                PayloadJson = System.Text.Json.JsonSerializer.Serialize(oldSession),
+                IsSynced = false
+            });
+
+            // Act
+            int migratedCount = _context.MigrateOfflineSessionsToUnmatchedOut();
+
+            // Assert
+            migratedCount.Should().Be(1);
+
+            var updatedSession = sessionCol.FindById("test_offline_001");
+            updatedSession.Should().NotBeNull();
+            updatedSession.Status.Should().Be(HPParkingSystem.Models.Enums.ParkingSessionStatus.UnmatchedOut);
+
+            var updatedTask = syncCol.FindOne(t => t.RecordId == "test_offline_001");
+            updatedTask.Should().NotBeNull();
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<HPParkingSystem.Models.Entities.ParkingSession>(updatedTask.PayloadJson);
+            deserialized.Should().NotBeNull();
+            deserialized!.Status.Should().Be(HPParkingSystem.Models.Enums.ParkingSessionStatus.UnmatchedOut);
+
+            // Verify idempotency
+            int secondRun = _context.MigrateOfflineSessionsToUnmatchedOut();
+            secondRun.Should().Be(0);
+        }
     }
 }

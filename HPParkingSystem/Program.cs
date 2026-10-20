@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
@@ -80,6 +80,20 @@ namespace HPParkingSystem
 
                 // 4. Build ServiceProvider
                 ServiceProvider = services.BuildServiceProvider();
+
+                // 4.0 Tự động chuyển đổi các bản ghi xe ra ngoại tuyến cũ trong LiteDB sang 'Xe ra' (UnmatchedOut)
+                try
+                {
+                    int migratedLiteDb = LiteDbContext.Instance.MigrateOfflineSessionsToUnmatchedOut();
+                    if (migratedLiteDb > 0)
+                    {
+                        AppLogger.Information($"Đã tự động cập nhật {migratedLiteDb} bản ghi xe ra ngoại tuyến trong LiteDB sang trạng thái 'Xe ra' (UnmatchedOut).", "Program");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Warning($"Lỗi khi chạy cập nhật dữ liệu ngoại tuyến LiteDB: {ex.Message}", "Program");
+                }
 
                 // 4.1 Khởi động Background Worker đồng bộ ngoại tuyến & heartbeat kiểm tra kết nối
                 try
