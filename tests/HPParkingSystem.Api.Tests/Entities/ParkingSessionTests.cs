@@ -58,5 +58,22 @@ namespace HPParkingSystem.Api.Tests.Entities
 
             session.HasExited.Should().BeTrue();
         }
+
+        [Theory]
+        [InlineData(ParkingSessionStatus.Active, "Đang trong bãi")]
+        [InlineData(ParkingSessionStatus.Completed, "Đã hoàn thành")]
+        [InlineData(ParkingSessionStatus.UnmatchedOut, "Xe ra")]
+        [InlineData(ParkingSessionStatus.Cancelled, "Đã hủy")]
+        public void Status_ToDisplayName_ShouldReturnExpectedDisplayName(ParkingSessionStatus status, string expected)
+        {
+            status.ToDisplayName().Should().Be(expected);
+        }
+
+        [Fact]
+        public void NullableStatus_ToDisplayName_ShouldReturnEmptyWhenNull()
+        {
+            ParkingSessionStatus? status = null;
+            status.ToDisplayName().Should().BeEmpty();
+        }
     }
 }
