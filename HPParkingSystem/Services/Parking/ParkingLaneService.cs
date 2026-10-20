@@ -441,8 +441,8 @@ namespace HPParkingSystem.Services.Parking
             }
             else
             {
-                // Không tìm thấy phiên vào khớp -> Tạo phiên xe ra bình thường (Completed)
-                var directOutSession = ParkingSession.CreateUnmatchedOut(
+                // Không tìm thấy phiên vào khớp -> Tạo phiên Xe ra (UnmatchedOut)
+                var unmatchedOutSession = ParkingSession.CreateUnmatchedOut(
                     outLaneName: outLaneName,
                     plateNumber: detectedPlate,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
@@ -459,16 +459,16 @@ namespace HPParkingSystem.Services.Parking
 
                 if (_sessionRepo is IHybridParkingSessionRepository hybridRepo)
                 {
-                    await hybridRepo.CheckInAsync(directOutSession).ConfigureAwait(false);
+                    await hybridRepo.CheckInAsync(unmatchedOutSession).ConfigureAwait(false);
                 }
                 else
                 {
-                    await _sessionRepo.AddAsync(directOutSession);
+                    await _sessionRepo.AddAsync(unmatchedOutSession);
                 }
 
-                result.Session = directOutSession;
+                result.Session = unmatchedOutSession;
                 result.Success = true;
-                AppLogger.Information($"[LÀN RA] Ghi nhận phiên Xe ra (UnmatchedOut) cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {directOutSession.Id}.", "ParkingLaneService");
+                AppLogger.Information($"[LÀN RA] Ghi nhận phiên Xe ra (UnmatchedOut) cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {unmatchedOutSession.Id}.", "ParkingLaneService");
             }
 
             // 7. Ghi nhận bộ nhớ đệm chống chụp chéo
