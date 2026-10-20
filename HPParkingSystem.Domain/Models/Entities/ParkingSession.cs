@@ -79,6 +79,14 @@ namespace HPParkingSystem.Models.Entities
             ? OutTime.Value - InTime.Value
             : null;
 
+        /// <summary>
+        /// [KHÔNG LƯU DB] Kiểm tra phiên gửi xe đã có sự kiện xe ra hay chưa (bao gồm cả Completed và UnmatchedOut)
+        /// </summary>
+        [BsonIgnore]
+        public bool HasExited => OutTime.HasValue ||
+                                 Status == ParkingSessionStatus.Completed ||
+                                 Status == ParkingSessionStatus.UnmatchedOut;
+
         public ParkingSession() { }
 
         /// <summary>

@@ -187,7 +187,7 @@ namespace HPParkingSystem.Api.Controllers
             {
                 var first = g.First();
                 int inCount = g.Count(s => s.InTime.HasValue);
-                int outCount = g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed || s.Status == ParkingSessionStatus.UnmatchedOut);
+                int outCount = g.Count(s => s.HasExited);
                 bool isCurrentlyInParking = g.Any(s => s.Status == ParkingSessionStatus.Active);
 
                 double? vehicleWeight = GetRegisteredWeight(g);
@@ -349,7 +349,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 double grandTotalSessionsWeight = sessions
-                    .Where(s => (s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed || s.Status == ParkingSessionStatus.UnmatchedOut) && s.Weight.HasValue)
+                    .Where(s => s.HasExited && s.Weight.HasValue)
                     .Sum(s => s.Weight!.Value);
                 SetWeightCellValue(ws.Cells[row, 6], grandTotalSessionsWeight);
                 ws.Cells[row, 6].Style.Font.Bold = true;
