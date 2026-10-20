@@ -16,10 +16,10 @@ namespace HPParkingSystem.Models.Enums
             ParkingSessionStatus.Completed => "Đã hoàn thành",
             ParkingSessionStatus.UnmatchedOut => "Xe ra",
             ParkingSessionStatus.Cancelled => "Đã hủy",
-            _ => status.ToString()
+            _ => "--"
         };
 
         public static string ToDisplayName(this ParkingSessionStatus? status) =>
-            status.HasValue ? status.Value.ToDisplayName() : "";
+            status.HasValue ? status.Value.ToDisplayName() : "--";
     }
 }

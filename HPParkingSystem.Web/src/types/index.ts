@@ -7,7 +7,7 @@ export interface ApiResponse<T = any> {
 }
 
 export type VehicleType = 'Car' | 'Motorcycle' | 'Truck' | 'Bicycle' | 'Other'
-export type ParkingSessionStatus = 'Active' | 'Completed' | 'UnmatchedOut'
+export type ParkingSessionStatus = 'Active' | 'Completed' | 'UnmatchedOut' | 'Cancelled'
 export type UserRole = 'Admin' | 'Manager' | 'Viewer'
 export type PersonType = 'Employee' | 'Contractor' | 'Visitor' | 'VIP' | 'Guest' | 'Other'
 

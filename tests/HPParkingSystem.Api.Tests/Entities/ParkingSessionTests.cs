@@ -70,10 +70,17 @@ namespace HPParkingSystem.Api.Tests.Entities
         }
 
         [Fact]
-        public void NullableStatus_ToDisplayName_ShouldReturnEmptyWhenNull()
+        public void NullableStatus_ToDisplayName_ShouldReturnDashWhenNull()
         {
             ParkingSessionStatus? status = null;
-            status.ToDisplayName().Should().BeEmpty();
+            status.ToDisplayName().Should().Be("--");
+        }
+
+        [Fact]
+        public void UndefinedStatus_ToDisplayName_ShouldReturnDash()
+        {
+            ((ParkingSessionStatus)0).ToDisplayName().Should().Be("--");
+            ((ParkingSessionStatus)99).ToDisplayName().Should().Be("--");
         }
     }
 }

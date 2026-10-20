@@ -258,6 +258,13 @@ export function HistoryPage() {
             Xe ra
           </Badge>
         )
+      case 'Cancelled':
+      case 4:
+        return (
+          <Badge variant="destructive" className="bg-rose-600/90 hover:bg-rose-600 text-white font-medium shadow-xs text-[11px] px-2.5 py-0.5">
+            Đã hủy
+          </Badge>
+        )
       default:
         return <Badge variant="secondary">{statusValue}</Badge>
     }
@@ -489,6 +496,7 @@ export function HistoryPage() {
               <option value="Active">Đang trong bãi (Active)</option>
               <option value="Completed">Đã hoàn thành (Completed)</option>
               <option value="UnmatchedOut">Xe ra (UnmatchedOut)</option>
+              <option value="Cancelled">Đã hủy (Cancelled)</option>
             </select>
           </div>
 
