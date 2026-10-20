@@ -96,8 +96,14 @@ namespace HPParkingSystem.Api.Controllers
                 !s.IsDeleted &&
                 ((s.InTime >= start && s.InTime <= end) || (s.OutTime.HasValue && s.OutTime >= start && s.OutTime <= end)));
 
-            int periodIn = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= start && s.InTime <= end);
-            int periodOut = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= start && s.OutTime <= end && s.Status == ParkingSessionStatus.Completed);
+            static bool IsValidOutSession(ParkingSession s) =>
+                s.OutTime.HasValue && (s.Status == ParkingSessionStatus.Completed || s.Status == ParkingSessionStatus.UnmatchedOut);
+
+            static bool IsValidInSession(ParkingSession s) =>
+                s.InTime.HasValue && s.Status != ParkingSessionStatus.Cancelled;
+
+            int periodIn = periodSessions.Count(s => IsValidInSession(s) && s.InTime >= start && s.InTime <= end);
+            int periodOut = periodSessions.Count(s => IsValidOutSession(s) && s.OutTime >= start && s.OutTime <= end);
             int periodUnmatchedOut = periodSessions.Count(s => s.Status == ParkingSessionStatus.UnmatchedOut && s.OutTime.HasValue && s.OutTime >= start && s.OutTime <= end);
 
             // 3. Tạo dữ liệu biểu đồ lưu lượng
@@ -109,8 +115,8 @@ namespace HPParkingSystem.Api.Controllers
                 // Thống kê theo 24 giờ
                 for (int h = 0; h < 24; h++)
                 {
-                    int inCount = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= start && s.InTime < end && s.InTime.Value.Hour == h);
-                    int outCount = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= start && s.OutTime < end && s.OutTime.Value.Hour == h);
+                    int inCount = periodSessions.Count(s => IsValidInSession(s) && s.InTime >= start && s.InTime < end && s.InTime.Value.Hour == h);
+                    int outCount = periodSessions.Count(s => IsValidOutSession(s) && s.OutTime >= start && s.OutTime < end && s.OutTime.Value.Hour == h);
 
                     var point = new TrafficDataPointDto
                     {
@@ -133,8 +139,8 @@ namespace HPParkingSystem.Api.Controllers
                 for (var day = start; day < end; day = day.AddDays(1))
                 {
                     var nextDay = day.AddDays(1);
-                    int inCount = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= day && s.InTime < nextDay);
-                    int outCount = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= day && s.OutTime < nextDay);
+                    int inCount = periodSessions.Count(s => IsValidInSession(s) && s.InTime >= day && s.InTime < nextDay);
+                    int outCount = periodSessions.Count(s => IsValidOutSession(s) && s.OutTime >= day && s.OutTime < nextDay);
 
                     trafficChart.Add(new TrafficDataPointDto
                     {
@@ -152,8 +158,8 @@ namespace HPParkingSystem.Api.Controllers
                     var monthStart = new DateTime(start.Year, m, 1);
                     var monthEnd = monthStart.AddMonths(1);
 
-                    int inCount = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= monthStart && s.InTime < monthEnd);
-                    int outCount = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= monthStart && s.OutTime < monthEnd);
+                    int inCount = periodSessions.Count(s => IsValidInSession(s) && s.InTime >= monthStart && s.InTime < monthEnd);
+                    int outCount = periodSessions.Count(s => IsValidOutSession(s) && s.OutTime >= monthStart && s.OutTime < monthEnd);
 
                     trafficChart.Add(new TrafficDataPointDto
                     {
@@ -169,8 +175,8 @@ namespace HPParkingSystem.Api.Controllers
                 for (var day = start; day < end; day = day.AddDays(1))
                 {
                     var nextDay = day.AddDays(1);
-                    int inCount = periodSessions.Count(s => s.InTime.HasValue && s.InTime >= day && s.InTime < nextDay);
-                    int outCount = periodSessions.Count(s => s.OutTime.HasValue && s.OutTime >= day && s.OutTime < nextDay);
+                    int inCount = periodSessions.Count(s => IsValidInSession(s) && s.InTime >= day && s.InTime < nextDay);
+                    int outCount = periodSessions.Count(s => IsValidOutSession(s) && s.OutTime >= day && s.OutTime < nextDay);
 
                     trafficChart.Add(new TrafficDataPointDto
                     {

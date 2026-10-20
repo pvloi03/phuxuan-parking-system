@@ -302,7 +302,7 @@ export function DashboardPage() {
               {isLoading ? '--' : metrics?.periodOutCount ?? metrics?.todayOutCount ?? 0}
             </div>
             <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium mt-1">
-              Xe đã check-out hoàn tất
+              Tổng lượt xe ra ({getPeriodDisplayTitle().toLowerCase()})
             </p>
           </CardContent>
         </Card>
