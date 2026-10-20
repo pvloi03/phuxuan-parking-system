@@ -17,6 +17,7 @@ namespace HPParkingSystem.Forms
 
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LicenseExpiredForm));
             this.pnlHeader = new System.Windows.Forms.Panel();
             this.lblReason = new System.Windows.Forms.Label();
             this.lblTitle = new System.Windows.Forms.Label();
@@ -56,9 +57,10 @@ namespace HPParkingSystem.Forms
             this.lblReason.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(254)))), ((int)(((byte)(226)))), ((int)(((byte)(226)))));
             this.lblReason.Location = new System.Drawing.Point(16, 44);
             this.lblReason.Name = "lblReason";
-            this.lblReason.Size = new System.Drawing.Size(564, 20);
+            this.lblReason.Size = new System.Drawing.Size(742, 25);
             this.lblReason.TabIndex = 1;
-            this.lblReason.Text = "Bản quyền phần mềm đã hết hạn sử dụng. Vui lòng liên hệ nhà cung cấp để gia hạn dịch vụ.";
+            this.lblReason.Text = "Bản quyền phần mềm đã hết hạn sử dụng. Vui lòng liên hệ nhà cung cấp để gia hạn d" +
+    "ịch vụ.";
             // 
             // lblTitle
             // 
@@ -67,7 +69,7 @@ namespace HPParkingSystem.Forms
             this.lblTitle.ForeColor = System.Drawing.Color.White;
             this.lblTitle.Location = new System.Drawing.Point(16, 12);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(438, 30);
+            this.lblTitle.Size = new System.Drawing.Size(528, 36);
             this.lblTitle.TabIndex = 0;
             this.lblTitle.Text = "🔒 THÔNG BÁO BẢN QUYỀN PHẦN MỀM";
             // 
@@ -173,7 +175,7 @@ namespace HPParkingSystem.Forms
             this.lblKeyHelp.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblKeyHelp.Location = new System.Drawing.Point(12, 28);
             this.lblKeyHelp.Name = "lblKeyHelp";
-            this.lblKeyHelp.Size = new System.Drawing.Size(434, 20);
+            this.lblKeyHelp.Size = new System.Drawing.Size(521, 23);
             this.lblKeyHelp.TabIndex = 0;
             this.lblKeyHelp.Text = "Dán chuỗi License Key hoặc bấm nút Chọn File .lic để nạp tự động:";
             // 
@@ -220,7 +222,7 @@ namespace HPParkingSystem.Forms
             this.txtMachineCode.Location = new System.Drawing.Point(12, 54);
             this.txtMachineCode.Name = "txtMachineCode";
             this.txtMachineCode.ReadOnly = true;
-            this.txtMachineCode.Size = new System.Drawing.Size(565, 31);
+            this.txtMachineCode.Size = new System.Drawing.Size(565, 36);
             this.txtMachineCode.TabIndex = 1;
             this.txtMachineCode.Text = "HP-0000-0000-0000-0000";
             // 
@@ -231,13 +233,14 @@ namespace HPParkingSystem.Forms
             this.lblMachineHelp.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(116)))), ((int)(((byte)(139)))));
             this.lblMachineHelp.Location = new System.Drawing.Point(12, 28);
             this.lblMachineHelp.Name = "lblMachineHelp";
-            this.lblMachineHelp.Size = new System.Drawing.Size(556, 20);
+            this.lblMachineHelp.Size = new System.Drawing.Size(676, 23);
             this.lblMachineHelp.TabIndex = 0;
-            this.lblMachineHelp.Text = "Sao chép mã máy tính bên dưới và gửi cho nhà cung cấp để được cấp License Key mới:";
+            this.lblMachineHelp.Text = "Sao chép mã máy tính bên dưới và gửi cho nhà cung cấp để được cấp License Key mới" +
+    ":";
             // 
             // LicenseExpiredForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(10F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(784, 540);
@@ -245,6 +248,7 @@ namespace HPParkingSystem.Forms
             this.Controls.Add(this.pnlHeader);
             this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "LicenseExpiredForm";
@@ -258,6 +262,7 @@ namespace HPParkingSystem.Forms
             this.grpMachine.ResumeLayout(false);
             this.grpMachine.PerformLayout();
             this.ResumeLayout(false);
+
         }
 
         #endregion
