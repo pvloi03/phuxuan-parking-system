@@ -254,8 +254,8 @@ export function HistoryPage() {
       case 'UnmatchedOut':
       case 3:
         return (
-          <Badge variant="warning" className="bg-amber-600/90 hover:bg-amber-600 text-white font-medium shadow-xs text-[11px] px-2.5 py-0.5">
-            Ra không có vào
+          <Badge variant="default" className="bg-indigo-600/90 hover:bg-indigo-600 text-white font-medium shadow-xs text-[11px] px-2.5 py-0.5">
+            Xe ra
           </Badge>
         )
       default:
@@ -488,7 +488,7 @@ export function HistoryPage() {
               <option value="">-- Tất cả trạng thái --</option>
               <option value="Active">Đang trong bãi (Active)</option>
               <option value="Completed">Đã hoàn thành (Completed)</option>
-              <option value="UnmatchedOut">Ra không có vào (Unmatched)</option>
+              <option value="UnmatchedOut">Xe ra (UnmatchedOut)</option>
             </select>
           </div>
 

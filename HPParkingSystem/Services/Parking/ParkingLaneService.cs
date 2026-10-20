@@ -442,7 +442,7 @@ namespace HPParkingSystem.Services.Parking
             else
             {
                 // Không tìm thấy phiên vào khớp -> Tạo phiên xe ra bình thường (Completed)
-                var directOutSession = ParkingSession.CreateDirectOut(
+                var directOutSession = ParkingSession.CreateUnmatchedOut(
                     outLaneName: outLaneName,
                     plateNumber: detectedPlate,
                     outOverviewImagePath: ovwOk ? fileOverview : ImageStoragePath.Empty,
@@ -468,7 +468,7 @@ namespace HPParkingSystem.Services.Parking
 
                 result.Session = directOutSession;
                 result.Success = true;
-                AppLogger.Information($"[LÀN RA] Ghi nhận phiên xe ra bình thường cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {directOutSession.Id}.", "ParkingLaneService");
+                AppLogger.Information($"[LÀN RA] Ghi nhận phiên Xe ra (UnmatchedOut) cho xe {detectedPlate}. Làn: {outLaneName}, Session ID: {directOutSession.Id}.", "ParkingLaneService");
             }
 
             // 7. Ghi nhận bộ nhớ đệm chống chụp chéo

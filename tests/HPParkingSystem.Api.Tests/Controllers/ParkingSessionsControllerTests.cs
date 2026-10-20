@@ -1045,5 +1045,42 @@ namespace HPParkingSystem.Api.Tests.Controllers
             var headerStr = ws1.Cells["A2"].Value?.ToString();
             headerStr.Should().Contain("Từ khóa: 15m3");
         }
+
+        [Fact]
+        public async Task ExportExcel_WithUnmatchedOutStatus_ShouldOutputStatusAsXeRa()
+        {
+            // Arrange
+            var sampleSessions = new List<ParkingSession>
+            {
+                new ParkingSession
+                {
+                    PlateNumber = "29A11111",
+                    Status = ParkingSessionStatus.UnmatchedOut,
+                    OutTime = DateTime.Today.AddHours(10)
+                }
+            };
+
+            _sessionRepoMock
+                .Setup(r => r.FindAsync(
+                    It.IsAny<FilterDefinition<ParkingSession>>(),
+                    It.IsAny<SortDefinition<ParkingSession>>(),
+                    0,
+                    5000,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(sampleSessions);
+
+            // Act
+            var actionResult = await _controller.ExportExcel(status: ParkingSessionStatus.UnmatchedOut);
+
+            // Assert
+            actionResult.Should().BeOfType<FileContentResult>();
+            var fileResult = (FileContentResult)actionResult;
+            using var stream = new MemoryStream(fileResult.FileContents);
+            using var package = new OfficeOpenXml.ExcelPackage(stream);
+
+            var ws2 = package.Workbook.Worksheets["Lịch Sử Chi Tiết"];
+            ws2.Should().NotBeNull();
+            ws2.Cells[4, 10].Value.Should().Be("Xe ra");
+        }
     }
 }

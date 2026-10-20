@@ -143,20 +143,20 @@ namespace HPParkingSystem.Api.Controllers
             wsSummary.Cells["A2"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
             // Header Bảng Thống Kê
-            string[] summaryHeaders = { 
-                "STT", 
-                "Biển Số Xe", 
-                "Chủ Xe", 
+            string[] summaryHeaders = {
+                "STT",
+                "Biển Số Xe",
+                "Chủ Xe",
                 "Đối Tượng",
-                "Loại Xe", 
-                "Khối Lượng Xe (m³)", 
-                "Tổng Lượt Vào", 
-                "Tổng Lượt Ra", 
-                "Tổng Khối Lượng (m³)", 
-                "Đang Trong Bãi", 
-                "Tổng Thời Gian Đỗ", 
-                "Lần Vào Mới Nhất", 
-                "Lần Ra Mới Nhất" 
+                "Loại Xe",
+                "Khối Lượng Xe (m³)",
+                "Tổng Lượt Vào",
+                "Tổng Lượt Ra",
+                "Tổng Khối Lượng (m³)",
+                "Đang Trong Bãi",
+                "Tổng Thời Gian Đỗ",
+                "Lần Vào Mới Nhất",
+                "Lần Ra Mới Nhất"
             };
             for (int i = 0; i < summaryHeaders.Length; i++)
             {
@@ -187,7 +187,7 @@ namespace HPParkingSystem.Api.Controllers
             {
                 var first = g.First();
                 int inCount = g.Count(s => s.InTime.HasValue);
-                int outCount = g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed);
+                int outCount = g.Count(s => s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed || s.Status == ParkingSessionStatus.UnmatchedOut);
                 bool isCurrentlyInParking = g.Any(s => s.Status == ParkingSessionStatus.Active);
 
                 double? vehicleWeight = GetRegisteredWeight(g);
@@ -286,17 +286,17 @@ namespace HPParkingSystem.Api.Controllers
             ws.Cells["A1"].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
             // Table Headers
-            string[] headers = { 
-                "STT", 
-                "Biển Số Xe", 
-                "Chủ Xe", 
+            string[] headers = {
+                "STT",
+                "Biển Số Xe",
+                "Chủ Xe",
                 "Đối Tượng",
-                "Loại Xe", 
-                "Khối Lượng (m³)", 
-                "Thời Gian Vào", 
-                "Thời Gian Ra", 
-                "Thời Gian Đỗ", 
-                "Trạng Thái" 
+                "Loại Xe",
+                "Khối Lượng (m³)",
+                "Thời Gian Vào",
+                "Thời Gian Ra",
+                "Thời Gian Đỗ",
+                "Trạng Thái"
             };
             for (int i = 0; i < headers.Length; i++)
             {
@@ -330,7 +330,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 8].Value = s.OutTime.HasValue ? s.OutTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
                 ws.Cells[row, 9].Value = s.Duration.HasValue ? $"{s.Duration.Value.Hours}h {s.Duration.Value.Minutes}m" : "--";
                 ws.Cells[row, 10].Value = s.Status == ParkingSessionStatus.Active ? "Đang trong bãi" :
-                                          s.Status == ParkingSessionStatus.Completed ? "Đã hoàn thành" : "Xe ra không có vào";
+                                          s.Status == ParkingSessionStatus.Completed ? "Đã hoàn thành" : s.Status == ParkingSessionStatus.UnmatchedOut ? "Xe ra" : "";
 
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
@@ -349,7 +349,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
 
                 double grandTotalSessionsWeight = sessions
-                    .Where(s => (s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed) && s.Weight.HasValue)
+                    .Where(s => (s.OutTime.HasValue || s.Status == ParkingSessionStatus.Completed || s.Status == ParkingSessionStatus.UnmatchedOut) && s.Weight.HasValue)
                     .Sum(s => s.Weight!.Value);
                 SetWeightCellValue(ws.Cells[row, 6], grandTotalSessionsWeight);
                 ws.Cells[row, 6].Style.Font.Bold = true;
