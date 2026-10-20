@@ -329,8 +329,7 @@ namespace HPParkingSystem.Api.Controllers
                 ws.Cells[row, 7].Value = s.InTime.HasValue ? s.InTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
                 ws.Cells[row, 8].Value = s.OutTime.HasValue ? s.OutTime.Value.ToString("dd/MM/yyyy HH:mm:ss") : "--";
                 ws.Cells[row, 9].Value = s.Duration.HasValue ? $"{s.Duration.Value.Hours}h {s.Duration.Value.Minutes}m" : "--";
-                ws.Cells[row, 10].Value = s.Status == ParkingSessionStatus.Active ? "Đang trong bãi" :
-                                          s.Status == ParkingSessionStatus.Completed ? "Đã hoàn thành" : s.Status == ParkingSessionStatus.UnmatchedOut ? "Xe ra" : "";
+                ws.Cells[row, 10].Value = s.Status.ToDisplayName();
 
                 ws.Cells[row, 1].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
                 ws.Cells[row, 2].Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;

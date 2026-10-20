@@ -232,6 +232,7 @@ app.MapFallback(async context =>
 try
 {
     // Tự động chuyển đổi các bản ghi xe ra cũ chưa có giờ vào sang trạng thái 'Xe ra' (UnmatchedOut)
+    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
     var mongoContext = app.Services.GetRequiredService<MongoDbContext>();
     var sessionCol = mongoContext.GetCollection<HPParkingSystem.Models.Entities.ParkingSession>();
     var fb = MongoDB.Driver.Builders<HPParkingSystem.Models.Entities.ParkingSession>.Filter;
@@ -241,7 +242,7 @@ try
                  fb.Eq(s => s.Status, HPParkingSystem.Models.Enums.ParkingSessionStatus.Completed);
     var update = MongoDB.Driver.Builders<HPParkingSystem.Models.Entities.ParkingSession>.Update
         .Set(s => s.Status, HPParkingSystem.Models.Enums.ParkingSessionStatus.UnmatchedOut);
-    var migrationResult = sessionCol.UpdateMany(filter, update);
+    var migrationResult = await sessionCol.UpdateManyAsync(filter, update, cancellationToken: cts.Token);
     if (migrationResult.ModifiedCount > 0)
     {
         Log.Information("Đã tự động cập nhật {Count} bản ghi xe ra cũ sang trạng thái 'Xe ra' (UnmatchedOut).", migrationResult.ModifiedCount);
@@ -255,7 +256,7 @@ catch (Exception ex)
 try
 {
     Log.Information("Khởi động HPParkingSystem.Api thành công.");
-    app.Run();
+    await app.RunAsync();
 }
 catch (Exception ex)
 {
