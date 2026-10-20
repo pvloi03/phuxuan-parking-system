@@ -5,7 +5,7 @@
 #define MyAppName "HPPARKING"
 #define MyAppFullName "Hệ Thống Kiểm Soát Bãi Xe HPPARKING"
 #define MyAppVersion "1.0.0"
-#define MyAppPublisher "Phú Xuân Parking System"
+#define MyAppPublisher "HPPARKING"
 #define MyAppExeName "HPParkingSystem.exe"
 
 [Setup]
