@@ -1,4 +1,5 @@
-﻿using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Helpers;
+using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.SDK.ZKTeco;
 using HPParkingSystem.Services.Logging;
@@ -13,7 +14,7 @@ namespace HPParkingSystem.Services.Devices.Controller
     /// <summary>
     /// Triển khai IControllerService - Quản lý kết nối TCP, luồng nhận RTLog ngầm và dispatch sự kiện Radar
     /// </summary>
-    public class ControllerService : IControllerService
+    public class ControllerService : IControllerService, IDisposable
     {
         private IntPtr _handle = IntPtr.Zero;
         private readonly object _lockObj = new();
@@ -25,6 +26,9 @@ namespace HPParkingSystem.Services.Devices.Controller
         private int _lastPort = 4370;
         private string? _lastPassword;
         private DateTime _drainUntil = DateTime.MinValue;
+        private DateTime _lastCommunicationTime = DateTime.MinValue;
+        private const int HEARTBEAT_INTERVAL_SECONDS = 5;
+        private const int WATCHDOG_TIMEOUT_SECONDS = 12;
 
         public event EventHandler<AuxTriggerEventArgs>? OnAuxInputTriggered;
 
@@ -94,6 +98,12 @@ namespace HPParkingSystem.Services.Devices.Controller
 
                     if (_handle != IntPtr.Zero)
                     {
+                        try
+                        {
+                            ZKTecoPullSDK.SetDeviceParam(_handle, $"DateTime={DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                        }
+                        catch { }
+                        _lastCommunicationTime = DateTime.Now;
                         _drainUntil = DateTime.Now.AddSeconds(1.5);
                         StartListening();
                         OnConnectionStateChanged?.Invoke(this, DeviceStatus.Connected);
@@ -183,6 +193,7 @@ namespace HPParkingSystem.Services.Devices.Controller
         {
             const int bufferSize = 64 * 1024; // 64KB buffer
             var buffer = new byte[bufferSize];
+            var probeBuffer = new byte[64];
             int consecutiveErrors = 0;
 
             while (!cancellationToken.IsCancellationRequested && IsConnected)
@@ -199,6 +210,7 @@ namespace HPParkingSystem.Services.Devices.Controller
 
                     if (result >= 0)
                     {
+                        _lastCommunicationTime = DateTime.Now;
                         consecutiveErrors = 0;
                         int nullIdx = Array.IndexOf(buffer, (byte)0);
                         int validBytes = nullIdx >= 0 ? nullIdx : buffer.Length;
@@ -219,37 +231,69 @@ namespace HPParkingSystem.Services.Devices.Controller
                     }
                     else if (result == -2)
                     {
-                        // Mã -2: Hàng đợi log rỗng (không có sự kiện mới)
-                        consecutiveErrors = 0;
-                    }
-                    else
-                    {
-                        // Lỗi kết nối thực sự từ SDK
-                        consecutiveErrors++;
-                        if (consecutiveErrors >= 5) // Lỗi liên tiếp 5 chu kỳ (~1s) -> Reconnect
+                        // Mã -2: Hàng đợi log rỗng (không có sự kiện mới).
+                        // Smart Heartbeat: nếu đã quá HEARTBEAT_INTERVAL_SECONDS không có bất kỳ giao tiếp nào:
+                        var idleSeconds = (DateTime.Now - _lastCommunicationTime).TotalSeconds;
+                        if (idleSeconds >= HEARTBEAT_INTERVAL_SECONDS)
                         {
-                            AppLogger.Warning($"[Access Controller] Mất kết nối realtime (GetRTLog code={result}). Đang tự động kết nối lại...");
+                            int probeRes;
                             lock (_lockObj)
                             {
-                                if (_handle != IntPtr.Zero)
-                                {
-                                    ZKTecoPullSDK.Disconnect(_handle);
-                                    _handle = IntPtr.Zero;
-                                }
-                                var pwd = _lastPassword ?? string.Empty;
-                                var connectParams = $"protocol=TCP,ipaddress={_lastIp.Trim()},port={_lastPort},timeout=5000,passwd={pwd}";
-                                _handle = ZKTecoPullSDK.Connect(connectParams);
+                                if (!IsConnected) break;
+                                Array.Clear(probeBuffer, 0, probeBuffer.Length);
+                                probeRes = ZKTecoPullSDK.GetDeviceParam(_handle, ref probeBuffer[0], probeBuffer.Length, "DateTime");
                             }
 
-                            if (_handle != IntPtr.Zero)
+                            if (probeRes >= 0)
                             {
+                                _lastCommunicationTime = DateTime.Now;
                                 consecutiveErrors = 0;
-                                AppLogger.Information($"[Access Controller] Đã tự động phục hồi kết nối ({_lastIp}:{_lastPort}) thành công!");
                             }
                             else
                             {
-                                await Task.Delay(2000, cancellationToken);
+                                consecutiveErrors++;
+                                AppLogger.Warning($"[Access Controller Heartbeat] Thăm dò thất bại (Mã lỗi: {probeRes}, lần {consecutiveErrors}).");
                             }
+                        }
+                    }
+                    else
+                    {
+                        // Lỗi kết nối thực sự từ SDK (< 0 và != -2)
+                        consecutiveErrors++;
+                    }
+
+                    // Watchdog: Nếu gặp lỗi liên tiếp >= 2 lần HOẶC không có phản hồi quá WATCHDOG_TIMEOUT_SECONDS
+                    var silentSeconds = (DateTime.Now - _lastCommunicationTime).TotalSeconds;
+                    if (consecutiveErrors >= 2 || (silentSeconds >= WATCHDOG_TIMEOUT_SECONDS && _lastCommunicationTime != DateTime.MinValue))
+                    {
+                        AppLogger.Warning($"[Access Controller Watchdog] Phát hiện kết nối bị treo ngầm (Lỗi: {consecutiveErrors}, im lặng: {silentSeconds:F0}s). Đang tự động kết nối lại...");
+                        lock (_lockObj)
+                        {
+                            if (_handle != IntPtr.Zero)
+                            {
+                                ZKTecoPullSDK.Disconnect(_handle);
+                                _handle = IntPtr.Zero;
+                            }
+                            var pwd = _lastPassword ?? string.Empty;
+                            var connectParams = $"protocol=TCP,ipaddress={_lastIp.Trim()},port={_lastPort},timeout=5000,passwd={pwd}";
+                            _handle = ZKTecoPullSDK.Connect(connectParams);
+                            if (_handle != IntPtr.Zero)
+                            {
+                                try
+                                {
+                                    ZKTecoPullSDK.SetDeviceParam(_handle, $"DateTime={DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                                }
+                                catch { }
+                                _lastCommunicationTime = DateTime.Now;
+                                _drainUntil = DateTime.Now.AddSeconds(1.5);
+                                consecutiveErrors = 0;
+                                AppLogger.Information($"[Access Controller Watchdog] Đã tự động phục hồi kết nối ({_lastIp}:{_lastPort}) thành công!");
+                            }
+                        }
+
+                        if (_handle == IntPtr.Zero)
+                        {
+                            await Task.Delay(2000, cancellationToken);
                         }
                     }
 
@@ -271,23 +315,30 @@ namespace HPParkingSystem.Services.Devices.Controller
         /// </summary>
         public void ParseAndDispatchLog(string rawLog)
         {
-            if (string.IsNullOrWhiteSpace(rawLog)) return;
-
-            var parts = rawLog.Split(',');
-            if (parts.Length < 5)
+            var parseResult = ZKTecoRtLogParser.Parse(rawLog);
+            switch (parseResult.Status)
             {
-                AppLogger.Warning($"[Access Controller RTLog] Bỏ qua log không đủ 5 trường: {rawLog}", "AccessController");
-                return;
+                case ZKTecoRtLogParseStatus.IgnoredMalformed:
+                    AppLogger.Warning($"[Access Controller RTLog] Bỏ qua log không hợp lệ: {rawLog} ({parseResult.Reason})", "AccessController");
+                    return;
+
+                case ZKTecoRtLogParseStatus.IgnoredStatusPacket:
+                    AppLogger.Debug($"[Access Controller RTLog] {parseResult.Reason}: {rawLog}");
+                    return;
+
+                case ZKTecoRtLogParseStatus.IgnoredInvalidPort:
+                    AppLogger.Debug($"[Access Controller RTLog] {parseResult.Reason}: {rawLog}");
+                    return;
+
+                case ZKTecoRtLogParseStatus.IgnoredStaleEvent:
+                    AppLogger.Information($"[Access Controller RTLog] Bỏ qua sự kiện tồn đọng cũ ({parseResult.AgeSeconds:F0}s trước lúc {parseResult.TriggerTime:HH:mm:ss}): {rawLog}");
+                    return;
+
+                case ZKTecoRtLogParseStatus.Success:
+                    break;
             }
 
-            // Nếu Bit 4 là 255 -> Đây là bản ghi trạng thái Door/Alarm status, không phải realtime event
-            if (parts[4].Trim() == "255")
-            {
-                AppLogger.Debug($"[Access Controller RTLog] Nhận gói tin trạng thái định kỳ Door/Alarm (Bit4=255): {rawLog}");
-                return;
-            }
-
-            // Xả các bản ghi cũ trong bộ đệm controller trong 1.5 giây đầu sau khi kết nối
+            // Xả các bản ghi cũ trong bộ đệm controller trong 1.5 giây đầu sau khi kết nối (lớp bảo vệ phụ)
             if (DateTime.Now < _drainUntil)
             {
                 AppLogger.Information($"[Access Controller RTLog] Xả sự kiện tồn đọng lúc khởi động: {rawLog}");
@@ -295,37 +346,12 @@ namespace HPParkingSystem.Services.Devices.Controller
             }
 
             AppLogger.Information($"[Access Controller RTLog] Nhận chuỗi sự kiện: {rawLog}", "AccessController");
-
-            // Cột DoorID / AuxID (index 3): 1 = Làn Vào, 2 = Làn Ra
-            if (!int.TryParse(parts[3].Trim(), out var portIndex) || (portIndex != 1 && portIndex != 2))
-            {
-                AppLogger.Debug($"[Access Controller RTLog] Cổng không thuộc Làn 1 hoặc 2 (Port={parts[3]}): {rawLog}");
-                return;
-            }
-
-            // Cột EventType (index 4):
-            // 221 = CÓ XE / Đang kích hoạt cảm biến Radar / Vòng từ (Aux In Closed)
-            // 220 = HẾT XE / Đã ngắt cảm biến (Aux In Opened / Restored)
-            // 25  = Báo động Aux Input
-            // 1   = Kích hoạt cảm biến
-            _ = int.TryParse(parts[4].Trim(), out var eventType);
-
-            // 221, 25, 1: CÓ XE ĐẾN (Active = true)
-            // 220: HẾT XE / ĐÃ QUA (Active = false)
-            bool isActive = eventType == 221 || eventType == 25 || eventType == 1;
-
-            AppLogger.Information($"[Access Controller Trigger] Phát sự kiện OnAuxInputTriggered: Làn {portIndex} (Aux {portIndex}), IsActive={isActive}, EventType={eventType}");
-
-            DateTime triggerTime = DateTime.Now;
-            if (parts.Length > 0 && DateTime.TryParse(parts[0].Trim(), out var parsedTime))
-            {
-                triggerTime = parsedTime;
-            }
+            AppLogger.Information($"[Access Controller Trigger] Phát sự kiện OnAuxInputTriggered: Làn {parseResult.AuxPort} (Aux {parseResult.AuxPort}), IsActive={parseResult.IsActive}, EventType={parseResult.EventType}");
 
             OnAuxInputTriggered?.Invoke(this, new AuxTriggerEventArgs(
-                auxPort: portIndex,
-                isActive: isActive,
-                triggerTime: triggerTime,
+                auxPort: parseResult.AuxPort,
+                isActive: parseResult.IsActive,
+                triggerTime: parseResult.TriggerTime,
                 rawLog: rawLog));
         }
 

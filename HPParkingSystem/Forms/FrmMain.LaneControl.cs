@@ -25,6 +25,7 @@ namespace HPParkingSystem.Forms
         private DateTime _lastOutRadarTriggerTime = DateTime.MinValue;
         private const int RADAR_DEBOUNCE_MS = 1500;
         private const int CYCLE_RESET_COOLDOWN_MS = 1500;
+        private const int SAFETY_AUTO_RELEASE_MS = 6000;
 
         #region Xử Lý Sự Kiện Radar AUX (Controller Realtime)
 
@@ -57,6 +58,14 @@ namespace HPParkingSystem.Forms
                     lock (_lockDebounce)
                     {
                         var elapsed = (DateTime.Now - _lastInRadarTriggerTime).TotalMilliseconds;
+
+                        // Auto-Release nếu kẹt cờ do mất cạnh xuống 220 từ chu kỳ trước
+                        if (_isInLaneProcessing && elapsed > SAFETY_AUTO_RELEASE_MS)
+                        {
+                            AppLogger.Warning($"[RADAR CỘT 1] Phát hiện kẹt cờ xử lý ({elapsed:F0}ms không có cạnh xuống). Tự động mở khóa (Auto-Release).");
+                            _isInLaneProcessing = false;
+                        }
+
                         if (!_isInLaneProcessing && elapsed >= RADAR_DEBOUNCE_MS)
                         {
                             _isInLaneProcessing = true;
@@ -76,6 +85,35 @@ namespace HPParkingSystem.Forms
 
                         // Kích hoạt luồng chụp ảnh, ANPR và ghi nhận phiên ngầm theo Direction
                         _ = Task.Run(async () => await HandleLaneSlotAsync(1, dir1, "RADAR"));
+
+                        // Safety Watchdog: Tự động nhả cờ sau SAFETY_AUTO_RELEASE_MS phòng khi radar không gửi cạnh xuống 220
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(SAFETY_AUTO_RELEASE_MS);
+                            bool autoReleased = false;
+                            lock (_lockDebounce)
+                            {
+                                if (_isInLaneProcessing && (DateTime.Now - _lastInRadarTriggerTime).TotalMilliseconds >= SAFETY_AUTO_RELEASE_MS)
+                                {
+                                    _isInLaneProcessing = false;
+                                    autoReleased = true;
+                                }
+                            }
+                            if (autoReleased)
+                            {
+                                AppLogger.Warning("[RADAR CỘT 1] Safety Watchdog: Tự động mở khóa làn sau 6 giây (không nhận được cạnh xuống 220 từ radar).");
+                                void ResetStatusUi()
+                                {
+                                    if (lblInStatusVal.Text.Contains("Đang xử lý"))
+                                    {
+                                        lblInStatusVal.Text = "⚪ Sẵn sàng";
+                                        lblInStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
+                                    }
+                                }
+                                if (InvokeRequired) BeginInvoke(new Action(ResetStatusUi));
+                                else ResetStatusUi();
+                            }
+                        });
                     }
                 }
                 else
@@ -115,6 +153,14 @@ namespace HPParkingSystem.Forms
                     lock (_lockDebounce)
                     {
                         var elapsed = (DateTime.Now - _lastOutRadarTriggerTime).TotalMilliseconds;
+
+                        // Auto-Release nếu kẹt cờ do mất cạnh xuống 220 từ chu kỳ trước
+                        if (_isOutLaneProcessing && elapsed > SAFETY_AUTO_RELEASE_MS)
+                        {
+                            AppLogger.Warning($"[RADAR CỘT 2] Phát hiện kẹt cờ xử lý ({elapsed:F0}ms không có cạnh xuống). Tự động mở khóa (Auto-Release).");
+                            _isOutLaneProcessing = false;
+                        }
+
                         if (!_isOutLaneProcessing && elapsed >= RADAR_DEBOUNCE_MS)
                         {
                             _isOutLaneProcessing = true;
@@ -134,6 +180,35 @@ namespace HPParkingSystem.Forms
 
                         // Kích hoạt luồng chụp ảnh, ANPR và ghi nhận phiên ngầm theo Direction
                         _ = Task.Run(async () => await HandleLaneSlotAsync(2, dir2, "RADAR"));
+
+                        // Safety Watchdog: Tự động nhả cờ sau SAFETY_AUTO_RELEASE_MS phòng khi radar không gửi cạnh xuống 220
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(SAFETY_AUTO_RELEASE_MS);
+                            bool autoReleased = false;
+                            lock (_lockDebounce)
+                            {
+                                if (_isOutLaneProcessing && (DateTime.Now - _lastOutRadarTriggerTime).TotalMilliseconds >= SAFETY_AUTO_RELEASE_MS)
+                                {
+                                    _isOutLaneProcessing = false;
+                                    autoReleased = true;
+                                }
+                            }
+                            if (autoReleased)
+                            {
+                                AppLogger.Warning("[RADAR CỘT 2] Safety Watchdog: Tự động mở khóa làn sau 6 giây (không nhận được cạnh xuống 220 từ radar).");
+                                void ResetStatusUi()
+                                {
+                                    if (lblOutStatusVal.Text.Contains("Đang xử lý"))
+                                    {
+                                        lblOutStatusVal.Text = "⚪ Sẵn sàng";
+                                        lblOutStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
+                                    }
+                                }
+                                if (InvokeRequired) BeginInvoke(new Action(ResetStatusUi));
+                                else ResetStatusUi();
+                            }
+                        });
                     }
                 }
                 else
