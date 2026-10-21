@@ -118,7 +118,7 @@ namespace HPParkingSystem.Forms
                 else
                 {
                     // Cạnh xuống: Xe đã đi qua khỏi cảm biến radar
-                    lblInStatusVal.Text = $"⚪ Xe đã qua {dirLabel}";
+                    lblInStatusVal.Text = $"⚪ Xe đã qua - {dirLabel}";
                     lblInStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
 
                     // Mở khóa chu kỳ xe sau khoảng trễ an toàn
@@ -213,7 +213,7 @@ namespace HPParkingSystem.Forms
                 else
                 {
                     // Cạnh xuống: Xe đã đi qua khỏi cảm biến radar
-                    lblOutStatusVal.Text = $"⚪ Xe đã qua {dirLabel}";
+                    lblOutStatusVal.Text = $"⚪ Xe đã qua - {dirLabel}";
                     lblOutStatusVal.ForeColor = Color.FromArgb(100, 110, 120);
 
                     // Mở khóa chu kỳ xe sau khoảng trễ an toàn
