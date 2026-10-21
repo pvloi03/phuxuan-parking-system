@@ -1,6 +1,5 @@
 using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
-using HPParkingSystem.Models.ValueObjects;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 

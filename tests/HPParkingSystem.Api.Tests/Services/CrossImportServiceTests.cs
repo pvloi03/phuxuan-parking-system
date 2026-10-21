@@ -5,13 +5,7 @@ using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Repositories;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests.Services
 {

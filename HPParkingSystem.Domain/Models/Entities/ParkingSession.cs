@@ -1,9 +1,9 @@
-using System;
 using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Models.ValueObjects;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace HPParkingSystem.Models.Entities
 {
@@ -64,7 +64,7 @@ namespace HPParkingSystem.Models.Entities
         // =========================================================================
         // --- 2. CÁC THUỘC TÍNH KHÔNG LƯU DATABASE (COMPUTED GETTERS TRONG RAM) ---
         // =========================================================================
-        
+
         /// <summary>
         /// [KHÔNG LƯU DB] Phân biệt xe lạ / người lạ (khi không có tên chủ xe)
         /// </summary>

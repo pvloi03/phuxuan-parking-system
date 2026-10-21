@@ -1,8 +1,7 @@
-﻿using System;
-using System.Drawing;
+﻿using HPParkingSystem.Licensing;
+using System;
 using System.IO;
 using System.Windows.Forms;
-using HPParkingSystem.Licensing;
 
 namespace HPParkingSystem.Forms
 {

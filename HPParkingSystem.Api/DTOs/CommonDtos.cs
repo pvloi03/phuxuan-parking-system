@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace HPParkingSystem.Api.DTOs
 {
     public class PagedResult<T>

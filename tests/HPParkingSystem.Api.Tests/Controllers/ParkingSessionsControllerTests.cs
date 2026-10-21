@@ -8,12 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using Moq;
 using OfficeOpenXml;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests.Controllers
 {

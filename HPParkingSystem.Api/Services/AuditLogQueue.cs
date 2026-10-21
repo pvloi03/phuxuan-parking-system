@@ -1,8 +1,5 @@
 ﻿using HPParkingSystem.Models.Entities;
-using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace HPParkingSystem.Api.Services
 {

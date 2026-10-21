@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace HPParkingSystem.Api.Helpers

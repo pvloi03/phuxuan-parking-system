@@ -1,5 +1,4 @@
 using HPParkingSystem.Models.ValueObjects;
-using System;
 using System.Drawing;
 
 namespace HPParkingSystem.Services.Anpr

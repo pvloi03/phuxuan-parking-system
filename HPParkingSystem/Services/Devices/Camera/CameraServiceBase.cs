@@ -1,6 +1,5 @@
 ﻿using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
-using HPParkingSystem.Services.Logging;
 using System;
 using System.Net.Sockets;
 using System.Threading;

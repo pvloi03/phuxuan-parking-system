@@ -1,4 +1,3 @@
-using MongoDB.Driver;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
@@ -9,6 +8,7 @@ using HPParkingSystem.Services.Devices.Camera;
 using HPParkingSystem.Services.Devices.Health;
 using HPParkingSystem.Services.Logging;
 using HPParkingSystem.Services.Offline;
+using MongoDB.Driver;
 using System;
 using System.Collections.Concurrent;
 using System.Drawing;

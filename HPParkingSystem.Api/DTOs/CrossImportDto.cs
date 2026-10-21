@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using HPParkingSystem.Models.Enums;
 
 namespace HPParkingSystem.Api.DTOs

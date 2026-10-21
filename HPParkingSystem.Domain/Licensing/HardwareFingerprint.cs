@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Management;
 #if NET6_0_OR_GREATER
 using System.Runtime.Versioning;

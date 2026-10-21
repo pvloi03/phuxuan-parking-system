@@ -1,10 +1,10 @@
-﻿using System;
+﻿using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using System;
 using System.Configuration;
 using System.IO;
 using System.Threading;
-using Serilog;
-using Serilog.Core;
-using Serilog.Events;
 
 namespace HPParkingSystem.Services.Logging
 {

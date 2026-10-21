@@ -16,7 +16,7 @@ namespace HPParkingSystem.Repositories
         // =========================================================================
         // --- 1. TRUY VẤN DỮ LIỆU (READ) ---
         // =========================================================================
-        
+
         /// <summary>
         /// Lấy một bản ghi theo Id (tự động bỏ qua bản ghi đã xóa mềm)
         /// </summary>

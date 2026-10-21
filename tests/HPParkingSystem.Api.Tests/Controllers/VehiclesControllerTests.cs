@@ -8,13 +8,8 @@ using HPParkingSystem.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using System;
-using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests.Controllers
 {

@@ -1,12 +1,12 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using HPParkingSystem.Api.Hubs;
 using HPParkingSystem.Api.Middlewares;
 using HPParkingSystem.Api.Services;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 using Serilog.Events;
 using System.Text;

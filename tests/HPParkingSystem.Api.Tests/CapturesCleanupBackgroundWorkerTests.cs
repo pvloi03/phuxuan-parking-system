@@ -1,6 +1,5 @@
 ﻿using FluentAssertions;
 using HPParkingSystem.Api.Services;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests
 {

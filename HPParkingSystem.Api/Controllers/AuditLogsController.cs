@@ -1,15 +1,13 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using HPParkingSystem.Api.DTOs;
+using HPParkingSystem.Models.Entities;
+using HPParkingSystem.Models.Enums;
+using HPParkingSystem.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Driver;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
-using HPParkingSystem.Api.DTOs;
-using HPParkingSystem.Models.Entities;
-using HPParkingSystem.Models.Enums;
-using HPParkingSystem.Repositories;
-using System;
 using System.Drawing;
-using System.Threading.Tasks;
 
 namespace HPParkingSystem.Api.Controllers
 {

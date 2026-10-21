@@ -1,5 +1,3 @@
-using System;
-
 namespace HPParkingSystem.Services.Parking
 {
     /// <summary>

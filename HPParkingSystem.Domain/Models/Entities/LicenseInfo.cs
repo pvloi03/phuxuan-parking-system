@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using HPParkingSystem.Models.Common;
+﻿using HPParkingSystem.Models.Common;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace HPParkingSystem.Models.Entities
 {
@@ -16,13 +15,13 @@ namespace HPParkingSystem.Models.Entities
         // =========================================================================
         public string CustomerName { get; set; } = string.Empty;      // [LƯU DB] Tên khách hàng / Đơn vị được cấp bản quyền
         public string MachineCode { get; set; } = string.Empty;       // [LƯU DB] Mã máy tính đã đăng ký (Hardware Fingerprint)
-        
+
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime ExpiryDate { get; set; }                      // [LƯU DB] Thời điểm hết hạn bản quyền (Local)
-        
+
         [BsonDateTimeOptions(Kind = DateTimeKind.Local)]
         public DateTime IssuedAt { get; set; } = DateTime.Now;        // [LƯU DB] Ngày cấp bản quyền
-        
+
         public string LicenseKey { get; set; } = string.Empty;        // [LƯU DB] Chuỗi License Key mã hóa & ký số RSA
         public string? Signature { get; set; }                        // [LƯU DB] Chữ ký số điện tử xác thực tính toàn vẹn
         public bool IsActive { get; set; } = true;                    // [LƯU DB] Trạng thái hiệu lực

@@ -3,12 +3,7 @@ using HPParkingSystem.Api.Services;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Repositories;
 using Moq;
-using System;
-using System.Collections.Generic;
 using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests.Services
 {

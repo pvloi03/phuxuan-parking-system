@@ -1,10 +1,7 @@
-using Microsoft.AspNetCore.Http;
 using HPParkingSystem.Api.Helpers;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace HPParkingSystem.Api.Services
 {

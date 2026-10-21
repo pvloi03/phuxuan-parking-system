@@ -1,8 +1,8 @@
-﻿using MongoDB.Driver;
-using HPParkingSystem.Licensing;
+﻿using HPParkingSystem.Licensing;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Repositories;
 using HPParkingSystem.Services.Logging;
+using MongoDB.Driver;
 using System;
 using System.Linq;
 using System.Threading.Tasks;

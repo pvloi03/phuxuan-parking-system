@@ -1,8 +1,6 @@
-using System;
 using FluentAssertions;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests.Entities
 {

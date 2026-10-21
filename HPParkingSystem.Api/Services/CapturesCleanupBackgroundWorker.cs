@@ -1,7 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace HPParkingSystem.Api.Services
 {

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace HPParkingSystem.Api.DTOs
+﻿namespace HPParkingSystem.Api.DTOs
 {
     /// <summary>
     /// Chuẩn cấu trúc phản hồi thống nhất cho toàn bộ API hệ thống

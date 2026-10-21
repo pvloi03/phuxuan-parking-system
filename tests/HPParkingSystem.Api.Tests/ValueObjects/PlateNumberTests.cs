@@ -1,8 +1,6 @@
 using FluentAssertions;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.ValueObjects;
-using System;
-using Xunit;
 
 namespace HPParkingSystem.Api.Tests.ValueObjects
 {

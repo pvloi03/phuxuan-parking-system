@@ -1,13 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using MongoDB.Driver;
-using HPParkingSystem.Models.Entities;
+﻿using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Repositories;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using MongoDB.Driver;
 
 namespace HPParkingSystem.Api.Services
 {

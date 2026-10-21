@@ -1,6 +1,5 @@
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Models.ValueObjects;
-using HPParkingSystem.Services.Anpr;
 using HPParkingSystem.Services.Devices.Camera;
 using HPParkingSystem.Services.Devices.Controller;
 using HPParkingSystem.Services.Logging;

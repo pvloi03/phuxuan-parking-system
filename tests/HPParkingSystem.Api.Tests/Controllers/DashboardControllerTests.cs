@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Threading;
-using System.Threading.Tasks;
 using FluentAssertions;
 using HPParkingSystem.Api.Controllers;
 using HPParkingSystem.Api.DTOs;
@@ -11,7 +6,7 @@ using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
-using Xunit;
+using System.Linq.Expressions;
 
 namespace HPParkingSystem.Api.Tests.Controllers
 {

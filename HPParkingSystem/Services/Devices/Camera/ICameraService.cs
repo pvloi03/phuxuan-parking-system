@@ -1,5 +1,4 @@
-﻿using HPParkingSystem.Services.Devices;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 

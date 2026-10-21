@@ -1,8 +1,8 @@
-﻿using System;
-using HPParkingSystem.Models.Common;
+﻿using HPParkingSystem.Models.Common;
 using HPParkingSystem.Models.Enums;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using System;
 
 namespace HPParkingSystem.Models.Entities
 {

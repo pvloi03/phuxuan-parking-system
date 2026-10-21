@@ -1,18 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
-using HPParkingSystem.Api.DTOs;
+﻿using HPParkingSystem.Api.DTOs;
 using HPParkingSystem.Api.Helpers;
 using HPParkingSystem.Api.Services;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Repositories;
-using System;
-using System.Collections.Generic;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using MongoDB.Driver;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace HPParkingSystem.Api.Controllers
 {

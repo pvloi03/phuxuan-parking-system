@@ -1,7 +1,3 @@
-using System;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using Microsoft.Extensions.DependencyInjection;
 using HPParkingSystem.Forms;
 using HPParkingSystem.Models.Data;
 using HPParkingSystem.Models.Entities;
@@ -10,7 +6,11 @@ using HPParkingSystem.Services.Background;
 using HPParkingSystem.Services.Logging;
 using HPParkingSystem.Services.Offline;
 using HPParkingSystem.Services.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using System;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace HPParkingSystem
 {

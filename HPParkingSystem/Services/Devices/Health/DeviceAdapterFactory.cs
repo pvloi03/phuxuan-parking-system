@@ -1,6 +1,5 @@
 ﻿using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
-using HPParkingSystem.Services.Devices;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;

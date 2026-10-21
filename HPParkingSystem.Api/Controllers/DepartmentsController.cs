@@ -1,14 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using HPParkingSystem.Api.DTOs;
+﻿using HPParkingSystem.Api.DTOs;
 using HPParkingSystem.Api.Helpers;
 using HPParkingSystem.Api.Services;
 using HPParkingSystem.Models.Entities;
 using HPParkingSystem.Models.Enums;
 using HPParkingSystem.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace HPParkingSystem.Api.Controllers
 {
