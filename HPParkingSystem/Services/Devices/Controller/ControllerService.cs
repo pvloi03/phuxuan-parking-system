@@ -27,6 +27,7 @@ namespace HPParkingSystem.Services.Devices.Controller
         private string? _lastPassword;
         private DateTime _drainUntil = DateTime.MinValue;
         private DateTime _lastCommunicationTime = DateTime.MinValue;
+        private const int BUFFER_SIZE = 64 * 1024;
         private const int HEARTBEAT_INTERVAL_SECONDS = 5;
         private const int WATCHDOG_TIMEOUT_SECONDS = 12;
 
@@ -100,11 +101,29 @@ namespace HPParkingSystem.Services.Devices.Controller
                     {
                         try
                         {
-                            ZKTecoPullSDK.SetDeviceParam(_handle, $"DateTime={DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                            long encodedTime = ZKTecoRtLogParser.EncodeDateTime(DateTime.Now);
+                            ZKTecoPullSDK.SetDeviceParam(_handle, $"DateTime={encodedTime}");
                         }
                         catch { }
+
+                        // Xả sạch nhanh toàn bộ log cũ còn tồn đọng trong Controller ngay khi vừa kết nối
+                        try
+                        {
+                            var drainBuf = new byte[BUFFER_SIZE];
+                            int drainCount = 0;
+                            while (ZKTecoPullSDK.GetRTLog(_handle, ref drainBuf[0], BUFFER_SIZE) >= 0 && drainCount < 500)
+                            {
+                                drainCount++;
+                            }
+                            if (drainCount > 0)
+                            {
+                                AppLogger.Information($"[Access Controller] Đã xả sạch {drainCount} gói tin cũ trong bộ đệm lúc khởi động.");
+                            }
+                        }
+                        catch { }
+
                         _lastCommunicationTime = DateTime.Now;
-                        _drainUntil = DateTime.Now.AddSeconds(1.5);
+                        _drainUntil = DateTime.Now.AddSeconds(2.0);
                         StartListening();
                         OnConnectionStateChanged?.Invoke(this, DeviceStatus.Connected);
                         return true;
@@ -281,11 +300,27 @@ namespace HPParkingSystem.Services.Devices.Controller
                             {
                                 try
                                 {
-                                    ZKTecoPullSDK.SetDeviceParam(_handle, $"DateTime={DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                                    long encodedTime = ZKTecoRtLogParser.EncodeDateTime(DateTime.Now);
+                                    ZKTecoPullSDK.SetDeviceParam(_handle, $"DateTime={encodedTime}");
                                 }
                                 catch { }
+
+                                try
+                                {
+                                    int drainCount = 0;
+                                    while (ZKTecoPullSDK.GetRTLog(_handle, ref buffer[0], bufferSize) >= 0 && drainCount < 500)
+                                    {
+                                        drainCount++;
+                                    }
+                                    if (drainCount > 0)
+                                    {
+                                        AppLogger.Information($"[Access Controller Watchdog] Đã xả sạch {drainCount} gói tin cũ trong bộ đệm lúc kết nối lại.");
+                                    }
+                                }
+                                catch { }
+
                                 _lastCommunicationTime = DateTime.Now;
-                                _drainUntil = DateTime.Now.AddSeconds(1.5);
+                                _drainUntil = DateTime.Now.AddSeconds(2.0);
                                 consecutiveErrors = 0;
                                 AppLogger.Information($"[Access Controller Watchdog] Đã tự động phục hồi kết nối ({_lastIp}:{_lastPort}) thành công!");
                             }
@@ -331,14 +366,13 @@ namespace HPParkingSystem.Services.Devices.Controller
                     return;
 
                 case ZKTecoRtLogParseStatus.IgnoredStaleEvent:
-                    AppLogger.Information($"[Access Controller RTLog] Bỏ qua sự kiện tồn đọng cũ ({parseResult.AgeSeconds:F0}s trước lúc {parseResult.TriggerTime:HH:mm:ss}): {rawLog}");
                     return;
 
                 case ZKTecoRtLogParseStatus.Success:
                     break;
             }
 
-            // Xả các bản ghi cũ trong bộ đệm controller trong 1.5 giây đầu sau khi kết nối (lớp bảo vệ phụ)
+            // Xả các bản ghi cũ trong bộ đệm controller trong 2 giây đầu sau khi kết nối
             if (DateTime.Now < _drainUntil)
             {
                 AppLogger.Information($"[Access Controller RTLog] Xả sự kiện tồn đọng lúc khởi động: {rawLog}");

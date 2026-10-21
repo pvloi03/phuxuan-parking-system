@@ -1,5 +1,7 @@
+using System;
 using FluentAssertions;
 using HPParkingSystem.Helpers;
+using Xunit;
 
 namespace HPParkingSystem.Api.Tests.Helpers
 {
@@ -51,19 +53,32 @@ namespace HPParkingSystem.Api.Tests.Helpers
         }
 
         [Fact]
-        public void Parse_WhenEventIsOlderThanMaxAge_ShouldReturnIgnoredStaleEvent()
+        public void EncodeDateTime_WithKnownDate_ShouldMatchZKTecoFormula()
+        {
+            // 2010-10-26 20:54:55 -> 347748895 theo chuẩn tài liệu ZKTeco SDK
+            var dt = new DateTime(2010, 10, 26, 20, 54, 55);
+            var val = ZKTecoRtLogParser.EncodeDateTime(dt);
+            val.Should().Be(347748895L);
+        }
+
+        [Theory]
+        [InlineData("2000-01-01 00:34:16,0,0,1,221,2,200", 1, true, 221)] // Lỗi giờ Controller năm 2000 vẫn nhận bình thường
+        [InlineData("2026-10-21 14:35:00,0,0,1,221,2,200", 1, true, 221)]
+        public void Parse_RegardlessOfControllerTime_ShouldAlwaysUsePcTimeAndReturnSuccess(
+            string rawLog,
+            int expectedPort,
+            bool expectedActive,
+            int expectedEventType)
         {
             var now = new DateTime(2026, 10, 21, 15, 0, 30);
-            // Sự kiện xảy ra lúc 14:35:00 (cũ hơn 25 phút)
-            var staleLog = "2026-10-21 14:35:00,0,0,1,221,2,200";
 
-            var result = ZKTecoRtLogParser.Parse(staleLog, referenceTime: now, maxAgeSeconds: 5.0);
+            var result = ZKTecoRtLogParser.Parse(rawLog, referenceTime: now);
 
-            result.Status.Should().Be(ZKTecoRtLogParseStatus.IgnoredStaleEvent);
-            result.AgeSeconds.Should().BeGreaterThan(5.0);
-            result.Reason.Should().Contain("Sự kiện tồn đọng cũ");
-            result.AuxPort.Should().Be(1);
-            result.IsActive.Should().BeTrue();
+            result.Status.Should().Be(ZKTecoRtLogParseStatus.Success);
+            result.TriggerTime.Should().Be(now);
+            result.AuxPort.Should().Be(expectedPort);
+            result.IsActive.Should().Be(expectedActive);
+            result.EventType.Should().Be(expectedEventType);
         }
 
         [Theory]
@@ -84,10 +99,10 @@ namespace HPParkingSystem.Api.Tests.Helpers
             var result = ZKTecoRtLogParser.Parse(rawLog, referenceTime: now, maxAgeSeconds: 5.0);
 
             result.Status.Should().Be(ZKTecoRtLogParseStatus.Success);
+            result.TriggerTime.Should().Be(now);
             result.AuxPort.Should().Be(expectedPort);
             result.IsActive.Should().Be(expectedActive);
             result.EventType.Should().Be(expectedEventType);
-            result.AgeSeconds.Should().BeLessThanOrEqualTo(5.0);
         }
     }
 }
